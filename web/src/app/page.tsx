@@ -35,7 +35,7 @@ export default function Home(){
   if(saving.current)return false;
   const next={...item,...changes,tracked:changes.quantity!==undefined?true:item.tracked};
   saving.current=true;setSyncing(true);setError("");
-  try{const res=await inventoryFetch("/api/inventory",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(next)});if(!res.ok)throw new Error();setItems(c=>c.map(r=>r.id===item.id?next:r));return true}
+  try{const res=await inventoryFetch("/api/inventory",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...next,expectedQuantity:item.quantity})});if(res.status===409){setError("庫存已被其他裝置或訂單更動，請重新整理後再調整。");return false}if(!res.ok)throw new Error();setItems(c=>c.map(r=>r.id===item.id?next:r));return true}
   catch{setError("儲存失敗，資料尚未更動，請再試一次。");return false}
   finally{saving.current=false;setSyncing(false)}
  }

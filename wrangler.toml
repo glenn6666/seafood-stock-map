@@ -1,0 +1,15 @@
+name = "seafood-stock-api"
+main = "worker/index.ts"
+compatibility_date = "2026-09-01"
+
+[vars]
+ALLOWED_ORIGIN = "https://glenn6666.github.io"
+
+[[d1_databases]]
+binding = "DB"
+# 部署前請以 `npx wrangler d1 list` 找到線上既有的庫存資料庫，填入其名稱與 ID（不要建立新資料庫）。
+database_name = "REPLACE_WITH_EXISTING_D1_NAME"
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "migrations"
+
+# 機密值不放這裡。請用：npx wrangler secret put INVENTORY_TOKEN
