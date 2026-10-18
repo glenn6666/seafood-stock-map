@@ -1,0 +1,10 @@
+.signin{background:#eef8f8;place-items:center;min-height:100vh;padding:24px;display:grid}
+.signin form{background:#fff;border:1px solid #dce8e8;border-radius:20px;width:min(100%,400px);padding:32px;box-shadow:0 20px 60px #173c5114}
+.signin h1{color:#087f8c;margin:0;font-size:32px}
+.signin p{margin:12px 0 24px}
+.signin label{margin-bottom:8px;display:block}
+.signin input{border:1px solid #abc8ca;border-radius:8px;width:100%;padding:12px;font-size:16px}
+.signin button{color:#fff;cursor:pointer;background:#087f8c;border-radius:8px;width:100%;margin:16px 0;padding:12px;font-size:16px}
+.signin small{color:#536b7b;line-height:1.6;display:block}
+.signin [role=alert]{color:#ae3426}
+.signout{cursor:pointer;background:#fff;border:1px solid #abc8ca;border-radius:8px;margin:8px 24px 0 auto;padding:8px 12px;display:block}
