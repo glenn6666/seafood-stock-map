@@ -1,4 +1,5 @@
 import {storagePhotos,photoSections,normalizePhotoId} from "../web/src/lib/storage-photos";
+import {catalogPrice} from "../web/src/lib/catalog";
 
 type Env={DB:D1Database;INVENTORY_TOKEN:string;ALLOWED_ORIGIN:string};
 type Role="admin"|"staff";
@@ -10,7 +11,7 @@ const STATUSES=["待處理","備貨中","可取貨","已完成","已取消"] as 
 const PBKDF2_ITER=100000; // Cloudflare Workers 上限
 const SESSION_DAYS=7;
 
-class HttpError extends Error{constructor(public status:number,message:string){super(message)}}
+class HttpError extends Error{constructor(public status:number,message:string,public extra:Record<string,unknown>={}){super(message)}}
 const enc=new TextEncoder();
 const b64u=(buf:ArrayBuffer|Uint8Array)=>btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
 const randomToken=(n=32)=>b64u(crypto.getRandomValues(new Uint8Array(n)));
@@ -42,6 +43,10 @@ async function readJson(request:Request):Promise<any>{
 }
 
 // ---------- 身分驗證 ----------
+async function legacyEnabled(env:Env){
+ const r=await env.DB.prepare("SELECT value FROM settings WHERE key='legacy_token_enabled'").first<{value:string}>();
+ return r?.value!=="0"; // 未設定＝啟用
+}
 async function userCount(env:Env){return (await env.DB.prepare("SELECT COUNT(*) AS n FROM users").first<{n:number}>())?.n??0}
 async function authenticate(request:Request,env:Env):Promise<Actor|null>{
  const h=request.headers.get("Authorization")??"";
@@ -50,8 +55,8 @@ async function authenticate(request:Request,env:Env):Promise<Actor|null>{
  const row=await env.DB.prepare(`SELECT u.id,u.role,u.username FROM sessions s JOIN users u ON u.id=s.user_id
   WHERE s.id=? AND s.revoked=0 AND s.expires_at>? AND u.active=1 AND s.token_version=u.token_version`).bind(await sha256(token),nowIso()).first<{id:string;role:Role;username:string}>();
  if(row)return {kind:"user",id:row.id,role:row.role,username:row.username};
- // 舊版共用管理密碼：只在尚未建立任何帳號前有效
- if(await sameSecret(h,`Bearer ${env.INVENTORY_TOKEN}`)&&await userCount(env)===0)return {kind:"legacy",role:"admin"};
+ // 舊版共用管理密碼：管理員在「帳號」頁停用前都有效（管理員權限）
+ if(await sameSecret(h,`Bearer ${env.INVENTORY_TOKEN}`)&&await legacyEnabled(env))return {kind:"legacy",role:"admin"};
  return null;
 }
 function requireRole(a:Actor|null,...roles:Role[]):Actor{
@@ -77,13 +82,18 @@ async function postInventory(env:Env,actor:Actor,i:any){
  if(typeof photoId!=="string"||typeof fridgeId!=="string"||typeof note!=="string"||note.length>120||(photoId&&!storagePhotos.some(p=>p.zone===i.zone&&p.id===photoId))||(fridgeId&&!photoSections(photoId).some(f=>f.id===fridgeId)))throw new HttpError(400,"照片與區塊不符");
  const existing=await env.DB.prepare("SELECT price,quantity FROM inventory WHERE id=?").bind(i.id).first<{price:string;quantity:number}>();
  if(existing&&actor.role==="staff"&&existing.price!==i.price)throw new HttpError(403,"店員不能修改售價");
+ // 店員新增商品：不採用店員送來的售價，改用內建目錄售價（目錄外商品為空白，待管理員設定）
+ if(!existing&&actor.role==="staff")i={...i,price:catalogPrice.get(i.id)??""};
  const values=[i.id,i.zone,i.name,i.spec,i.quantity,i.unit,i.minimum,i.batch,i.category,i.price,i.tracked?1:0,photoId,note,fridgeId];
  const expected=i.expectedQuantity;
  let sql=`INSERT INTO inventory (${columns.join(",")}) VALUES (${columns.map(()=>"?").join(",")}) ON CONFLICT(id) DO UPDATE SET ${columns.slice(1).map(c=>`${c}=excluded.${c}`).join(",")}`;
  const binds:unknown[]=[...values];
  if(existing&&Number.isSafeInteger(expected)){sql+=" WHERE inventory.quantity=?";binds.push(expected)}
  const r=await env.DB.prepare(sql).bind(...binds).run();
- if(existing&&Number.isSafeInteger(expected)&&r.meta.changes===0)throw new HttpError(409,"庫存已被其他裝置或訂單更動");
+ if(existing&&Number.isSafeInteger(expected)&&r.meta.changes===0){
+  const latest=(await getInventory(env)).items.find(x=>x.id===i.id);
+  throw new HttpError(409,"庫存已被其他裝置或訂單更動",{conflict:true,latest});
+ }
  const {expectedQuantity:_x,...item}=i;
  return {item:{...item,photoId,fridgeId,positionNote:note}};
 }
@@ -103,6 +113,25 @@ async function updateProduct(env:Env,id:string,b:any){
  const r=await env.DB.prepare(`UPDATE inventory SET ${sets.join(",")} WHERE id=?`).bind(...binds,id).run();
  if(!r.meta.changes)throw new HttpError(404,"找不到商品（請先在庫存地圖儲存過一次）");
  return {ok:true};
+}
+
+async function bulkOnSale(env:Env,b:any){
+ if(!Array.isArray(b.ids)||!b.ids.length||b.ids.length>1000||b.ids.some((x:unknown)=>typeof x!=="string"||x.length>300)||typeof b.onSale!=="boolean")throw new HttpError(400,"請選擇商品");
+ const ids=[...new Set(b.ids as string[])];let changed=0;
+ for(let k=0;k<ids.length;k+=90){const part=ids.slice(k,k+90);
+  const r=await env.DB.prepare(`UPDATE inventory SET on_sale=? WHERE id IN (${part.map(()=>"?").join(",")})`).bind(b.onSale?1:0,...part).run();changed+=r.meta.changes}
+ return {ok:true,changed};
+}
+
+// ---------- 顧客端頻率限制（固定時間窗，IP 只存雜湊） ----------
+const LIMITS={order:{max:5,windowSec:600,msg:"送出次數太頻繁，請 10 分鐘後再試。"},lookup:{max:60,windowSec:600,msg:"查詢次數太頻繁，請稍後再試。"}} as const;
+async function rateLimit(env:Env,request:Request,bucket:keyof typeof LIMITS){
+ const L=LIMITS[bucket],ip=request.headers.get("CF-Connecting-IP")??"unknown";
+ const keyHash=await sha256(`rl|${env.INVENTORY_TOKEN}|${ip}`);
+ const now=Math.floor(Date.now()/1000),win=now-now%L.windowSec;
+ const r=await env.DB.prepare("INSERT INTO rate_limits (bucket,key_hash,window_start,count) VALUES (?,?,?,1) ON CONFLICT(bucket,key_hash,window_start) DO UPDATE SET count=count+1 RETURNING count").bind(bucket,keyHash,win).first<{count:number}>();
+ if(Math.random()<0.02)await env.DB.prepare("DELETE FROM rate_limits WHERE window_start<?").bind(now-86400).run(); // 只清除一天前的計數紀錄
+ if((r?.count??0)>L.max)throw new HttpError(429,L.msg);
 }
 
 // ---------- 訂單 ----------
@@ -233,11 +262,13 @@ async function route(request:Request,env:Env,url:URL):Promise<unknown>{
   return {items:results.map(r=>{let a=Math.max(0,r.quantity);if(r.daily_limit>0)a=Math.min(a,Math.max(0,r.daily_limit-r.sold));if(r.per_order_max>0)a=Math.min(a,r.per_order_max);return {id:r.id,name:r.name,spec:r.spec,unit:r.unit,category:r.category,price:r.price,available:a}})};
  }
  if(p==="/api/public/orders"&&m==="POST"){
+  await rateLimit(env,request,"order");
   const {order}=await createOrder(env,await readJson(request),"customer","顧客");
   return {orderNo:order.order_no,lookupToken:order.lookup_token,status:order.status};
  }
  const lk=p.match(/^\/api\/public\/orders\/([A-Za-z0-9_-]{20,64})$/);
  if(lk&&m==="GET"){
+  await rateLimit(env,request,"lookup");
   const o=await env.DB.prepare("SELECT * FROM orders WHERE lookup_token=?").bind(lk[1]).first<any>();
   if(!o)throw new HttpError(404,"查無此訂單");return {order:await orderDetail(env,o,{internal:false})};
  }
@@ -260,13 +291,23 @@ async function route(request:Request,env:Env,url:URL):Promise<unknown>{
  if(p==="/api/auth/logout"&&m==="POST"){
   const h=request.headers.get("Authorization")??"";if(h.startsWith("Bearer "))await env.DB.prepare("UPDATE sessions SET revoked=1 WHERE id=?").bind(await sha256(h.slice(7))).run();return {ok:true};
  }
- if(p==="/api/me"&&m==="GET"){const a=requireRole(actor,"admin","staff");return {role:a.role,legacy:a.kind==="legacy",username:a.kind==="user"?a.username:null,needsBootstrap:a.kind==="legacy"}}
+ if(p==="/api/me"&&m==="GET"){const a=requireRole(actor,"admin","staff");return {role:a.role,legacy:a.kind==="legacy",username:a.kind==="user"?a.username:null,needsBootstrap:a.kind==="legacy"&&await userCount(env)===0}}
+ if(p==="/api/settings/legacy-token"){
+  const a=requireRole(actor,"admin");
+  if(m==="GET")return {enabled:await legacyEnabled(env)};
+  if(m==="POST"){const b=await readJson(request);if(typeof b.enabled!=="boolean")throw new HttpError(400,"格式不正確");
+   if(b.enabled&&a.kind!=="user")throw new HttpError(403,"請以管理員帳號重新啟用");
+   if(!b.enabled&&await userCount(env)===0)throw new HttpError(409,"請先建立第一位管理員，再停用原管理密碼");
+   await env.DB.prepare("INSERT INTO settings (key,value,updated_at,updated_by) VALUES ('legacy_token_enabled',?,?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=excluded.updated_at,updated_by=excluded.updated_by").bind(b.enabled?"1":"0",nowIso(),a.kind==="user"?a.username:"管理密碼").run();
+   return {enabled:b.enabled};}
+ }
  if(p==="/api/inventory"){
   const a=requireRole(actor,"admin","staff");
   if(m==="GET")return getInventory(env);
   if(m==="POST")return postInventory(env,a,await readJson(request));
  }
  if(p==="/api/products"&&m==="GET")return listProducts(env,requireRole(actor,"admin","staff"));
+ if(p==="/api/products/bulk-on-sale"&&m==="POST"){requireRole(actor,"admin");return bulkOnSale(env,await readJson(request))}
  const pm=p.match(/^\/api\/products\/(.{1,300})$/);
  if(pm&&m==="PATCH"){requireRole(actor,"admin");return updateProduct(env,decodeURIComponent(pm[1]),await readJson(request))}
  if(p==="/api/orders"&&m==="GET"){
@@ -288,9 +329,9 @@ async function route(request:Request,env:Env,url:URL):Promise<unknown>{
   return setStatus(env,om[1],(await readJson(request)).status);
  }
  if(p==="/api/users"&&m==="GET"){requireRole(actor,"admin");return listUsers(env)}
- if(p==="/api/users"&&m==="POST"){const a=requireRole(actor,"admin");if(a.kind==="legacy")throw new HttpError(403,"請先建立第一位管理員");return {user:await insertUser(env,await readJson(request),false)}}
+ if(p==="/api/users"&&m==="POST"){const a=requireRole(actor,"admin");if(a.kind==="legacy"&&await userCount(env)===0)throw new HttpError(403,"請先建立第一位管理員");return {user:await insertUser(env,await readJson(request),false)}}
  const um=p.match(/^\/api\/users\/([0-9a-f-]{36})$/);
- if(um&&m==="PATCH"){const a=requireRole(actor,"admin");if(a.kind==="legacy")throw new HttpError(403,"請先建立第一位管理員");return updateUser(env,a,um[1],await readJson(request))}
+ if(um&&m==="PATCH"){const a=requireRole(actor,"admin");return updateUser(env,a,um[1],await readJson(request))}
  throw new HttpError(404,"Not found");
 }
 
@@ -310,5 +351,5 @@ export default {async fetch(request:Request,env:Env):Promise<Response>{
   return new Response(null,{status:204,headers});
  }
  try{return reply(await route(request,env,url))}
- catch(e){if(e instanceof HttpError)return reply({error:e.message},e.status);console.error(e);return reply({error:"資料庫目前無法使用，請稍後再試"},503)}
+ catch(e){if(e instanceof HttpError)return reply({error:e.message,...e.extra},e.status);console.error(e);return reply({error:"資料庫目前無法使用，請稍後再試"},503)}
 }};

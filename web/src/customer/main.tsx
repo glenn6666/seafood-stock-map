@@ -51,7 +51,7 @@ function Shop({origin}:{origin:string}){
 }
 function Lookup({origin,token}:{origin:string;token:string}){
  const [o,setO]=useState<O|null>(null),[msg,setMsg]=useState("");
- const load=()=>fetch(`${origin}/api/public/orders/${token}`,{cache:"no-store",credentials:"omit"}).then(async r=>{if(r.status===404)return setMsg("查無此訂單，請確認連結是否完整。");if(!r.ok)throw new Error();setO((await r.json()).order)}).catch(()=>setMsg("目前無法查詢，請稍後再試。"));
+ const load=()=>fetch(`${origin}/api/public/orders/${token}`,{cache:"no-store",credentials:"omit"}).then(async r=>{if(r.status===404)return setMsg("查無此訂單，請確認連結是否完整。");if(r.status===429)return setMsg((await r.json()).error);if(!r.ok)throw new Error();setO((await r.json()).order)}).catch(()=>setMsg("目前無法查詢，請稍後再試。"));
  useEffect(()=>{load()},[token]);
  if(!o)return <p className="hint">{msg||"查詢中…"}</p>;
  const idx=STEPS.indexOf(o.status);

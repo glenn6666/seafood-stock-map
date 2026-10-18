@@ -2,22 +2,24 @@
 import assert from "node:assert/strict";
 const BASE=process.env.API??"http://127.0.0.1:8787",LEGACY=process.env.LEGACY_TOKEN??"local-test-token-123";
 const key=()=>crypto.randomUUID().replace(/-/g,"");
-async function api(path,{method="GET",token,body}={}){
- const h={};if(token)h.Authorization=`Bearer ${token}`;if(body)h["Content-Type"]="application/json";
+let ipSeq=0;const freshIp=()=>`203.0.113.${++ipSeq}`;
+async function api(path,{method="GET",token,body,ip="198.51.100.1"}={}){
+ const h={"CF-Connecting-IP":ip};if(token)h.Authorization=`Bearer ${token}`;if(body)h["Content-Type"]="application/json";
  const r=await fetch(BASE+path,{method,headers:h,body:body?JSON.stringify(body):undefined});
  return {status:r.status,data:await r.json()};
 }
 const results=[];async function t(name,fn){try{await fn();results.push(["✅",name])}catch(e){results.push(["❌",name+"："+e.message]);}}
 const qty=async(tok,id)=>(await api("/api/inventory",{token:tok})).data.items.find(i=>i.id===id).quantity;
 const A="A-肉類-1",B="A-肉類-2",C="D-乾貨區-1";
-let admin,staff,staffId;
+let admin,staff,staffId,staff2Token;const staff2=()=>staff2Token;
 await t("首位管理員建立前，舊管理密碼可讀庫存；建立首位管理員",async()=>{
  assert.equal((await api("/api/inventory",{token:LEGACY})).status,200);
  assert.equal((await api("/api/users",{method:"POST",token:LEGACY,body:{username:"x",password:"12345678"}})).status,403);
  const r=await api("/api/auth/bootstrap",{method:"POST",token:LEGACY,body:{username:"boss",password:"boss-pass-123"}});
  assert.equal(r.status,200,JSON.stringify(r.data));
- assert.equal((await api("/api/auth/bootstrap",{method:"POST",token:LEGACY,body:{username:"boss2",password:"boss-pass-123"}})).status,403);
- assert.equal((await api("/api/inventory",{token:LEGACY})).status,401,"建立管理員後舊密碼應失效");
+ assert.equal((await api("/api/auth/bootstrap",{method:"POST",token:LEGACY,body:{username:"boss2",password:"boss-pass-123"}})).status,409,"已有管理員時不能再用原密碼建立");
+ assert.equal((await api("/api/inventory",{token:LEGACY})).status,200,"建立管理員後舊密碼仍可用（直到停用）");
+ assert.equal((await api("/api/me",{token:LEGACY})).data.needsBootstrap,false);
  admin=(await api("/api/auth/login",{method:"POST",body:{username:"boss",password:"boss-pass-123"}})).data.token;assert.ok(admin);
  assert.equal((await api("/api/auth/login",{method:"POST",body:{username:"boss",password:"wrong-pass"}})).status,401);
 });
@@ -43,7 +45,10 @@ await t("後端限制店員：看不到成本、不能管帳號、不能改價",
  assert.equal((await api("/api/inventory",{method:"POST",token:staff,body:{...inv,price:"1"}})).status,403,"店員改價應被拒");
  const ok=await api("/api/inventory",{method:"POST",token:staff,body:{...inv,quantity:inv.quantity+2,expectedQuantity:inv.quantity}});
  assert.equal(ok.status,200,"店員可調整數量");
- assert.equal((await api("/api/inventory",{method:"POST",token:staff,body:{...inv,quantity:99,expectedQuantity:inv.quantity}})).status,409,"過期數量應被拒（避免覆蓋）");
+ const cf=await api("/api/inventory",{method:"POST",token:staff,body:{...inv,quantity:99,expectedQuantity:inv.quantity}});
+ assert.equal(cf.status,409,"過期數量應被拒（避免覆蓋）");
+ assert.equal(cf.data.conflict,true);assert.equal(cf.data.latest.quantity,inv.quantity+2,"409 需回傳最新數量");
+ assert.equal(await qty(admin,A),inv.quantity+2,"衝突時不得覆蓋");
  await api("/api/inventory",{method:"POST",token:admin,body:{...inv,quantity:10,expectedQuantity:inv.quantity+2}});
  assert.equal(await qty(admin,A),10);
 });
@@ -123,6 +128,54 @@ await t("停用帳號、重設密碼後登入立即失效",async()=>{
 await t("不能停用最後一位管理員",async()=>{
  const u=(await api("/api/users",{token:admin})).data.users.find(x=>x.username==="boss");
  assert.equal((await api(`/api/users/${u.id}`,{method:"PATCH",token:admin,body:{active:false}})).status,409);
+});
+await t("店員新增商品不能設定售價（後端改用目錄售價／空白）",async()=>{
+ assert.equal((await api("/api/users",{method:"POST",token:admin,body:{username:"clerk2",password:"clerk2-pass-1",role:"staff"}})).status,200);
+ const st=staff2Token=(await api("/api/auth/login",{method:"POST",body:{username:"clerk2",password:"clerk2-pass-1"}})).data.token;assert.ok(st);
+ const base={zone:"01",spec:"350g",quantity:4,unit:"件",minimum:0,batch:"",category:"肉類",tracked:true,photoId:"",fridgeId:"",positionNote:""};
+ let r=await api("/api/inventory",{method:"POST",token:st,body:{...base,id:"A-肉類-3",name:"美國安格斯霜降比臉大牛排",price:"1"}});
+ assert.equal(r.status,200);assert.equal(r.data.item.price,"269");
+ assert.equal((await api("/api/inventory",{token:admin})).data.items.find(i=>i.id==="A-肉類-3").price,"269","店員送的售價不得寫入");
+ r=await api("/api/inventory",{method:"POST",token:st,body:{...base,id:"custom-new-1",name:"新品",price:"999"}});
+ assert.equal(r.status,200);assert.equal((await api("/api/inventory",{token:admin})).data.items.find(i=>i.id==="custom-new-1").price,"");
+ r=await api("/api/inventory",{method:"POST",token:admin,body:{...base,id:"custom-new-2",name:"新品2",price:"150"}});
+ assert.equal((await api("/api/inventory",{token:admin})).data.items.find(i=>i.id==="custom-new-2").price,"150","管理員可設售價");
+});
+await t("批次上架／下架：僅管理員；預設不上架",async()=>{
+ const ids=["A-肉類-3","custom-new-1","custom-new-2"];
+ let m=(await api("/api/public/menu")).data.items;assert.ok(ids.every(id=>!m.some(i=>i.id===id)),"新商品預設不上架");
+ assert.equal((await api("/api/products/bulk-on-sale",{method:"POST",token:staff2(),body:{ids,onSale:true}})).status,403);
+ let r=await api("/api/products/bulk-on-sale",{method:"POST",token:admin,body:{ids,onSale:true}});assert.equal(r.data.changed,3);
+ m=(await api("/api/public/menu")).data.items;assert.ok(ids.every(id=>m.some(i=>i.id===id)));
+ r=await api("/api/products/bulk-on-sale",{method:"POST",token:admin,body:{ids,onSale:false}});assert.equal(r.data.changed,3);
+ m=(await api("/api/public/menu")).data.items;assert.ok(ids.every(id=>!m.some(i=>i.id===id)));
+});
+await t("顧客端頻率限制：下單每 IP 10 分鐘 5 次、查詢 60 次，超過回 429 中文訊息",async()=>{
+ const ip=freshIp();
+ for(let k=0;k<5;k++)assert.equal((await api("/api/public/orders",{method:"POST",ip,body:{idempotencyKey:key(),customerName:"",items:[]}})).status,400);
+ const r=await api("/api/public/orders",{method:"POST",ip,body:{idempotencyKey:key(),customerName:"x",phone:"0911000000",items:[{id:A,qty:1}]}});
+ assert.equal(r.status,429);assert.match(r.data.error,/太頻繁/);
+ assert.equal((await api("/api/public/orders",{method:"POST",ip:freshIp(),body:{idempotencyKey:key(),customerName:"",items:[]}})).status,400,"其他 IP 不受影響");
+ const ip2=freshIp();
+ for(let k=0;k<60;k++)assert.equal((await api(`/api/public/orders/${lookup}`,{ip:ip2})).status,200);
+ const l=await api(`/api/public/orders/${lookup}`,{ip:ip2});assert.equal(l.status,429);assert.match(l.data.error,/太頻繁/);
+});
+await t("原管理密碼：管理員停用後完全不能使用，且無法自行重新啟用",async()=>{
+ assert.equal((await api("/api/users",{token:LEGACY})).status,200,"停用前具管理員權限");
+ assert.equal((await api("/api/settings/legacy-token",{method:"POST",token:staff2(),body:{enabled:false}})).status,403,"店員不能停用");
+ assert.equal((await api("/api/settings/legacy-token",{method:"POST",token:admin,body:{enabled:false}})).data.enabled,false);
+ for(const [path,opt] of [["/api/inventory",{}],["/api/me",{}],["/api/orders",{}],["/api/users",{}],["/api/products",{}],
+  ["/api/orders",{method:"POST",body:{idempotencyKey:key(),customerName:"x",items:[{id:A,qty:1}]}}],
+  ["/api/inventory",{method:"POST",body:{id:A,zone:"01",name:"x",spec:"",quantity:0,unit:"",minimum:0,batch:"",category:"",price:"0",tracked:true}}],
+  ["/api/settings/legacy-token",{method:"POST",body:{enabled:true}}],["/api/auth/bootstrap",{method:"POST",body:{username:"hack",password:"12345678"}}],
+  ["/api/products/bulk-on-sale",{method:"POST",body:{ids:[A],onSale:false}}]])
+  assert.ok([401,403].includes((await api(path,{...opt,token:LEGACY})).status),`停用後 ${path} 應被拒`);
+ assert.equal(await qty(admin,A),8,"停用後的嘗試不得改動庫存");
+ assert.equal((await api("/api/settings/legacy-token",{token:admin})).data.enabled,false);
+ assert.equal((await api("/api/settings/legacy-token",{method:"POST",token:admin,body:{enabled:true}})).data.enabled,true,"管理員帳號可重新啟用");
+ assert.equal((await api("/api/inventory",{token:LEGACY})).status,200);
+ await api("/api/settings/legacy-token",{method:"POST",token:admin,body:{enabled:false}});
+ assert.equal((await api("/api/inventory",{token:LEGACY})).status,401);
 });
 for(const [s,n] of results)console.log(s,n);
 const failed=results.filter(r=>r[0]==="❌").length;console.log(`\n${results.length-failed}/${results.length} 通過`);process.exit(failed?1:0);
