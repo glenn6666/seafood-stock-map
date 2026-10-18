@@ -1,15 +1,23 @@
 name = "seafood-stock-api"
 main = "worker/index.ts"
-compatibility_date = "2026-09-01"
+compatibility_date = "2026-09-23"  # 與線上 Worker 相同
+account_id = "222781805226cfefd82a112906be3b83"
+
+# 保留線上目前的記錄設定（logs 開啟、traces 關閉）
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+invocation_logs = true
+persist = true
 
 [vars]
 ALLOWED_ORIGIN = "https://glenn6666.github.io"
 
 [[d1_databases]]
 binding = "DB"
-# 部署前請以 `npx wrangler d1 list` 找到線上既有的庫存資料庫，填入其名稱與 ID（不要建立新資料庫）。
-database_name = "REPLACE_WITH_EXISTING_D1_NAME"
-database_id = "00000000-0000-0000-0000-000000000000"
+# 線上既有庫存資料庫（2026-10-19 以 wrangler d1 list 確認）。
+database_name = "seafood-stock"
+database_id = "09536e00-1025-476a-bf5f-42e680ad7e60"
 migrations_dir = "migrations"
 
 # 機密值不放這裡。請用：npx wrangler secret put INVENTORY_TOKEN

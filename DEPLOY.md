@@ -8,21 +8,21 @@
 - [ ] `wrangler.toml` 的 `name = "seafood-stock-api"` 與線上 Worker 名稱相同；`ALLOWED_ORIGIN = "https://glenn6666.github.io"`。
 - [ ] `npx wrangler secret list` 有 `INVENTORY_TOKEN`（就是目前的「管理密碼」；請確認自己記得它）。
 - [ ] 已執行 D1 備份（步驟 1），備份檔內可找到 `INSERT INTO "inventory"` 或 `INSERT INTO inventory` 資料列，並記下目前筆數：`SELECT COUNT(*) FROM inventory`。
-- [ ] `npx wrangler d1 migrations list <DB> --remote` 只列出 0001、0002、0003 待套用（若顯示其他名稱，先停下確認）。
+- [ ] `npx wrangler d1 migrations list seafood-stock --remote` 只列出 0001、0002、0003 待套用（若顯示其他名稱，先停下確認）。
 - [ ] 本機 `npm ci && npm run typecheck && npm run build` 成功；`backend-config.json` 的 `apiOrigin` 是 `https://seafood-stock-api.iamglenn0630.workers.dev`。
 - [ ] repo、`dist/` 內沒有 `.dev.vars` 或任何密碼（`git status` 不應出現 `.dev.vars`）。
 - [ ] 選一個店內沒人在操作庫存的時段（舊畫面在前端更新前，存檔不會做「版本衝突」檢查）。
 
 ## 1. 備份 D1
 ```bash
-npx wrangler d1 export <DB名稱> --remote --output backup-$(date +%Y%m%d-%H%M).sql
-npx wrangler d1 execute <DB名稱> --remote --command "SELECT COUNT(*) AS n FROM inventory"
+npx wrangler d1 export seafood-stock --remote --output backup-$(date +%Y%m%d-%H%M).sql
+npx wrangler d1 execute seafood-stock --remote --command "SELECT COUNT(*) AS n FROM inventory"
 ```
 
 ## 2. 資料庫升級（只新增，不刪除）
 ```bash
-npx wrangler d1 migrations apply <DB名稱> --remote
-npx wrangler d1 execute <DB名稱> --remote --command "SELECT COUNT(*) AS n FROM inventory"   # 應與備份前相同
+npx wrangler d1 migrations apply seafood-stock --remote
+npx wrangler d1 execute seafood-stock --remote --command "SELECT COUNT(*) AS n FROM inventory"   # 應與備份前相同
 ```
 - `0001_inventory_baseline.sql`：`CREATE TABLE IF NOT EXISTS inventory`（表已存在＝不做事）。
 - `0002_orders_accounts.sql`：inventory 新增 cost／on_sale（預設 0＝不上架）／daily_limit／per_order_max；新增 users、sessions、orders、order_items、daily_sales、_guard。
