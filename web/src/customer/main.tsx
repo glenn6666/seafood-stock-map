@@ -1,8 +1,8 @@
-import {useEffect,useMemo,useRef,useState} from "react";
+import {lazy,Suspense,useEffect,useMemo,useRef,useState} from "react";
 import {createRoot} from "react-dom/client";
 import {loadApiOrigin,errorText,newKey} from "../lib/api-config";
 import "./customer.css";
-type M={id:string;name:string;spec:string;unit:string;category:string;price:string;available:number};
+type M={id:string;name:string;spec:string;unit:string;category:string;price:string;available:number;displayUnit:{id:string;name:string;type:"freezer"|"tank"}|null};
 type O={orderNo:string;status:string;customerName:string;total:number;createdAt:string;items:{name:string;spec:string;unit:string;qty:number;unitPrice:number}[]};
 const STEPS=["待處理","備貨中","可取貨","已完成"];
 const tokenFromHash=()=>location.hash.match(/^#\/o\/([A-Za-z0-9_-]{20,64})$/)?.[1]??null;
@@ -14,15 +14,27 @@ function App(){
  return <main className="shop"><header><h1>安星水產</h1><p>{token?"訂單查詢":"線上訂購"}</p></header>
   {err&&<p className="err" role="alert">{err}</p>}{origin&&(token?<Lookup origin={origin} token={token}/>:<Shop origin={origin}/>)}</main>;
 }
+type U={id:string;name:string;type:"freezer"|"tank"};
+const Scene3D=lazy(()=>import("./Scene3D"));
+const canWebGL=()=>{try{const c=document.createElement("canvas");return !!(c.getContext("webgl2")||c.getContext("webgl"))}catch{return false}};
+const reducedMotion=()=>matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+const priceNum=(p:string)=>parseInt(p.replace(/[^\d]/g,""))||0;
 function Shop({origin}:{origin:string}){
- const [menu,setMenu]=useState<M[]|null>(null),[cart,setCart]=useState<Record<string,number>>({}),[cat,setCat]=useState("全部"),[f,setF]=useState({customerName:"",phone:"",note:""}),[msg,setMsg]=useState(""),[busy,setBusy]=useState(false),[checkout,setCheckout]=useState(false);
+ const [menu,setMenu]=useState<M[]|null>(null),[units,setUnits]=useState<U[]>([]),[cart,setCart]=useState<Record<string,number>>({}),[cat,setCat]=useState("全部"),[f,setF]=useState({customerName:"",phone:"",note:""}),[msg,setMsg]=useState(""),[busy,setBusy]=useState(false),[checkout,setCheckout]=useState(false);
+ const auto3d=useMemo(()=>canWebGL()&&!reducedMotion(),[]);
+ const [mode,setMode]=useState<"3d"|"list">(()=>{const pref=localStorage.getItem("shop-view");return auto3d&&pref!=="list"?"3d":"list"});
+ const [focus,setFocus]=useState(-1),[sel,setSel]=useState<M|null>(null),[pick,setPick]=useState(1),[toast,setToast]=useState("");
  const idem=useRef(newKey());
- const load=()=>fetch(origin+"/api/public/menu",{cache:"no-store",credentials:"omit"}).then(async r=>{if(!r.ok)throw new Error();setMenu((await r.json()).items)}).catch(()=>setMsg("目前無法讀取商品，請稍後再試。"));
+ const load=()=>fetch(origin+"/api/public/menu",{cache:"no-store",credentials:"omit"}).then(async r=>{if(!r.ok)throw new Error();const d=await r.json();setMenu(d.items);setUnits(d.units??[])}).catch(()=>setMsg("目前無法讀取商品，請稍後再試。"));
  useEffect(()=>{load()},[]);
  const cats=useMemo(()=>["全部",...new Set((menu??[]).map(m=>m.category))],[menu]);
  const lines=(menu??[]).filter(m=>cart[m.id]>0);
- const total=lines.reduce((s,m)=>s+(parseInt(m.price.replace(/[^\d]/g,""))||0)*cart[m.id],0);
+ const total=lines.reduce((s,m)=>s+priceNum(m.price)*cart[m.id],0),count=lines.reduce((s,m)=>s+cart[m.id],0);
  const setQty=(m:M,n:number)=>setCart(c=>({...c,[m.id]:Math.max(0,Math.min(m.available,n))}));
+ const sceneUnits=useMemo(()=>{const used=units.filter(u=>(menu??[]).some(m=>m.displayUnit?.id===u.id));return used.length?used:units},[units,menu]);
+ const switchMode=(m:"3d"|"list")=>{setMode(m);localStorage.setItem("shop-view",m);setSel(null)};
+ function choose(m:M){setSel(m);setPick(Math.max(1,Math.min(m.available,cart[m.id]||1)))}
+ function addToCart(){if(!sel)return;setQty(sel,pick);setToast(`已加入「${sel.name}」× ${pick}`);setSel(null);setTimeout(()=>setToast(""),1800)}
  async function submit(e:React.FormEvent){
   e.preventDefault();setBusy(true);setMsg("");
   try{const r=await fetch(origin+"/api/public/orders",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"omit",body:JSON.stringify({...f,idempotencyKey:idem.current,items:lines.map(m=>({id:m.id,qty:cart[m.id]}))})});
@@ -32,21 +44,40 @@ function Shop({origin}:{origin:string}){
  }
  if(!menu)return <p className="hint">{msg||"載入中…"}</p>;
  if(!menu.length)return <p className="hint">目前沒有開放訂購的商品。</p>;
- if(checkout)return <form className="card form" onSubmit={submit}><h2>確認訂單</h2>
-  <ul className="lines">{lines.map(m=><li key={m.id}>{m.name} {m.spec} × {cart[m.id]}<span>${(parseInt(m.price)||0)*cart[m.id]}</span></li>)}</ul><p className="total">合計 ${total}</p>
+ if(checkout)return <form className="card form" onSubmit={submit}><h2>購物車</h2>
+  <ul className="lines">{lines.map(m=><li key={m.id}><span>{m.name} <small>{m.spec}</small></span><span className="cart-qty"><button type="button" aria-label="減少" onClick={()=>setQty(m,cart[m.id]-1)}>－</button>{cart[m.id]}<button type="button" aria-label="增加" disabled={cart[m.id]>=m.available} onClick={()=>setQty(m,cart[m.id]+1)}>＋</button></span><span>${priceNum(m.price)*cart[m.id]}</span></li>)}</ul><p className="total">合計 ${total}</p>
+  {!lines.length&&<p className="hint">購物車是空的。</p>}
   <label>姓名<input value={f.customerName} onChange={e=>setF({...f,customerName:e.target.value})} required maxLength={40} autoComplete="name"/></label>
   <label>聯絡電話<input value={f.phone} onChange={e=>setF({...f,phone:e.target.value})} required inputMode="tel" autoComplete="tel" pattern="[0-9+\-\s]{6,20}"/></label>
   <label>備註（選填）<textarea value={f.note} onChange={e=>setF({...f,note:e.target.value})} maxLength={300}/></label>
   {msg&&<p className="err" role="alert">{msg}</p>}
-  <button className="primary" disabled={busy}>{busy?"送出中…":"送出訂單"}</button><button type="button" onClick={()=>setCheckout(false)}>返回修改</button></form>;
+  <button className="primary" disabled={busy||!lines.length}>{busy?"送出中…":"送出訂單"}</button><button type="button" onClick={()=>setCheckout(false)}>繼續選購</button></form>;
+ const unitName=focus>=0?sceneUnits[focus]?.name:null,unitType=focus>=0?sceneUnits[focus]?.type:null;
  return <>
-  <div className="cats">{cats.map(c=><button key={c} className={cat===c?"active":""} onClick={()=>setCat(c)}>{c}</button>)}</div>
+  <div className="view-toggle" role="group" aria-label="瀏覽方式">{auto3d&&<button className={mode==="3d"?"active":""} onClick={()=>switchMode("3d")}>🧊 3D 逛店</button>}<button className={mode==="list"?"active":""} onClick={()=>switchMode("list")}>☰ 列表</button></div>
+  {mode==="3d"?<section className="stage">
+   <div className="unit-chips">{[{id:"all",name:"全部"},...sceneUnits].map((u,i)=><button key={u.id} className={focus===i-1?"active":""} onClick={()=>setFocus(i-1)}>{"type" in u?(u.type==="tank"?"🐟 ":"🧊 "):""}{u.name}</button>)}</div>
+   <Suspense fallback={<div className="stage-loading">正在擺設店面…</div>}>
+    <Scene3D items={menu} units={sceneUnits} focus={focus} selectedId={sel?.id??null} onSelect={choose} onFocus={setFocus} onError={()=>{setMode("list");setMsg("此裝置無法顯示 3D，已切換為列表。")}}/>
+   </Suspense>
+   <p className="stage-hint">{focus<0?"點冰箱或魚缸靠近看看，左右滑動切換":unitType==="tank"?`${unitName}：點游動的海鮮挑選`:`${unitName}：點門打開，再點商品`}</p>
+   {focus>=0&&<div className="stage-nav"><button aria-label="上一個" onClick={()=>setFocus(Math.max(-1,focus-1))}>‹</button><button onClick={()=>setFocus(-1)}>總覽</button><button aria-label="下一個" disabled={focus>=sceneUnits.length-1} onClick={()=>setFocus(Math.min(sceneUnits.length-1,focus+1))}>›</button></div>}
+  </section>:<>
+   <div className="cats">{cats.map(c=><button key={c} className={cat===c?"active":""} onClick={()=>setCat(c)}>{c}</button>)}</div>
+   <div className="menu">{menu.filter(m=>cat==="全部"||m.category===cat).map(m=><div key={m.id} className={"card item"+(m.available?"":" soldout")}>
+    <div><strong>{m.name}</strong><small>{m.spec}</small><b>${m.price}</b><small>{m.available?`可訂 ${m.available} ${m.unit}`:"已售完"}</small></div>
+    <div className="stepper"><button aria-label="減少" onClick={()=>setQty(m,(cart[m.id]??0)-1)} disabled={!cart[m.id]}>－</button><output>{cart[m.id]??0}</output><button aria-label="增加" onClick={()=>setQty(m,(cart[m.id]??0)+1)} disabled={(cart[m.id]??0)>=m.available}>＋</button></div>
+   </div>)}</div></>}
   {msg&&<p className="err">{msg}</p>}
-  <div className="menu">{menu.filter(m=>cat==="全部"||m.category===cat).map(m=><div key={m.id} className={"card item"+(m.available?"":" soldout")}>
-   <div><strong>{m.name}</strong><small>{m.spec}</small><b>${m.price}</b><small>{m.available?`可訂 ${m.available} ${m.unit}`:"已售完"}</small></div>
-   <div className="stepper"><button aria-label="減少" onClick={()=>setQty(m,(cart[m.id]??0)-1)} disabled={!cart[m.id]}>－</button><output>{cart[m.id]??0}</output><button aria-label="增加" onClick={()=>setQty(m,(cart[m.id]??0)+1)} disabled={(cart[m.id]??0)>=m.available}>＋</button></div>
-  </div>)}</div>
-  {lines.length>0&&<div className="cartbar"><span>{lines.length} 項・${total}</span><button className="primary" onClick={()=>setCheckout(true)}>下一步</button></div>}
+  {toast&&<p className="toast" role="status">{toast}</p>}
+  {sel&&<div className="sheet-backdrop" onClick={()=>setSel(null)}><div className="sheet" role="dialog" aria-label={sel.name} onClick={e=>e.stopPropagation()}>
+   <div className="sheet-grab"/><span className="sheet-tag">{sel.displayUnit?.type==="tank"?"🐟 活海鮮":"🧊 冷凍"}・{sel.category}</span>
+   <h2>{sel.name}</h2><p className="sheet-spec">{sel.spec}</p>
+   <p className="sheet-price">${sel.price}<small> / {sel.unit}</small></p>
+   <p className="sheet-avail">{sel.available>0?`可訂 ${sel.available} ${sel.unit}`:"已售完，請挑選其他商品"}</p>
+   {sel.available>0&&<div className="sheet-row"><div className="stepper big"><button aria-label="減少" disabled={pick<=1} onClick={()=>setPick(pick-1)}>－</button><output>{pick}</output><button aria-label="增加" disabled={pick>=sel.available} onClick={()=>setPick(pick+1)}>＋</button></div><button className="primary grow" onClick={addToCart}>加入購物車・${priceNum(sel.price)*pick}</button></div>}
+   <button className="sheet-close" onClick={()=>setSel(null)}>關閉</button></div></div>}
+  {lines.length>0&&<div className="cartbar"><span>🛒 {count} 件・${total}</span><button className="primary" onClick={()=>{setSel(null);setCheckout(true)}}>查看購物車</button></div>}
  </>;
 }
 function Lookup({origin,token}:{origin:string;token:string}){
