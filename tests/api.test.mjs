@@ -150,6 +150,23 @@ await t("批次上架／下架：僅管理員；預設不上架",async()=>{
  r=await api("/api/products/bulk-on-sale",{method:"POST",token:admin,body:{ids,onSale:false}});assert.equal(r.data.changed,3);
  m=(await api("/api/public/menu")).data.items;assert.ok(ids.every(id=>!m.some(i=>i.id===id)));
 });
+await t("顧客端展示櫃：自動分配、管理員可設定、店員不能改、公開 API 不含儲位／成本",async()=>{
+ let m=(await api("/api/public/menu")).data;
+ assert.ok(Array.isArray(m.units)&&m.units.some(u=>u.type==="tank")&&m.units.some(u=>u.type==="freezer"),"預設展示櫃");
+ const a=m.items.find(i=>i.id===A);assert.deepEqual(Object.keys(a.displayUnit).sort(),["id","name","type"]);
+ assert.equal(a.displayUnit.id,"freezer-2","肉類自動分到肉品冷凍櫃");
+ const s=JSON.stringify(m);for(const f of ["zone","cost","photoId","fridgeId","positionNote","quantity","displayZone","01-left","photo-1"])assert.ok(!s.includes(`"${f}"`)&&!s.includes(f==="01-left"||f==="photo-1"?f:"\u0000"),`公開 API 不可含 ${f}`);
+ assert.equal((await api(`/api/products/${encodeURIComponent(A)}`,{method:"PATCH",token:staff2(),body:{displayZone:"tank"}})).status,403,"店員不能改展示櫃");
+ assert.equal((await api("/api/display-units/tank",{method:"PATCH",token:staff2(),body:{name:"x"}})).status,403,"店員不能改展示櫃名稱");
+ assert.equal((await api(`/api/products/${encodeURIComponent(A)}`,{method:"PATCH",token:admin,body:{displayZone:"no-such"}})).status,400);
+ assert.equal((await api(`/api/products/${encodeURIComponent(A)}`,{method:"PATCH",token:admin,body:{displayZone:"tank"}})).status,200);
+ m=(await api("/api/public/menu")).data;assert.equal(m.items.find(i=>i.id===A).displayUnit.type,"tank");
+ assert.equal((await api("/api/display-units/tank",{method:"PATCH",token:admin,body:{name:"活體魚缸"}})).status,200);
+ m=(await api("/api/public/menu")).data;assert.equal(m.items.find(i=>i.id===A).displayUnit.name,"活體魚缸");
+ const sp=(await api("/api/products",{token:staff2()})).data;assert.equal(sp.items.find(i=>i.id===A).displayZone,"tank");assert.ok(sp.items.every(i=>!("cost" in i)));
+ await api(`/api/products/${encodeURIComponent(A)}`,{method:"PATCH",token:admin,body:{displayZone:""}});
+ m=(await api("/api/public/menu")).data;assert.equal(m.items.find(i=>i.id===A).displayUnit.id,"freezer-2","清空後回到自動分配");
+});
 await t("顧客端頻率限制：下單每 IP 10 分鐘 5 次、查詢 60 次，超過回 429 中文訊息",async()=>{
  const ip=freshIp();
  for(let k=0;k<5;k++)assert.equal((await api("/api/public/orders",{method:"POST",ip,body:{idempotencyKey:key(),customerName:"",items:[]}})).status,400);

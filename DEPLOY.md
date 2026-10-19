@@ -53,3 +53,11 @@ npm run build
 - Worker：`npx wrangler rollback`（舊程式只用 inventory 原欄位，新增的欄位／表不影響）。
 - 前端：在 main 還原上一版 `index.html`。
 - 資料：以備份檔匯入新建的 D1 比對，不要直接覆蓋線上庫。
+
+---
+# 追加：顧客訂購頁 3D 逛店（feature/3d-customer-order）
+1. 備份：`npx wrangler d1 export seafood-stock --remote --output backup-$(date +%Y%m%d-%H%M).sql`
+2. 資料庫：`npx wrangler d1 migrations apply seafood-stock --remote`（只會套用 `0004_display_units.sql`：inventory 新增 `display_zone`（預設空白＝自動），新增 `display_units` 並以 `INSERT OR IGNORE` 建立 3 台冷凍冰箱＋1 座魚缸）。
+3. Worker：`npx wrangler deploy`
+4. 前端：`npm run build`，將 `dist/` 的 `index.html`、`order.html`、`assets/*` 複製到 main 根目錄並推送。
+5. 驗證：`/api/public/menu` 回應有 `units`，每項商品只有 `displayUnit{id,name,type}`，沒有儲位或成本。
