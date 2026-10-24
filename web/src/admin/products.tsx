@@ -3,7 +3,7 @@ import {inventoryFetch} from "../lib/pages-api";
 import {errorText} from "../lib/api-config";
 import type {Me} from "../main";
 type P={id:string;zone:string;name:string;spec:string;unit:string;category:string;price:string;cost?:string;quantity:number;onSale:boolean;dailyLimit:number;perOrderMax:number;displayZone:string;displayUnitId:string|null};
-type DU={id:string;name:string;type:"freezer"|"tank";sort:number;active:boolean};
+type DU={id:string;name:string;type:"freezer"|"tank";sort:number;active:boolean;kind?:string;area?:string};
 export default function Products({me}:{me:Me}){
  const admin=me.role==="admin";
  const [items,setItems]=useState<P[]>([]),[q,setQ]=useState(""),[onlySale,setOnlySale]=useState(false),[msg,setMsg]=useState(""),[edit,setEdit]=useState<Record<string,Partial<P>>>({}),[sel,setSel]=useState<Set<string>>(new Set());
@@ -32,7 +32,7 @@ export default function Products({me}:{me:Me}){
   <p className="admin-hint">只有「上架」的商品會出現在顧客訂購頁；新欄位預設皆未上架。每日限量、每筆上限填 0 代表不限。{!admin&&"店員僅能查看庫存與販售狀態；售價、成本與上架設定由管理員管理。"}只列出已在庫存地圖儲存過的商品。</p>
   {msg&&<p className="admin-msg" role="status">{msg}</p>}
   <details className="admin-card"><summary><strong>顧客端 3D 展示櫃</strong>（只影響訂購頁的展示分組，與實際儲位無關，顧客看不到實際儲位）</summary>
-   <div className="admin-list">{units.map(u=><div key={u.id} className="row unit-row"><span>{u.type==="tank"?"🐟 魚缸":"🧊 冷凍冰箱"}</span>
+   <div className="admin-list">{units.map(u=><div key={u.id} className="row unit-row"><span>{u.area?u.area+"｜":""}{({fridge:"🧊 冷藏櫃",case:"🐟 展示櫃",dry:"🌰 乾貨區",cold:"❄️ 低溫缸",shrimp:"🦐 泰國蝦缸",ambient:"🐠 常溫缸"} as Record<string,string>)[u.kind??""]??(u.type==="tank"?"🐟 魚缸":"🧊 冷凍冰箱")}</span>
     {admin?<><input defaultValue={u.name} aria-label={`${u.id} 名稱`} onBlur={e=>e.target.value.trim()&&e.target.value!==u.name&&patchUnit(u,{name:e.target.value})}/><label className="check"><input type="checkbox" checked={u.active} onChange={e=>patchUnit(u,{active:e.target.checked})}/> 顯示</label></>:<strong>{u.name}{u.active?"":"（停用）"}</strong>}
    </div>)}</div>
    <p className="admin-hint">「自動」：分類含「活」→魚缸；肉品→肉品冷凍櫃；海鮮→海鮮冷凍櫃；其他→火鍋料・熟食冷凍櫃。</p></details>

@@ -1,6 +1,6 @@
 // 3D 顧客頁手機 UI 煙霧測試（選用）：需 playwright-core＋Chrome；本機 D1 先套用 migrations 並匯入 tests/seed-demo-3d.sql，worker:dev 設 ALLOWED_ORIGIN=http://127.0.0.1:4173，vite preview 於 4173。
 import {chromium} from "playwright-core";
-const B="http://127.0.0.1:4173/seafood-stock-map/order.html",S="/workspace/screens-3d/";
+const B="http://127.0.0.1:4173/seafood-stock-map/order.html",S="/workspace/screens-comic/";
 const b=await chromium.launch({executablePath:"/usr/bin/google-chrome",args:["--enable-unsafe-swiftshader","--use-angle=swiftshader","--enable-webgl","--ignore-gpu-blocklist"]});
 const ctx=await b.newContext({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true});
 const p=await ctx.newPage();const errs=[];p.on("pageerror",e=>errs.push(e.message));p.on("console",m=>{if(m.type()==="error")errs.push(m.text())});
@@ -9,7 +9,7 @@ await p.goto(B+"?e2e");await p.waitForSelector("canvas.scene3d");await p.waitFor
 ok(await p.evaluate(()=>!!window.__shop),"3D 場景已建立（WebGL）");
 await p.screenshot({path:S+"1-overview.png"});
 // 打開海鮮冷凍櫃
-await p.click(".unit-chips button:has-text('海鮮冷凍櫃')");await p.waitForTimeout(1500);
+await p.click(".unit-chips button:has-text('海鮮冷藏櫃')");await p.waitForTimeout(1500);
 const box=await p.locator("canvas.scene3d").boundingBox();
 await p.mouse.click(box.x+box.width/2,box.y+box.height*0.5);await p.waitForTimeout(1800);
 await p.screenshot({path:S+"2-fridge-open.png"});
@@ -18,7 +18,7 @@ await p.mouse.click(pos.x,pos.y);await p.waitForSelector(".sheet",{timeout:5000}
 ok(!/成本|700|zone|儲位/.test(await p.textContent(".sheet")),"商品視窗不含成本／儲位");
 await p.click(".sheet button[aria-label=增加]");await p.click(".sheet .primary");await p.waitForSelector(".toast");ok(true,"加入購物車 ×2");
 // 魚缸
-await p.click(".unit-chips button:has-text('活海鮮魚缸')");await p.waitForTimeout(2200);
+await p.click(".unit-chips button:has-text('低溫缸')");await p.waitForTimeout(2200);
 pos=await p.evaluate(()=>window.__shop.projectItem("demo-live-2"));
 await p.mouse.click(pos.x,pos.y);
 let opened=await p.locator(".sheet").count();

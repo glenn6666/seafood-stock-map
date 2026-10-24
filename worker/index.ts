@@ -99,23 +99,33 @@ async function postInventory(env:Env,actor:Actor,i:any){
 }
 
 // ---------- 顧客端展示櫃（與實際儲位分開） ----------
-type Unit={id:string;name:string;type:"freezer"|"tank";sort:number;active:number};
-async function getUnits(env:Env){return (await env.DB.prepare("SELECT id,name,type,sort,active FROM display_units ORDER BY sort,id").all<Unit>()).results}
+type Unit={id:string;name:string;type:"freezer"|"tank";sort:number;active:number;kind:string;area:string};
+async function getUnits(env:Env){return (await env.DB.prepare("SELECT id,name,type,sort,active,kind,area FROM display_units ORDER BY sort,id").all<Unit>()).results}
+const pubUnit=(u:Unit)=>({id:u.id,name:u.name,type:u.type,kind:u.kind,area:u.area});
 const LIVE_RE=/活|鮮活|live/i,MEAT_RE=/肉|牛|豬|羊|雞|鴨/,SEA_RE=/海鮮|魚|蝦|蟹|貝|蛤|蚵|螺|鮑|魷|章|透抽|干貝|鮭|鱈/;
-// display_zone 空白時依分類自動分配；只回傳啟用中的展示櫃
+// display_zone 空白時依分類自動分配；只回傳啟用中的展示櫃。
+// 新配置（0005）：01 冷藏 f1 肉／f2 海鮮／f3 其他食品；04 展示櫃 c1 冰鮮魚／c2 貝類／c3 蝦蟹；06 t1 低溫／t4 泰國蝦／t7 常溫；07 s7 乾貨。
+// 若新櫃位不存在（尚未套用 0005），退回舊的 freezer-1～3／tank。
+const DRY_RE=/乾貨|干貨|乾燥|罐頭|調味|醬|南北貨|魚乾|蝦米|海苔/,PROC_RE=/火鍋|丸|餃|熟食|加工|調理|食品/,SHELL_RE=/貝|蛤|蚵|螺|鮑|蜆|扇|淡菜|海瓜子/,CRUST_RE=/蝦|蟹|魷|章|透抽|花枝|小卷/,ICED_RE=/冰鮮|生鮮|鮮魚|現流/;
 function autoUnit(units:Unit[],p:{display_zone:string;category:string;name:string}){
  const act=units.filter(u=>u.active);
  const set=act.find(u=>u.id===p.display_zone);if(set)return set;
- const tanks=act.filter(u=>u.type==="tank"),fr=act.filter(u=>u.type==="freezer");
- if(LIVE_RE.test(p.category)&&tanks.length)return tanks[0];
+ const by=(...ids:string[])=>{for(const id of ids){const u=act.find(x=>x.id===id);if(u)return u}return undefined};
+ const tanks=act.filter(u=>u.type==="tank"),fr=act.filter(u=>u.type==="freezer"),t=p.category+" "+p.name;
+ if(LIVE_RE.test(p.category)&&tanks.length){
+  if(/泰國蝦|淡水長臂蝦/.test(t))return by("t4","t7","t1")??tanks[0];
+  if(/常溫|淡水|吳郭|鱸|鯉|草魚|鱒/.test(t))return by("t7","t1")??tanks[0];
+  return by("t1")??tanks[0];
+ }
  if(!fr.length)return act[0]??null;
- const pick=(id:string)=>fr.find(u=>u.id===id);
- const sea=()=>pick("freezer-1")??fr[0],meat=()=>pick("freezer-2")??fr[0],other=()=>pick("freezer-3")??fr[fr.length-1];
- if(MEAT_RE.test(p.category))return meat();
- if(SEA_RE.test(p.category))return sea();
- if(/火鍋|丸|餃|熟食|加工|調理/.test(p.category))return other();
- if(SEA_RE.test(p.name))return sea();
- if(MEAT_RE.test(p.name))return meat();
+ const other=()=>by("f3","freezer-3")??fr[fr.length-1];
+ if(DRY_RE.test(p.category))return by("s7")??other();
+ if(MEAT_RE.test(p.category))return by("f1","freezer-2")??fr[0];
+ if(PROC_RE.test(p.category))return other();
+ if(ICED_RE.test(p.category)){if(SHELL_RE.test(t))return by("c2","c1","f2","freezer-1")??fr[0];if(CRUST_RE.test(t))return by("c3","c1","f2","freezer-1")??fr[0];return by("c1","f2","freezer-1")??fr[0]}
+ if(SEA_RE.test(p.category)||SEA_RE.test(p.name))return by("f2","freezer-1")??fr[0];
+ if(DRY_RE.test(p.name))return by("s7")??other();
+ if(MEAT_RE.test(p.name))return by("f1","freezer-2")??fr[0];
  return other();
 }
 async function updateUnit(env:Env,id:string,b:any){
@@ -159,7 +169,8 @@ async function bulkOnSale(env:Env,b:any){
 }
 
 // ---------- 顧客端頻率限制（固定時間窗，IP 只存雜湊） ----------
-const LIMITS={order:{max:5,windowSec:600,msg:"送出次數太頻繁，請 10 分鐘後再試。"},lookup:{max:60,windowSec:600,msg:"查詢次數太頻繁，請稍後再試。"}} as const;
+const LIMITS={order:{max:5,windowSec:600,msg:"送出次數太頻繁，請 10 分鐘後再試。"},lookup:{max:60,windowSec:600,msg:"查詢次數太頻繁，請稍後再試。"},game:{max:20,windowSec:600,msg:"遊戲次數太頻繁，請 10 分鐘後再玩。"},coupon:{max:3,windowSec:3600,msg:"這個網路一小時內最多領 3 張優惠券，請稍後再試。"}} as const;
+async function ipHash(env:Env,request:Request){return sha256(`ip|${env.INVENTORY_TOKEN}|${request.headers.get("CF-Connecting-IP")??"unknown"}`)}
 async function rateLimit(env:Env,request:Request,bucket:keyof typeof LIMITS){
  const L=LIMITS[bucket],ip=request.headers.get("CF-Connecting-IP")??"unknown";
  const keyHash=await sha256(`rl|${env.INVENTORY_TOKEN}|${ip}`);
@@ -167,6 +178,48 @@ async function rateLimit(env:Env,request:Request,bucket:keyof typeof LIMITS){
  const r=await env.DB.prepare("INSERT INTO rate_limits (bucket,key_hash,window_start,count) VALUES (?,?,?,1) ON CONFLICT(bucket,key_hash,window_start) DO UPDATE SET count=count+1 RETURNING count").bind(bucket,keyHash,win).first<{count:number}>();
  if(Math.random()<0.02)await env.DB.prepare("DELETE FROM rate_limits WHERE window_start<?").bind(now-86400).run(); // 只清除一天前的計數紀錄
  if((r?.count??0)>L.max)throw new HttpError(429,L.msg);
+}
+
+// ---------- 釣蝦遊戲與優惠券 ----------
+// 規則：35 秒內釣到 4 隻 → 滿 NT$1,000 折 NT$5；每筆訂單限用一張、不累加；券 24 小時內有效、只能用一次。
+// 遊戲在前端進行，伺服器只能做合理性檢查（開局時間、最短／最長時間、單局只能領一次、IP 限額），無法完全防止腳本作弊；折扣金額固定且小，風險有限。
+const GAME={seconds:35,target:4,minSec:6,graceSec:15},COUPON={discount:5,minTotal:1000,ttlHours:24};
+async function gameStart(env:Env,request:Request){
+ await rateLimit(env,request,"game");
+ const id=randomToken(24),now=Math.floor(Date.now()/1000);
+ await env.DB.prepare("INSERT INTO game_sessions (id_hash,ip_hash,started_at) VALUES (?,?,?)").bind(await sha256(id),await ipHash(env,request),now).run();
+ if(Math.random()<0.02)await env.DB.prepare("DELETE FROM game_sessions WHERE started_at<?").bind(now-86400).run();
+ return {gameId:id,seconds:GAME.seconds,target:GAME.target};
+}
+async function gameFinish(env:Env,request:Request,b:any){
+ if(typeof b.gameId!=="string"||!/^[A-Za-z0-9_-]{20,64}$/.test(b.gameId)||!Number.isSafeInteger(b.caught)||b.caught<0||b.caught>50)throw new HttpError(400,"遊戲資料不正確");
+ const idh=await sha256(b.gameId),ip=await ipHash(env,request),now=Math.floor(Date.now()/1000);
+ const g=await env.DB.prepare("SELECT * FROM game_sessions WHERE id_hash=?").bind(idh).first<any>();
+ if(!g||g.ip_hash!==ip)throw new HttpError(404,"找不到這局遊戲，請重新開始");
+ if(g.finished)throw new HttpError(409,"這局已經結束了，請再玩一局");
+ const el=now-g.started_at;
+ if(el>GAME.seconds+GAME.graceSec){await env.DB.prepare("UPDATE game_sessions SET finished=1 WHERE id_hash=?").bind(idh).run();throw new HttpError(409,"這局已逾時，請再玩一局")}
+ if(b.caught<GAME.target)return {won:false};
+ if(el<GAME.minSec)throw new HttpError(400,"釣得太快了，請正常遊玩");
+ // 先把這局標記為結束（只有一個請求能成功），再檢查領券限額
+ const r=await env.DB.prepare("UPDATE game_sessions SET finished=1 WHERE id_hash=? AND finished=0").bind(idh).run();
+ if(!r.meta.changes)throw new HttpError(409,"這局已經結束了，請再玩一局");
+ await rateLimit(env,request,"coupon");
+ const code="SHRIMP-"+randomToken(18),exp=new Date(Date.now()+COUPON.ttlHours*3600e3).toISOString();
+ await env.DB.prepare("INSERT INTO coupons (code_hash,kind,discount,min_total,ip_hash,created_at,expires_at) VALUES (?,?,?,?,?,?,?)").bind(await sha256(code),"shrimp5",COUPON.discount,COUPON.minTotal,ip,nowIso(),exp).run();
+ return {won:true,coupon:{code,discount:COUPON.discount,minTotal:COUPON.minTotal,expiresAt:exp}};
+}
+const checkCode=(c:unknown)=>{if(typeof c!=="string"||!/^SHRIMP-[A-Za-z0-9_-]{20,40}$/.test(c))throw new HttpError(400,"優惠碼格式不正確");return c};
+async function loadCoupon(env:Env,code:string){
+ const c=await env.DB.prepare("SELECT * FROM coupons WHERE code_hash=?").bind(await sha256(code)).first<any>();
+ if(!c)throw new HttpError(404,"優惠券不存在");
+ if(c.used_order_id)throw new HttpError(409,"優惠券已使用過");
+ if(c.expires_at<=nowIso())throw new HttpError(409,"優惠券已過期");
+ return c;
+}
+async function couponCheck(env:Env,b:any){
+ const c=await loadCoupon(env,checkCode(b.code));
+ return {valid:true,discount:c.discount,minTotal:c.min_total,expiresAt:c.expires_at};
 }
 
 // ---------- 訂單 ----------
@@ -180,7 +233,7 @@ function parseLines(raw:unknown):OrderLine[]{
 async function findOrderByKey(env:Env,key:string){return env.DB.prepare("SELECT * FROM orders WHERE idempotency_key=?").bind(key).first<any>()}
 async function orderDetail(env:Env,o:any,{internal}:{internal:boolean}){
  const {results}=await env.DB.prepare("SELECT item_id,name,spec,unit,qty,unit_price FROM order_items WHERE order_id=? ORDER BY name").bind(o.id).all<any>();
- const base={orderNo:o.order_no,status:o.status,customerName:o.customer_name,total:o.total,createdAt:o.created_at,updatedAt:o.updated_at,items:results.map(r=>({...(internal?{id:r.item_id}:{}),name:r.name,spec:r.spec,unit:r.unit,qty:r.qty,unitPrice:r.unit_price}))};
+ const base={orderNo:o.order_no,status:o.status,customerName:o.customer_name,total:o.total,subtotal:o.subtotal??o.total,discount:o.discount??0,createdAt:o.created_at,updatedAt:o.updated_at,items:results.map(r=>({...(internal?{id:r.item_id}:{}),name:r.name,spec:r.spec,unit:r.unit,qty:r.qty,unitPrice:r.unit_price}))};
  return internal?{...base,id:o.id,phone:o.phone,note:o.note,source:o.source,createdBy:o.created_by,lookupToken:o.lookup_token}:base;
 }
 async function createOrder(env:Env,b:any,source:"admin"|"customer",createdBy:string){
@@ -204,12 +257,24 @@ async function createOrder(env:Env,b:any,source:"admin"|"customer",createdBy:str
   if(p.quantity<l.qty)throw new HttpError(409,`「${p.name}」庫存不足`);
  }
  const id=crypto.randomUUID(),orderNo=`${saleDate.replace(/-/g,"")}-${randomToken(4).toUpperCase().replace(/[^A-Z0-9]/g,"X").slice(0,5)}`,ts=nowIso();
- const total=lines.reduce((s,l)=>s+toInt(byId.get(l.id).price)*l.qty,0);
+ const subtotal=lines.reduce((s,l)=>s+toInt(byId.get(l.id).price)*l.qty,0);
+ // 優惠券（僅顧客下單）：伺服器重新計算小計並檢查門檻；扣券與訂單在同一個交易內完成
+ let coupon:any=null;
+ if(b.couponCode!==undefined&&b.couponCode!==null&&b.couponCode!==""){
+  if(source!=="customer")throw new HttpError(400,"後台訂單不能使用顧客優惠券");
+  coupon=await loadCoupon(env,checkCode(b.couponCode));
+  if(subtotal<coupon.min_total)throw new HttpError(400,`未滿 NT$${coupon.min_total.toLocaleString("en-US")}，無法使用優惠券`);
+ }
+ const discount=coupon?Math.min(coupon.discount,subtotal):0,total=subtotal-discount;
  const guard=(cond:string,...bind:unknown[])=>env.DB.prepare(`INSERT OR REPLACE INTO _guard (id,ok) VALUES (1, CASE WHEN ${cond} THEN 1 ELSE 0 END)`).bind(...bind);
  const stmts:D1PreparedStatement[]=[
-  env.DB.prepare("INSERT INTO orders (id,order_no,idempotency_key,lookup_token,source,customer_name,phone,note,status,total,sale_date,created_by,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,'待處理',?,?,?,?,?)")
-   .bind(id,orderNo,scopedKey,randomToken(24),source,name,phone,note,total,saleDate,createdBy,ts,ts),
+  env.DB.prepare("INSERT INTO orders (id,order_no,idempotency_key,lookup_token,source,customer_name,phone,note,status,total,subtotal,discount,coupon_hash,sale_date,created_by,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,'待處理',?,?,?,?,?,?,?,?)")
+   .bind(id,orderNo,scopedKey,randomToken(24),source,name,phone,note,total,subtotal,discount,coupon?.code_hash??"",saleDate,createdBy,ts,ts),
  ];
+ if(coupon)stmts.push(
+  env.DB.prepare("UPDATE coupons SET used_order_id=? WHERE code_hash=? AND used_order_id IS NULL AND expires_at>?").bind(id,coupon.code_hash,ts),
+  guard("changes()=1"),
+ );
  for(const l of lines){
   const p=byId.get(l.id);
   stmts.push(
@@ -225,6 +290,7 @@ async function createOrder(env:Env,b:any,source:"admin"|"customer",createdBy:str
   const again=await findOrderByKey(env,scopedKey);if(again)return {order:again,duplicate:true};
   // 交易已整批回滾：判斷是庫存或每日限量不足
   const {results:now}=await env.DB.prepare(`SELECT i.id,i.name,i.quantity,i.daily_limit,COALESCE(d.qty,0) AS sold FROM inventory i LEFT JOIN daily_sales d ON d.item_id=i.id AND d.sale_date=? WHERE i.id IN (${ph})`).bind(saleDate,...lines.map(l=>l.id)).all<any>();
+  if(coupon){const c=await env.DB.prepare("SELECT used_order_id,expires_at FROM coupons WHERE code_hash=?").bind(coupon.code_hash).first<any>();if(c?.used_order_id)throw new HttpError(409,"優惠券已使用過");if(c&&c.expires_at<=nowIso())throw new HttpError(409,"優惠券已過期")}
   for(const l of lines){const n=now.find(x=>x.id===l.id);if(!n)continue;
    if(n.quantity<l.qty)throw new HttpError(409,`「${n.name}」庫存不足`);
    if(n.daily_limit>0&&n.sold+l.qty>n.daily_limit)throw new HttpError(409,`「${n.name}」已達今日限量`);}
@@ -295,14 +361,17 @@ async function route(request:Request,env:Env,url:URL):Promise<unknown>{
   const d=taipeiDate();
   const units=await getUnits(env);
   const {results}=await env.DB.prepare("SELECT i.id,i.name,i.spec,i.unit,i.category,i.price,i.quantity,i.daily_limit,i.per_order_max,i.display_zone,COALESCE(s.qty,0) AS sold FROM inventory i LEFT JOIN daily_sales s ON s.item_id=i.id AND s.sale_date=? WHERE i.on_sale=1 ORDER BY i.category,i.name").bind(d).all<any>();
-  return {items:results.map(r=>{let a=Math.max(0,r.quantity);if(r.daily_limit>0)a=Math.min(a,Math.max(0,r.daily_limit-r.sold));if(r.per_order_max>0)a=Math.min(a,r.per_order_max);const u=autoUnit(units,r);return {id:r.id,name:r.name,spec:r.spec,unit:r.unit,category:r.category,price:r.price,available:a,displayUnit:u?{id:u.id,name:u.name,type:u.type}:null}}),
-   units:units.filter(u=>u.active).map(u=>({id:u.id,name:u.name,type:u.type}))};
+  return {items:results.map(r=>{let a=Math.max(0,r.quantity);if(r.daily_limit>0)a=Math.min(a,Math.max(0,r.daily_limit-r.sold));if(r.per_order_max>0)a=Math.min(a,r.per_order_max);const u=autoUnit(units,r);return {id:r.id,name:r.name,spec:r.spec,unit:r.unit,category:r.category,price:r.price,available:a,displayUnit:u?pubUnit(u):null}}),
+   units:units.filter(u=>u.active).map(pubUnit),game:{seconds:GAME.seconds,target:GAME.target,discount:COUPON.discount,minTotal:COUPON.minTotal}};
  }
  if(p==="/api/public/orders"&&m==="POST"){
   await rateLimit(env,request,"order");
   const {order}=await createOrder(env,await readJson(request),"customer","顧客");
-  return {orderNo:order.order_no,lookupToken:order.lookup_token,status:order.status};
+  return {orderNo:order.order_no,lookupToken:order.lookup_token,status:order.status,total:order.total,discount:order.discount??0};
  }
+ if(p==="/api/public/game/start"&&m==="POST")return gameStart(env,request);
+ if(p==="/api/public/game/finish"&&m==="POST")return gameFinish(env,request,await readJson(request));
+ if(p==="/api/public/coupons/check"&&m==="POST"){await rateLimit(env,request,"lookup");return couponCheck(env,await readJson(request))}
  const lk=p.match(/^\/api\/public\/orders\/([A-Za-z0-9_-]{20,64})$/);
  if(lk&&m==="GET"){
   await rateLimit(env,request,"lookup");

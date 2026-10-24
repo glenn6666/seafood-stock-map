@@ -61,3 +61,10 @@ npm run build
 3. Worker：`npx wrangler deploy`
 4. 前端：`npm run build`，將 `dist/` 的 `index.html`、`order.html`、`assets/*` 複製到 main 根目錄並推送。
 5. 驗證：`/api/public/menu` 回應有 `units`，每項商品只有 `displayUnit{id,name,type}`，沒有儲位或成本。
+
+## 0005：漫畫店面配置＋釣蝦優惠券（feature/comic-game-zones）
+1. 先備份：`npx wrangler d1 export seafood-stock --remote --output backups/seafood-stock-<日期>-pre0005.sql`
+2. 若 0004 尚未上線，會與 0005 一起套用：`npx wrangler d1 migrations apply seafood-stock --remote`（只新增欄位／資料表／展示櫃列；舊展示櫃改為停用，不刪除；不動實際儲位）。
+3. `npx wrangler deploy`（不需新增機密；優惠券與遊戲雜湊沿用 INVENTORY_TOKEN 做 IP 雜湊鹽）。
+4. 合併 PR 後建置並發布 GitHub Pages；確認 `backend-config.json` 指向線上 Worker。
+5. 回滾：`npx wrangler rollback <前一版 version id>`；資料庫新增欄位不影響舊版 Worker。
