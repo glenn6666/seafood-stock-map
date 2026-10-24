@@ -150,6 +150,74 @@ await t("批次上架／下架：僅管理員；預設不上架",async()=>{
  r=await api("/api/products/bulk-on-sale",{method:"POST",token:admin,body:{ids,onSale:false}});assert.equal(r.data.changed,3);
  m=(await api("/api/public/menu")).data.items;assert.ok(ids.every(id=>!m.some(i=>i.id===id)));
 });
+await t("顧客端展示櫃：自動分配、管理員可設定、店員不能改、公開 API 不含儲位／成本",async()=>{
+ let m=(await api("/api/public/menu")).data;
+ assert.ok(Array.isArray(m.units)&&m.units.some(u=>u.type==="tank")&&m.units.some(u=>u.type==="freezer"),"預設展示櫃");
+ const a=m.items.find(i=>i.id===A);assert.deepEqual(Object.keys(a.displayUnit).sort(),["area","id","kind","name","type"]);
+ assert.equal(a.displayUnit.id,"f1","肉類自動分到 01 牛肉冷藏櫃");
+ assert.deepEqual(m.units.map(u=>u.id),["f1","f2","f3","c1","c2","c3","t1","t4","t7","s7"],"新配置 10 個展示櫃，舊櫃停用");
+ const s=JSON.stringify(m);for(const f of ["zone","cost","photoId","fridgeId","positionNote","quantity","displayZone","01-left","photo-1"])assert.ok(!s.includes(`"${f}"`)&&!s.includes(f==="01-left"||f==="photo-1"?f:"\u0000"),`公開 API 不可含 ${f}`);
+ assert.equal((await api(`/api/products/${encodeURIComponent(A)}`,{method:"PATCH",token:staff2(),body:{displayZone:"t1"}})).status,403,"店員不能改展示櫃");
+ assert.equal((await api("/api/display-units/t1",{method:"PATCH",token:staff2(),body:{name:"x"}})).status,403,"店員不能改展示櫃名稱");
+ assert.equal((await api(`/api/products/${encodeURIComponent(A)}`,{method:"PATCH",token:admin,body:{displayZone:"no-such"}})).status,400);
+ assert.equal((await api(`/api/products/${encodeURIComponent(A)}`,{method:"PATCH",token:admin,body:{displayZone:"t1"}})).status,200);
+ m=(await api("/api/public/menu")).data;assert.equal(m.items.find(i=>i.id===A).displayUnit.type,"tank");
+ assert.equal((await api("/api/display-units/t1",{method:"PATCH",token:admin,body:{name:"活體魚缸"}})).status,200);
+ m=(await api("/api/public/menu")).data;assert.equal(m.items.find(i=>i.id===A).displayUnit.name,"活體魚缸");
+ const sp=(await api("/api/products",{token:staff2()})).data;assert.equal(sp.items.find(i=>i.id===A).displayZone,"t1");assert.ok(sp.items.every(i=>!("cost" in i)));
+ await api(`/api/products/${encodeURIComponent(A)}`,{method:"PATCH",token:admin,body:{displayZone:""}});
+ m=(await api("/api/public/menu")).data;assert.equal(m.items.find(i=>i.id===A).displayUnit.id,"f1","清空後回到自動分配");
+});
+await t("展示櫃自動分配：活泰國蝦→t4、常溫活魚→t7、乾貨→s7、冰鮮貝類→c2、火鍋料→f3",async()=>{
+ const base={zone:"unassigned",spec:"",quantity:5,unit:"份",minimum:0,batch:"",price:"100",tracked:true,photoId:"",fridgeId:"",positionNote:""};
+ const cases=[["auto-1","活泰國蝦","活海鮮","t4"],["auto-2","活吳郭魚","活魚 常溫","t7"],["auto-3","蝦米","乾貨","s7"],["auto-4","海瓜子","冰鮮","c2"],["auto-5","蛋餃","火鍋料","f3"],["auto-6","鮭魚","冷凍海鮮","f2"],["auto-7","活龍蝦","活海鮮","t1"]];
+ for(const [id,name,category] of cases)assert.equal((await api("/api/inventory",{method:"POST",token:admin,body:{...base,id,name,category}})).status,200);
+ const p=(await api("/api/products",{token:admin})).data.items;
+ for(const [id,,,u] of cases)assert.equal(p.find(i=>i.id===id).displayUnitId,u,id);
+});
+const COUPON_ID="coupon-test-1";
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+let coupon;
+await t("釣蝦遊戲：太快／未達標不發券；正常完成發券，同一局不能領第二次",async()=>{
+ await api("/api/inventory",{method:"POST",token:admin,body:{id:COUPON_ID,zone:"unassigned",name:"帝王蟹腳",spec:"1kg",quantity:20,unit:"盒",minimum:0,batch:"",category:"冷凍海鮮",price:"600",tracked:true,photoId:"",fridgeId:"",positionNote:""}});
+ await api(`/api/products/${COUPON_ID}`,{method:"PATCH",token:admin,body:{onSale:true}});
+ const ip=freshIp();
+ let g=(await api("/api/public/game/start",{method:"POST",ip})).data;assert.ok(g.gameId&&g.seconds===35&&g.target===4);
+ assert.equal((await api("/api/public/game/finish",{method:"POST",ip,body:{gameId:g.gameId,caught:4}})).status,400,"6 秒內完成視為作弊");
+ assert.equal((await api("/api/public/game/finish",{method:"POST",ip:freshIp(),body:{gameId:g.gameId,caught:4}})).status,404,"其他 IP 不能代領");
+ const g2=(await api("/api/public/game/start",{method:"POST",ip})).data;
+ await sleep(6500);
+ assert.deepEqual((await api("/api/public/game/finish",{method:"POST",ip,body:{gameId:g.gameId,caught:3}})).data,{won:false},"未達 4 隻不發券");
+ const rs=await Promise.all([1,2,3].map(()=>api("/api/public/game/finish",{method:"POST",ip,body:{gameId:g2.gameId,caught:4}})));
+ const wins=rs.filter(r=>r.status===200&&r.data.won);assert.equal(wins.length,1,"同一局同時送出只發一張");
+ coupon=wins[0].data.coupon;assert.match(coupon.code,/^SHRIMP-/);assert.equal(coupon.discount,5);assert.equal(coupon.minTotal,1000);
+ assert.ok(new Date(coupon.expiresAt)>Date.now()+23*3600e3);
+ assert.equal((await api("/api/public/game/finish",{method:"POST",ip,body:{gameId:g2.gameId,caught:4}})).status,409);
+});
+await t("優惠券：驗證、未滿 1000 拒絕（不消耗）、滿 1000 折 5、重複使用拒絕、後台看得到折抵",async()=>{
+ let r=await api("/api/public/coupons/check",{method:"POST",body:{code:coupon.code}});assert.equal(r.status,200);assert.equal(r.data.discount,5);
+ assert.equal((await api("/api/public/coupons/check",{method:"POST",body:{code:"SHRIMP-"+"x".repeat(24)}})).status,404);
+ const ip=freshIp(),before=await qty(admin,COUPON_ID);
+ r=await api("/api/public/orders",{method:"POST",ip,body:{idempotencyKey:key(),customerName:"券",phone:"0911000111",couponCode:coupon.code,items:[{id:COUPON_ID,qty:1}]}});
+ assert.equal(r.status,400);assert.match(r.data.error,/未滿/);assert.equal(await qty(admin,COUPON_ID),before,"門檻失敗不扣庫存");
+ assert.equal((await api("/api/public/coupons/check",{method:"POST",body:{code:coupon.code}})).status,200,"門檻失敗不消耗券");
+ r=await api("/api/public/orders",{method:"POST",ip,body:{idempotencyKey:key(),customerName:"券",phone:"0911000111",couponCode:coupon.code,items:[{id:COUPON_ID,qty:2}]}});
+ assert.equal(r.status,200,JSON.stringify(r.data));assert.equal(r.data.total,1195);assert.equal(r.data.discount,5);
+ const lk=(await api(`/api/public/orders/${r.data.lookupToken}`)).data.order;assert.deepEqual([lk.subtotal,lk.discount,lk.total],[1200,5,1195]);
+ const ao=(await api("/api/orders",{token:admin})).data.orders.find(o=>o.lookupToken===r.data.lookupToken);assert.deepEqual([ao.subtotal,ao.discount,ao.total],[1200,5,1195]);
+ const again=await Promise.all([1,2].map(()=>api("/api/public/orders",{method:"POST",ip:freshIp(),body:{idempotencyKey:key(),customerName:"券",phone:"0911000111",couponCode:coupon.code,items:[{id:COUPON_ID,qty:2}]}})));
+ assert.ok(again.every(x=>x.status===409&&/已使用/.test(x.data.error)),"同一張券不能再用");
+ assert.equal(await qty(admin,COUPON_ID),before-2,"重複使用失敗不扣庫存");
+ assert.equal((await api("/api/orders",{method:"POST",token:admin,body:{idempotencyKey:key(),customerName:"x",couponCode:coupon.code,items:[{id:COUPON_ID,qty:2}]}})).status,400,"後台訂單不收顧客券");
+});
+await t("優惠券：過期拒絕",async()=>{
+ const {execFileSync}=await import("node:child_process");const {createHash}=await import("node:crypto");
+ const code="SHRIMP-expiredexpiredexpired01",h=createHash("sha256").update(code).digest("base64url");
+ execFileSync("npx",["wrangler","d1","execute","DB","--local","--persist-to",".wrangler/state","--command",`INSERT OR REPLACE INTO coupons (code_hash,kind,discount,min_total,ip_hash,created_at,expires_at) VALUES ('${h}','shrimp5',5,1000,'t','2026-01-01T00:00:00.000Z','2026-01-02T00:00:00.000Z')`],{stdio:"ignore"});
+ assert.equal((await api("/api/public/coupons/check",{method:"POST",body:{code}})).status,409);
+ const r=await api("/api/public/orders",{method:"POST",ip:freshIp(),body:{idempotencyKey:key(),customerName:"券",phone:"0911000111",couponCode:code,items:[{id:COUPON_ID,qty:2}]}});
+ assert.equal(r.status,409);assert.match(r.data.error,/過期/);
+});
 await t("顧客端頻率限制：下單每 IP 10 分鐘 5 次、查詢 60 次，超過回 429 中文訊息",async()=>{
  const ip=freshIp();
  for(let k=0;k<5;k++)assert.equal((await api("/api/public/orders",{method:"POST",ip,body:{idempotencyKey:key(),customerName:"",items:[]}})).status,400);
