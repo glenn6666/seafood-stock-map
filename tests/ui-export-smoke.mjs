@@ -18,7 +18,7 @@ await p.click(".admin-tabs button:has-text('記帳匯出')");
 await p.fill('[aria-label="開始日期"]',today);await p.fill('[aria-label="結束日期"]',today);
 await p.click("text=產生預覽");await p.waitForSelector(".export-table");
 const rows=await p.locator(".export-table tbody tr").allTextContents();
-ok(rows.some(r=>r.includes("網站收入 網站訂單")),"預覽有網站收入列");ok(rows.some(r=>r.includes("銷貨成本 網站訂單")),"預覽有銷貨成本列");
+ok(rows.some(r=>r.includes("網站收入 網站訂單")),"預覽有網站收入列");ok(rows.some(r=>r.includes("進貨支出 網站訂單成本")),"預覽有進貨支出（網站訂單成本）列");
 ok(rows.some(r=>r.includes(today.replace(/-/g,""))),"日期格式 20260902 樣式");
 ok(await p.locator('[data-testid="dup-warning"]').count()===1,"已匯出日期顯示重複警告");
 ok(rows.some(r=>/優惠券 \d+ 筆折/.test(r)),"備註寫入優惠券折抵");

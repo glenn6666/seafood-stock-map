@@ -79,5 +79,6 @@ npm run build
    - `0006_bookkeeping_export.sql`：inventory 新增 `cost_num`（舊文字 `cost` 保留；只轉換明確的整數金額，其餘 NULL）、order_items 新增 `unit_cost`、新增 `export_log`。沒有 DROP／DELETE。
    - 套用後再數一次 inventory、orders 筆數，應與備份前相同；`SELECT COUNT(*) FROM inventory WHERE trim(cost)<>'' AND cost_num IS NULL` 為後台會標示「成本待確認」的數量。
 4. `npx wrangler deploy` → `npm run build` → 發布 `dist/` 到 main（同前）。
+   - 每日兩列：「網站收入 網站訂單」（客戶/廠商＝網站顧客）與「進貨支出 網站訂單成本」（客戶/廠商＝網站訂單成本，沿用試算表既有「進貨支出」科目；未完成訂單也計入，備註會註明筆數）。
 5. 上線後：管理員到「商品販售」補齊標示「成本待確認」的商品成本；到「記帳匯出」選日期 → 產生預覽 → 複製，貼到「每日收支紀錄」最後一列的「項次」欄。
 回復：`npx wrangler rollback`；新增的欄位／表不影響舊程式。

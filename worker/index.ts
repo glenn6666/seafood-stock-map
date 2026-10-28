@@ -235,12 +235,12 @@ async function couponCheck(env:Env,b:any){
 }
 
 // ---------- 記帳匯出（對應 Google 試算表「每日收支紀錄」欄位順序） ----------
-// 每天一列「網站收入」（已扣優惠券的實收），另一列「銷貨成本」；已取消訂單不計。公式欄位留空，交由試算表第一列函數延伸。
+// 每天一列「網站收入」（已扣優惠券的實收），另一列「進貨支出 網站訂單成本」；已取消訂單不計。公式欄位留空，交由試算表第一列函數延伸。
 const LEDGER_COLS=["項次","收支(每日)","日期","收支","會計項目","內容","備註 ","數量","單價","員工姓名","小計","稅金","總計","金額計算","客戶/廠商","記錄人","公司名稱","聯絡人","統編","付款方式","郵局/銀行","年月 ","年月日 ","入帳日","金流備註","年月","收支","員工薪資"];
 const DATE_RE=/^\d{4}-\d{2}-\d{2}$/;
-function ledgerRow(f:{cat:string;content:string;date:string;note:string;amount:number;recorder:string}){
+function ledgerRow(f:{cat:string;content:string;date:string;note:string;amount:number;recorder:string;party:string}){
  const r=Array(LEDGER_COLS.length).fill("");
- r[1]=`${f.cat} ${f.content}`;r[2]=f.date.replace(/-/g,"");r[4]=f.cat;r[5]=f.content;r[6]=f.note;r[7]="1";r[8]=String(f.amount);r[14]="網站顧客";r[15]=f.recorder;
+ r[1]=`${f.cat} ${f.content}`;r[2]=f.date.replace(/-/g,"");r[4]=f.cat;r[5]=f.content;r[6]=f.note;r[7]="1";r[8]=String(f.amount);r[14]=f.party;r[15]=f.recorder;
  return r;
 }
 async function bookkeepingExport(env:Env,actor:Actor,url:URL){
@@ -265,11 +265,11 @@ async function bookkeepingExport(env:Env,actor:Actor,url:URL){
   const parts=[`網站訂單 ${d.orders} 筆`];
   if(d.discount>0)parts.push(`優惠券 ${d.couponOrders} 筆折 NT$${d.discount}（原價 NT$${d.subtotal}）`);
   if(d.pending)parts.push(`其中 ${d.pending} 筆尚未完成`);
-  rows.push(ledgerRow({cat:"網站收入",content:"網站訂單",date:d.date,note:`${parts.join("；")}；${tag}`,amount:d.total,recorder}));
-  const cn=[`網站訂單 ${d.orders} 筆成本`];
+  rows.push(ledgerRow({cat:"網站收入",content:"網站訂單",date:d.date,note:`${parts.join("；")}；${tag}`,amount:d.total,recorder,party:"網站顧客"}));
+  const cn=[`網站訂單商品成本（${d.orders} 筆訂單）`];
   if(d.costEstimatedLines)cn.push(`${d.costEstimatedLines} 項以目前成本估算`);
   if(d.costMissingLines)cn.push(`${d.costMissingLines} 項缺成本未計`);
-  if(d.cost>0||d.costMissingLines)rows.push(ledgerRow({cat:"銷貨成本",content:"網站訂單",date:d.date,note:`${cn.join("；")}；${tag}`,amount:d.cost,recorder}));
+  if(d.cost>0||d.costMissingLines)rows.push(ledgerRow({cat:"進貨支出",content:"網站訂單成本",party:"網站訂單成本",date:d.date,note:`${cn.join("；")}；${tag}`,amount:d.cost,recorder}));
  }
  const {results:prev}=await env.DB.prepare("SELECT from_date,to_date,days,exported_by,exported_at FROM export_log WHERE kind='bookkeeping' AND from_date<=? AND to_date>=? ORDER BY exported_at DESC LIMIT 50").bind(to,from).all<any>();
  const dset=new Set(days.map(d=>d.date));

@@ -274,7 +274,7 @@ await t("記帳匯出：每日一列收入（扣優惠券）＋一列成本；�
  assert.equal(inc.length,28);assert.equal(inc[1],"網站收入 網站訂單");assert.equal(inc[5],"網站訂單");assert.equal(inc[7],"1");assert.equal(inc[8],String(day.total));assert.equal(inc[15],"boss");
  assert.match(inc[6],/優惠券 \d+ 筆折 NT\$\d+/);assert.match(inc[6],new RegExp(`網站匯出 ${today}~${today}`));
  for(const i of [0,3,10,11,12,13,21,22,26,27])assert.equal(inc[i],"",`公式欄 ${d.columns[i]} 應留空`);
- const cost=d.rows.find(x=>x[4]==="銷貨成本"&&x[2]===today.replace(/-/g,""));assert.ok(cost,"有成本列");
+ const cost=d.rows.find(x=>x[4]==="進貨支出"&&x[2]===today.replace(/-/g,""));assert.ok(cost,"有成本列");assert.deepEqual([cost[1],cost[5],cost[14],cost[7]],["進貨支出 網站訂單成本","網站訂單成本","網站訂單成本","1"]);assert.match(cost[6],/網站訂單商品成本/);assert.ok(!d.rows.some(x=>x[4]==="銷貨成本"));
  assert.equal(day.cost-c0,2*120,"新訂單以下單當時成本 120 計；之後改成本 999、已取消訂單都不影響");
  assert.ok(day.costMissingLines>0&&/缺成本未計/.test(cost[6]),"沒有數字成本的商品要標示");
  const inv=(await api("/api/inventory",{token:admin})).data.items.find(i=>i.id===A);
