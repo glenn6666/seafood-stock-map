@@ -18,3 +18,9 @@
 .admin-banner.legacy{background:#fff2ee;border-color:#f0b8a8}.bulk-bar{position:sticky;top:0;z-index:5;display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:#f4f8f8;padding:8px 0}.admin-card .select{display:flex;align-items:center;gap:6px}.admin-card .select input{width:22px;height:22px}
 @media(max-width:640px){.admin-who{display:none}.admin-tabs button{padding:10px}}
 .unit-row{gap:10px;padding:6px 0}.unit-row input:not([type=checkbox]){flex:1;min-width:120px}.admin-card select{display:block;width:100%;margin-top:4px}details.admin-card summary{cursor:pointer;line-height:1.6}
+.export-table{overflow-x:auto;margin:12px 0}
+.export-table table{border-collapse:collapse;font-size:13px;min-width:720px;background:#fff}
+.export-table th,.export-table td{border:1px solid #d6dbe1;padding:6px 8px;text-align:left;vertical-align:top}
+.export-table th{background:#f1f5f9;white-space:nowrap}
+.export-table tr.dup td{background:#fff4e5}
+.admin-msg.warn,.tag.warn{background:#fff4e5;color:#8a4b00;border-color:#f5c27a}

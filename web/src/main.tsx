@@ -6,12 +6,13 @@ import {loadApiOrigin,errorText} from "./lib/api-config";
 import Orders from "./admin/orders";
 import Products from "./admin/products";
 import Users from "./admin/users";
+import Bookkeeping from "./admin/bookkeeping";
 import Bootstrap from "./admin/bootstrap";
 import "./app/globals.css";
 import "./signin.css";
 import "./admin/admin.css";
 export type Me={role:"admin"|"staff";legacy:boolean;username:string|null;needsBootstrap?:boolean};
-type Tab="map"|"orders"|"products"|"users";
+type Tab="map"|"orders"|"products"|"users"|"books";
 function App(){
  const [me,setMe]=useState<Me|null>(null),[username,setUsername]=useState(""),[key,setKey]=useState(""),[error,setError]=useState(""),[busy,setBusy]=useState(false),[tab,setTab]=useState<Tab>("map");
  async function login(e:React.FormEvent){
@@ -32,13 +33,13 @@ function App(){
  }
  async function logout(){try{await inventoryFetch("/api/auth/logout",{method:"POST"})}catch{}disconnectInventory();setMe(null)}
  if(me){
-  const tabs:[Tab,string][]=[["map","庫存地圖"],["orders","訂單"],["products","商品販售"],...(me.role==="admin"&&!me.needsBootstrap?[["users","帳號"] as [Tab,string]]:[])];
+  const tabs:[Tab,string][]=[["map","庫存地圖"],["orders","訂單"],["products","商品販售"],...(me.role==="admin"&&!me.needsBootstrap?[["books","記帳匯出"] as [Tab,string],["users","帳號"] as [Tab,string]]:[])];
   return <>
    <nav className="admin-nav"><div className="admin-tabs">{tabs.map(([id,l])=><button key={id} className={tab===id?"active":""} onClick={()=>setTab(id)}>{l}</button>)}</div>
     <span className="admin-who">{me.legacy?"管理密碼":me.username}・{me.role==="admin"?"管理員":"店員"}</span>
     <button className="signout" onClick={logout}>登出庫存</button></nav>
    {me.legacy&&(me.needsBootstrap?<Bootstrap onDone={logout}/>:<section className="admin-banner legacy" role="status"><strong>您正以「原管理密碼」登入（管理員權限）</strong><p>建議改用個人帳號登入，並到「帳號」頁停用原管理密碼；停用後此密碼將完全無法使用。</p></section>)}
-   {tab==="map"&&<Home/>}{tab==="orders"&&<Orders me={me}/>}{tab==="products"&&<Products me={me}/>}{tab==="users"&&<Users me={me} onLegacyDisabled={()=>{if(me.legacy){alert("已停用原管理密碼，請改用帳號登入。");logout()}}}/>}
+   {tab==="map"&&<Home/>}{tab==="orders"&&<Orders me={me}/>}{tab==="products"&&<Products me={me}/>}{tab==="books"&&<Bookkeeping/>}{tab==="users"&&<Users me={me} onLegacyDisabled={()=>{if(me.legacy){alert("已停用原管理密碼，請改用帳號登入。");logout()}}}/>}
   </>;
  }
  return <main className="signin"><form onSubmit={login}><h1>鮮庫</h1><p>安星水產庫存地圖</p>

@@ -68,3 +68,16 @@ npm run build
 3. `npx wrangler deploy`（不需新增機密；優惠券與遊戲雜湊沿用 INVENTORY_TOKEN 做 IP 雜湊鹽）。
 4. 合併 PR 後建置並發布 GitHub Pages；確認 `backend-config.json` 指向線上 Worker。
 5. 回滾：`npx wrangler rollback <前一版 version id>`；資料庫新增欄位不影響舊版 Worker。
+
+---
+# 追加：記帳匯出（feature/bookkeeping-export，疊在 feature/comic-game-zones 之上）
+> 只在本機測試過，**尚未部署**。需先（或同時）上線 0004、0005（PR #2、#3）。
+1. 備份：`npx wrangler d1 export seafood-stock --remote --output backup-$(date +%Y%m%d-%H%M).sql`，記下 `SELECT COUNT(*) FROM inventory`、`SELECT COUNT(*) FROM orders`。
+2. 先看哪些舊成本無法轉數字（唯讀）：
+   `npx wrangler d1 execute seafood-stock --remote --command "SELECT id,name,cost FROM inventory WHERE trim(cost)<>''"`
+3. 資料庫：`npx wrangler d1 migrations list seafood-stock --remote` 應只列出待套用的 0004／0005／0006 → `npx wrangler d1 migrations apply seafood-stock --remote`。
+   - `0006_bookkeeping_export.sql`：inventory 新增 `cost_num`（舊文字 `cost` 保留；只轉換明確的整數金額，其餘 NULL）、order_items 新增 `unit_cost`、新增 `export_log`。沒有 DROP／DELETE。
+   - 套用後再數一次 inventory、orders 筆數，應與備份前相同；`SELECT COUNT(*) FROM inventory WHERE trim(cost)<>'' AND cost_num IS NULL` 為後台會標示「成本待確認」的數量。
+4. `npx wrangler deploy` → `npm run build` → 發布 `dist/` 到 main（同前）。
+5. 上線後：管理員到「商品販售」補齊標示「成本待確認」的商品成本；到「記帳匯出」選日期 → 產生預覽 → 複製，貼到「每日收支紀錄」最後一列的「項次」欄。
+回復：`npx wrangler rollback`；新增的欄位／表不影響舊程式。

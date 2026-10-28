@@ -217,7 +217,7 @@ await t("優惠券：驗證、未滿 1000 拒絕（不消耗）、滿 1000 折 5
 await t("優惠券：過期拒絕",async()=>{
  const {execFileSync}=await import("node:child_process");const {createHash}=await import("node:crypto");
  const code="SHRIMP-expiredexpiredexpired01",h=createHash("sha256").update(code).digest("base64url");
- execFileSync("npx",["wrangler","d1","execute","DB","--local","--persist-to",".wrangler/state","--command",`INSERT OR REPLACE INTO coupons (code_hash,kind,discount,min_total,ip_hash,created_at,expires_at) VALUES ('${h}','shrimp5',5,1000,'t','2026-01-01T00:00:00.000Z','2026-01-02T00:00:00.000Z')`],{stdio:"ignore"});
+ execFileSync("npx",["wrangler","d1","execute","DB","--local","--persist-to",process.env.PERSIST??".wrangler/state","--command",`INSERT OR REPLACE INTO coupons (code_hash,kind,discount,min_total,ip_hash,created_at,expires_at) VALUES ('${h}','shrimp5',5,1000,'t','2026-01-01T00:00:00.000Z','2026-01-02T00:00:00.000Z')`],{stdio:"ignore"});
  assert.equal((await api("/api/public/coupons/check",{method:"POST",body:{code}})).status,409);
  const r=await api("/api/public/orders",{method:"POST",ip:freshIp(),body:{idempotencyKey:key(),customerName:"券",phone:"0911000111",couponCode:code,items:[{id:COUPON_ID,qty:2}]}});
  assert.equal(r.status,409);assert.match(r.data.error,/過期/);
@@ -231,6 +231,61 @@ await t("顧客端頻率限制：下單每 IP 10 分鐘 5 次、查詢 60 次，
  const ip2=freshIp();
  for(let k=0;k<60;k++)assert.equal((await api(`/api/public/orders/${lookup}`,{ip:ip2})).status,200);
  const l=await api(`/api/public/orders/${lookup}`,{ip:ip2});assert.equal(l.status,429);assert.match(l.data.error,/太頻繁/);
+});
+
+// ---------- 記帳匯出 ----------
+const today=new Date(Date.now()+8*3600e3).toISOString().slice(0,10);
+await t("記帳匯出：僅管理員；店員與未登入被拒；日期格式檢查",async()=>{
+ assert.equal((await api(`/api/export/bookkeeping?from=${today}&to=${today}`)).status,401);
+ assert.equal((await api(`/api/export/bookkeeping?from=${today}&to=${today}`,{token:staff2()})).status,403);
+ assert.equal((await api("/api/export/bookkeeping/mark",{method:"POST",token:staff2(),body:{from:today,to:today}})).status,403);
+ assert.equal((await api(`/api/export/bookkeeping?from=2026/09/01&to=${today}`,{token:admin})).status,400);
+ assert.equal((await api(`/api/export/bookkeeping?from=${today}&to=2020-01-01`,{token:admin})).status,400);
+});
+await t("成本改為數字：管理員以整數設定、店員看不到、文字無法判讀時標示",async()=>{
+ assert.equal((await api(`/api/products/${encodeURIComponent(B)}`,{method:"PATCH",token:admin,body:{cost:"約150/斤"}})).status,200);
+ let ps=(await api("/api/products",{token:admin})).data.items;const b=ps.find(p=>p.id===B);
+ assert.equal(b.costNum,null);assert.equal(b.costUnparsed,true,"無法判讀的舊成本要標示");
+ assert.equal((await api(`/api/products/${encodeURIComponent(A)}`,{method:"PATCH",token:admin,body:{costNum:-1}})).status,400);
+ assert.equal((await api(`/api/products/${encodeURIComponent(A)}`,{method:"PATCH",token:admin,body:{costNum:1.5}})).status,400);
+ assert.equal((await api(`/api/products/${encodeURIComponent(A)}`,{method:"PATCH",token:staff2(),body:{costNum:1}})).status,403);
+ assert.equal((await api(`/api/products/${encodeURIComponent(A)}`,{method:"PATCH",token:admin,body:{costNum:120}})).status,200);
+ const a=(await api("/api/products",{token:admin})).data.items.find(p=>p.id===A);assert.equal(a.costNum,120);assert.equal(a.cost,"120","舊文字欄同步");assert.equal(a.costUnparsed,false);
+ assert.equal((await api(`/api/products/${encodeURIComponent(C)}`,{method:"PATCH",token:admin,body:{cost:"NT$1,250"}})).status,200);
+ assert.equal((await api("/api/products",{token:admin})).data.items.find(p=>p.id===C).costNum,1250,"舊版只送文字成本時，明確的金額會轉數字");
+ await api(`/api/products/${encodeURIComponent(C)}`,{method:"PATCH",token:admin,body:{costNum:null}});
+ assert.ok((await api("/api/products",{token:staff2()})).data.items.every(p=>!("costNum" in p)&&!("cost" in p)));
+});
+await t("記帳匯出：每日一列收入（扣優惠券）＋一列成本；排除已取消；欄位順序；優惠券寫在備註；成本以下單當時為準",async()=>{
+ const c0=(await api(`/api/export/bookkeeping?from=${today}&to=${today}`,{token:admin})).data.days.find(x=>x.date===today)?.cost??0;
+ const o1=await api("/api/orders",{method:"POST",token:admin,body:{idempotencyKey:key(),customerName:"匯出測試",items:[{id:A,qty:2}]}});assert.equal(o1.status,200,JSON.stringify(o1.data));
+ const o2=await api("/api/orders",{method:"POST",token:admin,body:{idempotencyKey:key(),customerName:"匯出取消",items:[{id:A,qty:3}]}});
+ assert.equal((await api(`/api/orders/${o2.data.order.id}/cancel`,{method:"POST",token:admin})).status,200);
+ // 下單後改成本，不影響已成立訂單的成本
+ await api(`/api/products/${encodeURIComponent(A)}`,{method:"PATCH",token:admin,body:{costNum:999}});
+ const all=(await api("/api/orders",{token:admin})).data.orders.filter(o=>o.createdAt&&o.status!=="已取消");
+ const r=await api(`/api/export/bookkeeping?from=${today}&to=${today}`,{token:admin});assert.equal(r.status,200,JSON.stringify(r.data));
+ const d=r.data;assert.equal(d.columns.length,28);assert.equal(d.columns[0],"項次");assert.equal(d.columns[4],"會計項目");assert.equal(d.columns[15],"記錄人");
+ const day=d.days.find(x=>x.date===today);assert.ok(day);
+ assert.equal(day.orders,all.length,"筆數不含已取消");
+ assert.equal(day.total,all.reduce((s,o)=>s+o.total,0),"實收＝未取消訂單總額（已扣優惠券）");
+ assert.ok(day.discount>=5&&day.couponOrders>=1,"前面測試的優惠券訂單有計入");
+ const inc=d.rows.find(x=>x[4]==="網站收入"&&x[2]===today.replace(/-/g,""));assert.ok(inc);
+ assert.equal(inc.length,28);assert.equal(inc[1],"網站收入 網站訂單");assert.equal(inc[5],"網站訂單");assert.equal(inc[7],"1");assert.equal(inc[8],String(day.total));assert.equal(inc[15],"boss");
+ assert.match(inc[6],/優惠券 \d+ 筆折 NT\$\d+/);assert.match(inc[6],new RegExp(`網站匯出 ${today}~${today}`));
+ for(const i of [0,3,10,11,12,13,21,22,26,27])assert.equal(inc[i],"",`公式欄 ${d.columns[i]} 應留空`);
+ const cost=d.rows.find(x=>x[4]==="銷貨成本"&&x[2]===today.replace(/-/g,""));assert.ok(cost,"有成本列");
+ assert.equal(day.cost-c0,2*120,"新訂單以下單當時成本 120 計；之後改成本 999、已取消訂單都不影響");
+ assert.ok(day.costMissingLines>0&&/缺成本未計/.test(cost[6]),"沒有數字成本的商品要標示");
+ const inv=(await api("/api/inventory",{token:admin})).data.items.find(i=>i.id===A);
+ await api("/api/inventory",{method:"POST",token:admin,body:{...inv,quantity:inv.quantity+2}}); // 補回測試用掉的庫存，讓後續測試的數量不變
+});
+await t("記帳匯出：標記已匯出後，再次預覽會列出重複日期",async()=>{
+ let d=(await api(`/api/export/bookkeeping?from=${today}&to=${today}`,{token:admin})).data;assert.deepEqual(d.alreadyExportedDays,[]);
+ assert.equal((await api("/api/export/bookkeeping/mark",{method:"POST",token:admin,body:{from:today,to:today,days:[today]}})).status,200);
+ d=(await api(`/api/export/bookkeeping?from=${today}&to=${today}`,{token:admin})).data;
+ assert.deepEqual(d.alreadyExportedDays,[today]);assert.equal(d.previousExports[0].by,"boss");
+ const e=(await api("/api/export/bookkeeping?from=2001-01-01&to=2001-01-31",{token:admin})).data;assert.deepEqual([e.rows.length,e.alreadyExportedDays.length],[0,0]);
 });
 await t("原管理密碼：管理員停用後完全不能使用，且無法自行重新啟用",async()=>{
  assert.equal((await api("/api/users",{token:LEGACY})).status,200,"停用前具管理員權限");
