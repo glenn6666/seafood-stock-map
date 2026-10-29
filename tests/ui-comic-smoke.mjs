@@ -6,7 +6,9 @@ const j=async(path,{method="GET",token,body}={})=>{const h={"Content-Type":"appl
 const out=[];const ok=(c,m)=>out.push((c?"✅ ":"❌ ")+m);
 const b=await chromium.launch({executablePath:"/usr/bin/google-chrome",args:["--enable-unsafe-swiftshader","--use-angle=swiftshader","--enable-webgl","--ignore-gpu-blocklist"]});
 const ctx=await b.newContext({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true});
-const p=await ctx.newPage();const errs=[];p.on("pageerror",e=>errs.push(e.message));p.on("console",m=>{if(m.type()==="error")errs.push(m.text())});
+const p=await ctx.newPage();const errs=[];p.on("pageerror",e=>errs.push(e.message));p.on("console",m=>{if(m.type()==="error"&&!(m.location()?.url||"").includes("/comic/game/"))errs.push(m.text())});
+// 替換圖測試：只提供 crab.webp，其餘應退回表情符號（找不到圖的 404 不算錯）
+const CRAB=(await import("node:fs")).readFileSync("/tmp/test-crab.webp");await p.route("**/comic/game/crab.webp",r=>r.fulfill({contentType:"image/webp",body:CRAB}));await p.route("**/comic/game/boot.webp",r=>r.fulfill({status:404,body:""}));
 await p.goto(B+"?e2e");await p.waitForSelector("canvas.scene3d");await p.waitForTimeout(2500);
 ok(await p.locator(".comic-hero img").evaluate(i=>i.complete&&i.naturalWidth>0),"漫畫店面橫幅載入");
 await p.screenshot({path:S+"1-comic-overview.png"});
@@ -30,6 +32,9 @@ await p.screenshot({path:G+"2-intro-lobster-cage.png"});
 await p.click(".pick:has-text('螃蟹')");await p.click(".pick:has-text('夾子')");ok((await p.textContent(".sheet.game .primary")).includes("開始抓螃蟹"),"選螃蟹＋夾子");
 await p.click(".sheet.game .primary");await p.waitForSelector(".pond");await p.waitForTimeout(800);
 ok(/0 \/ 3/.test(await p.textContent(".game-stats")),"伺服器發局：螃蟹 3 隻");
+ok((await p.textContent(".game-stats .lives"))==="❤️❤️❤️","HUD 顯示 3 顆愛心");
+ok(await p.locator(".pond img[data-sprite=crab]").count()>0,"有 crab.webp 時使用圖片");
+ok(await p.locator(".pond img[data-sprite=boot]").count()===0&&(await p.textContent(".pond [data-sprite=boot]"))==="🥾","沒有 boot.webp 時退回表情符號");
 // 實際玩一隻：按住螃蟹 → 抓住 → 慢慢拖到水桶放開
 let got=false;for(let attempt=0;attempt<4&&!got;attempt++){
  const box=await p.locator(".pond").boundingBox();
@@ -46,6 +51,21 @@ let got=false;for(let attempt=0;attempt<4&&!got;attempt++){
 }
 ok(got,"真的抓到一隻螃蟹放進水桶");
 await p.screenshot({path:S+"6-game-play.png"});await p.screenshot({path:G+"5-after-catch.png"});
+// 3 次機會：蝦＋夾子（不適合），抓到後甩太快 → 跑掉；3 次後本局結束
+await p.click(".sheet-close:has-text('提前結束')");await p.click(".sheet-close:has-text('回到商店')");await p.click(".game-banner");await p.waitForSelector(".pick");
+await p.click(".pick:has-text('蝦'):not(:has-text('龍'))");await p.click(".pick:has-text('夾子')");await p.click(".sheet.game .primary");await p.waitForSelector(".pond");
+const spos=()=>p.evaluate(()=>{const e=[...document.querySelectorAll(".pond-obj:not(.boot)")][0];if(!e)return null;const r=e.getBoundingClientRect();return{x:r.x+r.width/2,y:r.y+r.height/2}});
+let shot=false;
+for(let k=0;k<25&&!(await p.locator(".coupon-card, .sheet.game .game-rule").count());k++){
+ const c=await spos();if(!c)break;await p.mouse.move(c.x,c.y);await p.mouse.down();
+ for(let i=0;i<10&&!(await p.locator(".pond-obj.carried").count());i++){await p.waitForTimeout(50);const c2=await spos();if(c2)await p.mouse.move(c2.x,c2.y)}
+ if(await p.locator(".pond-obj.carried").count()){const b2=await p.locator(".pond").boundingBox();for(let i=0;i<30&&await p.locator(".pond-obj.carried").count();i++){await p.mouse.move(b2.x+(i%2?b2.width*.9:b2.width*.1),b2.y+b2.height*.6,{steps:2});await p.waitForTimeout(40)}
+  if(!shot&&/❤️🤍🤍|❤️❤️🤍/.test(await p.textContent(".game-stats .lives").catch(()=>""))){await p.screenshot({path:G+"6-lost-life.png"});shot=true}}
+ await p.mouse.up();
+}
+await p.waitForSelector(".sheet.game .game-rule",{timeout:8000}).catch(()=>{});
+const endTxt=await p.textContent(".sheet.game");ok(endTxt.includes("3 次機會用完了"),"跑掉 3 次本局結束");ok(/🤍🤍🤍/.test(endTxt),"HUD 愛心歸零");
+await p.screenshot({path:G+"7-out-of-lives.png"});
 await p.goto(B);
 // 經 API 完成一局取得券（同 IP）
 const g=(await j("/api/public/game/start",{method:"POST"})).data;await new Promise(r=>setTimeout(r,8500));

@@ -50,3 +50,6 @@ body:has(.comic){background:radial-gradient(ellipse at top,#fff6dc,#f3e3bf 70%);
 .pick-desc{margin:6px 2px 0;font-size:13px;color:#4c4c3e}
 @media (prefers-reduced-motion:reduce){.pond-obj,.pond-obj.carried{transition:none;animation:none}}
 .game.reduce .pond-obj.carried{animation:none}
+
+.spr{display:block;width:1.2em;height:1.2em;object-fit:contain;pointer-events:none}.pick-icon.spr{width:40px;height:40px}.bucket .spr{width:44px;height:44px}.tool-cursor .ti.spr{width:28px;height:28px}
+.game-stats .lives{letter-spacing:1px}
