@@ -67,7 +67,7 @@ function Shop({origin}:{origin:string}){
   <button className="primary" disabled={busy||!lines.length}>{busy?"送出中…":"送出訂單"}</button><button type="button" onClick={()=>setCheckout(false)}>繼續選購</button></form>;
  const unitName=focus>=0?sceneUnits[focus]?.name:null,unitType=focus>=0?sceneUnits[focus]?.type:null;
  return <>
-  <button className="game-banner" onClick={()=>setGame(true)}><span>🎏</span><b>夜市釣蝦場</b><small>{coupon?`已有優惠券：滿 ${coupon.minTotal} 折 ${coupon.discount}`:"抓蝦／螃蟹／龍蝦，過關贏滿 NT$1,000 折 NT$5"}</small></button>
+  <button className="game-banner" onClick={()=>setGame(true)}><span>🦐</span><b>安星釣蝦場</b><small>{coupon?`已有優惠券：滿 ${coupon.minTotal} 折 ${coupon.discount}`:"抓蝦／螃蟹／龍蝦，過關贏滿 NT$1,000 折 NT$5"}</small></button>
   <div className="view-toggle" role="group" aria-label="瀏覽方式">{auto3d&&<button className={mode==="3d"?"active":""} onClick={()=>switchMode("3d")}>🧊 3D 逛店</button>}<button className={mode==="list"?"active":""} onClick={()=>switchMode("list")}>☰ 列表</button></div>
   {mode==="3d"?<section className="stage">
    <div className="unit-chips">{[{id:"all",name:"全部"},...sceneUnits].map((u,i)=><button key={u.id} className={focus===i-1?"active":""} onClick={()=>setFocus(i-1)}>{"type" in u?unitIcon(u)+" ":""}{u.name}</button>)}</div>

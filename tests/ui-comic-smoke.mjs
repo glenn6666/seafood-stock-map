@@ -7,8 +7,8 @@ const out=[];const ok=(c,m)=>out.push((c?"✅ ":"❌ ")+m);
 const b=await chromium.launch({executablePath:"/usr/bin/google-chrome",args:["--enable-unsafe-swiftshader","--use-angle=swiftshader","--enable-webgl","--ignore-gpu-blocklist"]});
 const ctx=await b.newContext({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true});
 const p=await ctx.newPage();const errs=[];p.on("pageerror",e=>errs.push(e.message));p.on("console",m=>{if(m.type()==="error"&&!(m.location()?.url||"").includes("/comic/game/"))errs.push(m.text())});
-// 替換圖測試：只提供 crab.webp，其餘應退回表情符號（找不到圖的 404 不算錯）
-const CRAB=(await import("node:fs")).readFileSync("/tmp/test-crab.webp");await p.route("**/comic/game/crab.webp",r=>r.fulfill({contentType:"image/webp",body:CRAB}));await p.route("**/comic/game/boot.webp",r=>r.fulfill({status:404,body:""}));
+// 替換圖測試：使用 web/public/comic/game 的圖；模擬 boot.webp 不存在時應退回表情符號（找不到圖的 404 不算錯）
+await p.route("**/comic/game/boot.webp",r=>r.fulfill({status:404,body:""}));
 await p.goto(B+"?e2e");await p.waitForSelector("canvas.scene3d");await p.waitForTimeout(2500);
 ok(await p.locator(".comic-hero img").evaluate(i=>i.complete&&i.naturalWidth>0),"漫畫店面橫幅載入");
 await p.screenshot({path:S+"1-comic-overview.png"});
@@ -22,7 +22,7 @@ let pos=await p.evaluate(()=>window.__shop.projectItem("demo-ice-1"));await p.mo
 await p.waitForSelector(".sheet",{timeout:5000});ok((await p.textContent(".sheet")).includes("冰鮮白鯧"),"無門展示櫃可直接點商品");await p.click(".sheet-close");
 // 遊戲
 await p.click(".game-banner");await p.waitForSelector(".sheet.game");ok((await p.textContent(".sheet.game")).includes("滿 NT$1,000 折 NT$5"),"遊戲規則顯示獎勵");
-const G="/workspace/screens-game2/";(await import("node:fs")).mkdirSync(G,{recursive:true});
+const G="/workspace/screens-game3/";(await import("node:fs")).mkdirSync(G,{recursive:true});
 await p.screenshot({path:S+"5-game-intro.png"});await p.screenshot({path:G+"1-intro-shrimp-rod.png"});
 ok((await p.locator(".pick-row").first().locator(".pick").allTextContents()).join("|").match(/蝦.*螃蟹.*龍蝦/),"三種目標可選");
 await p.click(".pick:has-text('龍蝦')");await p.click(".pick:has-text('蝦籠')");
@@ -33,6 +33,10 @@ await p.click(".pick:has-text('螃蟹')");await p.click(".pick:has-text('夾子'
 await p.click(".sheet.game .primary");await p.waitForSelector(".pond");await p.waitForTimeout(800);
 ok(/0 \/ 3/.test(await p.textContent(".game-stats")),"伺服器發局：螃蟹 3 隻");
 ok((await p.textContent(".game-stats .lives"))==="❤️❤️❤️","HUD 顯示 3 顆愛心");
+ok(!(await p.textContent("body")).includes("夜市"),"畫面沒有「夜市」字樣");
+const pb=await p.locator(".pond").boundingBox(),bb=await p.locator(".pond .bucket").boundingBox();
+ok(Math.abs(pb.width-pb.height)<4&&Math.abs((bb.x+bb.width/2)-(pb.x+pb.width/2))<4&&Math.abs((bb.y+bb.height/2)-(pb.y+pb.height/2))<4,"俯視方形池塘、水桶在中央");
+ok((await p.locator(".pond-obj").first().getAttribute("style")).includes("rotate("),"獵物依移動方向旋轉");
 ok(await p.locator(".pond img[data-sprite=crab]").count()>0,"有 crab.webp 時使用圖片");
 ok(await p.locator(".pond img[data-sprite=boot]").count()===0&&(await p.textContent(".pond [data-sprite=boot]"))==="🥾","沒有 boot.webp 時退回表情符號");
 // 實際玩一隻：按住螃蟹 → 抓住 → 慢慢拖到水桶放開
@@ -43,8 +47,8 @@ let got=false;for(let attempt=0;attempt<4&&!got;attempt++){
  for(let i=0;i<10;i++){await p.waitForTimeout(60);const c=await p.evaluate(()=>{const e=document.querySelector(".pond-obj.carried");if(e)return null;const r=[...document.querySelectorAll(".pond-obj:not(.boot):not(.hidden)")][0].getBoundingClientRect();return{x:r.x+r.width/2,y:r.y+r.height/2}});if(!c)break;await p.mouse.move(c.x,c.y)}
  if(!await p.locator(".pond-obj.carried").count()){await p.mouse.up();continue}
  if(attempt===0)await p.screenshot({path:G+"3-play-crab-tongs-carry.png"});
- const from=await p.evaluate(()=>{const r=document.querySelector(".pond-obj.carried").getBoundingClientRect();return{x:r.x+r.width/2,y:r.y}});
- const to={x:box.x+box.width*.5,y:box.y+box.height*.09};
+ const from=await p.evaluate(()=>{const r=document.querySelector(".pond-obj.carried").getBoundingClientRect();return{x:r.x+r.width/2,y:r.y+r.height/2}});
+ const to={x:box.x+box.width*.5,y:box.y+box.height*.5};
  for(let i=1;i<=40;i++){await p.mouse.move(from.x+(to.x-from.x)*i/40,from.y+(to.y-from.y)*i/40);await p.waitForTimeout(60)}
  await p.waitForTimeout(300);await p.screenshot({path:G+"4-bucket-ready.png"});await p.mouse.up();await p.waitForTimeout(200);
  got=/1 \/ 3/.test(await p.textContent(".game-stats"));
@@ -59,7 +63,7 @@ let shot=false;
 for(let k=0;k<25&&!(await p.locator(".coupon-card, .sheet.game .game-rule").count());k++){
  const c=await spos();if(!c)break;await p.mouse.move(c.x,c.y);await p.mouse.down();
  for(let i=0;i<10&&!(await p.locator(".pond-obj.carried").count());i++){await p.waitForTimeout(50);const c2=await spos();if(c2)await p.mouse.move(c2.x,c2.y)}
- if(await p.locator(".pond-obj.carried").count()){const b2=await p.locator(".pond").boundingBox();for(let i=0;i<30&&await p.locator(".pond-obj.carried").count();i++){await p.mouse.move(b2.x+(i%2?b2.width*.9:b2.width*.1),b2.y+b2.height*.6,{steps:2});await p.waitForTimeout(40)}
+ if(await p.locator(".pond-obj.carried").count()){const b2=await p.locator(".pond").boundingBox();for(let i=0;i<30&&await p.locator(".pond-obj.carried").count();i++){await p.mouse.move(b2.x+(i%2?b2.width*.9:b2.width*.1),b2.y+b2.height*.88,{steps:2});await p.waitForTimeout(40)}
   if(!shot&&/❤️🤍🤍|❤️❤️🤍/.test(await p.textContent(".game-stats .lives").catch(()=>""))){await p.screenshot({path:G+"6-lost-life.png"});shot=true}}
  await p.mouse.up();
 }
