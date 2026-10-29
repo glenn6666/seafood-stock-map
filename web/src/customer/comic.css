@@ -76,3 +76,7 @@ body:has(.comic){background:radial-gradient(ellipse at top,#fff6dc,#f3e3bf 70%);
 .tool-cursor .ti.spr{width:34px;height:34px}
 @media (prefers-reduced-motion:reduce){.pond::before{animation:none}.tool-cursor{transition:none}}
 .game.reduce .pond::before{animation:none}
+/* 俯視工具圖：竿／網／夾子細長，依高度定尺寸，前端（勾子、網圈、夾口）對準手指位置 */
+.tool-cursor .ti.spr{width:auto;height:72px;aspect-ratio:1;max-width:none;transform:translateY(38%)}
+.tool-cursor.t-cage .ti.spr{height:56px;transform:none}
+.pond-obj .spr[data-sprite=shrimp]{width:48px;height:48px}

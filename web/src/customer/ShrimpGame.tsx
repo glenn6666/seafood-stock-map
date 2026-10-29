@@ -35,8 +35,8 @@ const stars=(f:number)=>f>=1.4?"★★★":f>=1?"★★☆":f>=.7?"★☆☆":"�
 // 俯視：水桶放在池中央的木台上；龍蝦躲在四塊石頭下
 const BUCKET={x:50,y:50,r:10};
 const ROCKS=[{x:18,y:22},{x:82,y:24},{x:20,y:80},{x:80,y:78}];
-// 素材面向（側視／3/4 圖）：蝦頭朝左、龍蝦頭朝上、螃蟹橫著走；依移動方向旋轉
-const FACE:Record<string,number>={shrimp:180,lobster:-90,crab:0};
+// 素材面向：蝦（俯視圖）與龍蝦頭朝上、螃蟹橫著走；依移動方向旋轉
+const FACE:Record<string,number>={shrimp:-90,lobster:-90,crab:0};
 const clampXY=(o:{x:number;y:number})=>{
  o.x=Math.max(5,Math.min(95,o.x));o.y=Math.max(5,Math.min(95,o.y));
  const dx=o.x-BUCKET.x,dy=o.y-BUCKET.y,d=Math.hypot(dx,dy),m=BUCKET.r+5;   // 不讓獵物鑽到水桶底下
@@ -152,7 +152,7 @@ export default function ShrimpGame({origin,onClose,onCoupon}:{origin:string;onCl
     {s.objs.map(o=>{const rot=o.boot?o.a/6:target==="crab"?((o.a+90)%180+180)%180-90:o.a-FACE[target];
      return <span key={o.id} className={"pond-obj"+(o.boot?" boot":"")+(o.hide>0?" hidden":"")+(o===s.carry?" carried":"")} style={{left:o.x+"%",top:o.y+"%",transform:`translate(-50%,-50%) rotate(${rot}deg)`}}>{o.boot?<Sprite name="boot" emoji="🥾"/>:<Sprite name={target} emoji={T.icon}/>}</span>})}
     {target==="lobster"&&ROCKS.map((r,i)=><span key={i} className="rock" style={{left:r.x+"%",top:r.y+"%"}}>🪨</span>)}
-    <span className={"tool-cursor"+(s.down?" down":"")} style={{left:s.tx+"%",top:s.ty+"%",width:K.r*2+"%"}}><span className="ring" style={{background:`conic-gradient(#ffd877 ${holdPct*360}deg,transparent 0)`}}/><Sprite className="ti" name={tool} emoji={K.icon}/></span>
+    <span className={"tool-cursor t-"+tool+(s.down?" down":"")} style={{left:s.tx+"%",top:s.ty+"%",width:K.r*2+"%"}}><span className="ring" style={{background:`conic-gradient(#ffd877 ${holdPct*360}deg,transparent 0)`}}/><Sprite className="ti" name={tool} emoji={K.icon}/></span>
     {s.carry&&<span className="risk" aria-label="掉落風險"><i style={{width:Math.min(100,s.risk*100)+"%"}}/></span>}
     {flash&&<span className="pond-flash" role="status">{flash}</span>}
    </div>
