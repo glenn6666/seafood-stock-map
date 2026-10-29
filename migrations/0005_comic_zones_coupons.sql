@@ -23,7 +23,9 @@ CREATE TABLE IF NOT EXISTS game_sessions (
   id_hash text PRIMARY KEY NOT NULL,       -- SHA-256(遊戲識別碼)
   ip_hash text NOT NULL,
   started_at integer NOT NULL,             -- epoch 秒（伺服器時間）
-  finished integer NOT NULL DEFAULT 0
+  finished integer NOT NULL DEFAULT 0,
+  target text NOT NULL DEFAULT 'shrimp',   -- shrimp / crab / lobster（決定過關隻數與時間）
+  tool text NOT NULL DEFAULT 'rod'         -- rod / net / tongs / cage（僅記錄，用於調整難度統計）
 );
 CREATE TABLE IF NOT EXISTS coupons (
   code_hash text PRIMARY KEY NOT NULL,     -- SHA-256(優惠碼)，不存明文

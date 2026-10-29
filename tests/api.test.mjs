@@ -178,17 +178,21 @@ await t("展示櫃自動分配：活泰國蝦→t4、常溫活魚→t7、乾貨�
 const COUPON_ID="coupon-test-1";
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 let coupon;
-await t("釣蝦遊戲：太快／未達標不發券；正常完成發券，同一局不能領第二次",async()=>{
+await t("釣蝦遊戲：目標／工具驗證、太快／未達標不發券；正常完成發券，同一局不能領第二次",async()=>{
  await api("/api/inventory",{method:"POST",token:admin,body:{id:COUPON_ID,zone:"unassigned",name:"帝王蟹腳",spec:"1kg",quantity:20,unit:"盒",minimum:0,batch:"",category:"冷凍海鮮",price:"600",tracked:true,photoId:"",fridgeId:"",positionNote:""}});
  await api(`/api/products/${COUPON_ID}`,{method:"PATCH",token:admin,body:{onSale:true}});
  const ip=freshIp();
- let g=(await api("/api/public/game/start",{method:"POST",ip})).data;assert.ok(g.gameId&&g.seconds===35&&g.target===4);
- assert.equal((await api("/api/public/game/finish",{method:"POST",ip,body:{gameId:g.gameId,caught:4}})).status,400,"6 秒內完成視為作弊");
+ let g=(await api("/api/public/game/start",{method:"POST",ip})).data;assert.ok(g.gameId&&g.seconds===40&&g.target===4&&g.kind==="shrimp"&&g.tool==="rod","預設：蝦＋釣竿");
+ assert.equal((await api("/api/public/game/start",{method:"POST",ip,body:{target:"whale",tool:"rod"}})).status,400,"未知目標");
+ assert.equal((await api("/api/public/game/start",{method:"POST",ip,body:{target:"crab",tool:"bomb"}})).status,400,"未知工具");
+ const gl=(await api("/api/public/game/start",{method:"POST",ip,body:{target:"lobster",tool:"cage"}})).data;assert.ok(gl.seconds===45&&gl.target===2,"龍蝦 45 秒 2 隻");
+ assert.equal((await api("/api/public/game/finish",{method:"POST",ip,body:{gameId:g.gameId,caught:4}})).status,400,"8 秒內完成視為作弊");
  assert.equal((await api("/api/public/game/finish",{method:"POST",ip:freshIp(),body:{gameId:g.gameId,caught:4}})).status,404,"其他 IP 不能代領");
- const g2=(await api("/api/public/game/start",{method:"POST",ip})).data;
- await sleep(6500);
- assert.deepEqual((await api("/api/public/game/finish",{method:"POST",ip,body:{gameId:g.gameId,caught:3}})).data,{won:false},"未達 4 隻不發券");
- const rs=await Promise.all([1,2,3].map(()=>api("/api/public/game/finish",{method:"POST",ip,body:{gameId:g2.gameId,caught:4}})));
+ const g2=(await api("/api/public/game/start",{method:"POST",ip,body:{target:"crab",tool:"tongs"}})).data;assert.ok(g2.seconds===40&&g2.target===3,"螃蟹 40 秒 3 隻");
+ await sleep(8500);
+ assert.deepEqual((await api("/api/public/game/finish",{method:"POST",ip,body:{gameId:g.gameId,caught:3}})).data,{won:false},"蝦未達 4 隻不發券");
+ assert.deepEqual((await api("/api/public/game/finish",{method:"POST",ip,body:{gameId:gl.gameId,caught:1}})).data,{won:false},"龍蝦未達 2 隻不發券");
+ const rs=await Promise.all([1,2,3].map(()=>api("/api/public/game/finish",{method:"POST",ip,body:{gameId:g2.gameId,caught:3}})));
  const wins=rs.filter(r=>r.status===200&&r.data.won);assert.equal(wins.length,1,"同一局同時送出只發一張");
  coupon=wins[0].data.coupon;assert.match(coupon.code,/^SHRIMP-/);assert.equal(coupon.discount,5);assert.equal(coupon.minTotal,1000);
  assert.ok(new Date(coupon.expiresAt)>Date.now()+23*3600e3);

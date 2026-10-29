@@ -183,13 +183,20 @@ async function rateLimit(env:Env,request:Request,bucket:keyof typeof LIMITS){
 // ---------- 釣蝦遊戲與優惠券 ----------
 // 規則：35 秒內釣到 4 隻 → 滿 NT$1,000 折 NT$5；每筆訂單限用一張、不累加；券 24 小時內有效、只能用一次。
 // 遊戲在前端進行，伺服器只能做合理性檢查（開局時間、最短／最長時間、單局只能領一次、IP 限額），無法完全防止腳本作弊；折扣金額固定且小，風險有限。
-const GAME={seconds:35,target:4,minSec:6,graceSec:15},COUPON={discount:5,minTotal:1000,ttlHours:24};
-async function gameStart(env:Env,request:Request){
+// 釣蝦場：可選目標（決定過關隻數／時間／最短合理時間）與工具（只影響前端手感，伺服器僅驗證並記錄）
+const TARGETS={shrimp:{goal:4,seconds:40,minSec:8},crab:{goal:3,seconds:40,minSec:8},lobster:{goal:2,seconds:45,minSec:10}} as const;
+const TOOLS=["rod","net","tongs","cage"] as const;
+type Target=keyof typeof TARGETS;
+const GAME={seconds:TARGETS.shrimp.seconds,target:TARGETS.shrimp.goal,graceSec:15},COUPON={discount:5,minTotal:1000,ttlHours:24};
+async function gameStart(env:Env,request:Request,b:any){
+ const target=(b?.target??"shrimp") as Target,tool=b?.tool??"rod";
+ if(!(target in TARGETS)||!(TOOLS as readonly string[]).includes(tool))throw new HttpError(400,"遊戲資料不正確");
  await rateLimit(env,request,"game");
  const id=randomToken(24),now=Math.floor(Date.now()/1000);
- await env.DB.prepare("INSERT INTO game_sessions (id_hash,ip_hash,started_at) VALUES (?,?,?)").bind(await sha256(id),await ipHash(env,request),now).run();
+ await env.DB.prepare("INSERT INTO game_sessions (id_hash,ip_hash,started_at,target,tool) VALUES (?,?,?,?,?)").bind(await sha256(id),await ipHash(env,request),now,target,tool).run();
  if(Math.random()<0.02)await env.DB.prepare("DELETE FROM game_sessions WHERE started_at<?").bind(now-86400).run();
- return {gameId:id,seconds:GAME.seconds,target:GAME.target};
+ const t=TARGETS[target];
+ return {gameId:id,seconds:t.seconds,target:t.goal,kind:target,tool};
 }
 async function gameFinish(env:Env,request:Request,b:any){
  if(typeof b.gameId!=="string"||!/^[A-Za-z0-9_-]{20,64}$/.test(b.gameId)||!Number.isSafeInteger(b.caught)||b.caught<0||b.caught>50)throw new HttpError(400,"遊戲資料不正確");
@@ -197,10 +204,10 @@ async function gameFinish(env:Env,request:Request,b:any){
  const g=await env.DB.prepare("SELECT * FROM game_sessions WHERE id_hash=?").bind(idh).first<any>();
  if(!g||g.ip_hash!==ip)throw new HttpError(404,"找不到這局遊戲，請重新開始");
  if(g.finished)throw new HttpError(409,"這局已經結束了，請再玩一局");
- const el=now-g.started_at;
- if(el>GAME.seconds+GAME.graceSec){await env.DB.prepare("UPDATE game_sessions SET finished=1 WHERE id_hash=?").bind(idh).run();throw new HttpError(409,"這局已逾時，請再玩一局")}
- if(b.caught<GAME.target)return {won:false};
- if(el<GAME.minSec)throw new HttpError(400,"釣得太快了，請正常遊玩");
+ const el=now-g.started_at,T=TARGETS[(g.target in TARGETS?g.target:"shrimp") as Target];
+ if(el>T.seconds+GAME.graceSec){await env.DB.prepare("UPDATE game_sessions SET finished=1 WHERE id_hash=?").bind(idh).run();throw new HttpError(409,"這局已逾時，請再玩一局")}
+ if(b.caught<T.goal)return {won:false};
+ if(el<T.minSec)throw new HttpError(400,"釣得太快了，請正常遊玩");
  // 先把這局標記為結束（只有一個請求能成功），再檢查領券限額
  const r=await env.DB.prepare("UPDATE game_sessions SET finished=1 WHERE id_hash=? AND finished=0").bind(idh).run();
  if(!r.meta.changes)throw new HttpError(409,"這局已經結束了，請再玩一局");
@@ -362,14 +369,14 @@ async function route(request:Request,env:Env,url:URL):Promise<unknown>{
   const units=await getUnits(env);
   const {results}=await env.DB.prepare("SELECT i.id,i.name,i.spec,i.unit,i.category,i.price,i.quantity,i.daily_limit,i.per_order_max,i.display_zone,COALESCE(s.qty,0) AS sold FROM inventory i LEFT JOIN daily_sales s ON s.item_id=i.id AND s.sale_date=? WHERE i.on_sale=1 ORDER BY i.category,i.name").bind(d).all<any>();
   return {items:results.map(r=>{let a=Math.max(0,r.quantity);if(r.daily_limit>0)a=Math.min(a,Math.max(0,r.daily_limit-r.sold));if(r.per_order_max>0)a=Math.min(a,r.per_order_max);const u=autoUnit(units,r);return {id:r.id,name:r.name,spec:r.spec,unit:r.unit,category:r.category,price:r.price,available:a,displayUnit:u?pubUnit(u):null}}),
-   units:units.filter(u=>u.active).map(pubUnit),game:{seconds:GAME.seconds,target:GAME.target,discount:COUPON.discount,minTotal:COUPON.minTotal}};
+   units:units.filter(u=>u.active).map(pubUnit),game:{seconds:GAME.seconds,target:GAME.target,targets:TARGETS,tools:TOOLS,discount:COUPON.discount,minTotal:COUPON.minTotal}};
  }
  if(p==="/api/public/orders"&&m==="POST"){
   await rateLimit(env,request,"order");
   const {order}=await createOrder(env,await readJson(request),"customer","顧客");
   return {orderNo:order.order_no,lookupToken:order.lookup_token,status:order.status,total:order.total,discount:order.discount??0};
  }
- if(p==="/api/public/game/start"&&m==="POST")return gameStart(env,request);
+ if(p==="/api/public/game/start"&&m==="POST")return gameStart(env,request,await readJson(request).catch(()=>({})));
  if(p==="/api/public/game/finish"&&m==="POST")return gameFinish(env,request,await readJson(request));
  if(p==="/api/public/coupons/check"&&m==="POST"){await rateLimit(env,request,"lookup");return couponCheck(env,await readJson(request))}
  const lk=p.match(/^\/api\/public\/orders\/([A-Za-z0-9_-]{20,64})$/);

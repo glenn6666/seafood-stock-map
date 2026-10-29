@@ -20,13 +20,35 @@ let pos=await p.evaluate(()=>window.__shop.projectItem("demo-ice-1"));await p.mo
 await p.waitForSelector(".sheet",{timeout:5000});ok((await p.textContent(".sheet")).includes("冰鮮白鯧"),"無門展示櫃可直接點商品");await p.click(".sheet-close");
 // 遊戲
 await p.click(".game-banner");await p.waitForSelector(".sheet.game");ok((await p.textContent(".sheet.game")).includes("滿 NT$1,000 折 NT$5"),"遊戲規則顯示獎勵");
-await p.screenshot({path:S+"5-game-intro.png"});
-await p.click(".sheet.game .primary");await p.waitForSelector(".pond");await p.waitForTimeout(1200);
-await p.click(".sheet.game .primary");await p.waitForTimeout(300);await p.screenshot({path:S+"6-game-play.png"});
-ok(/秒/.test(await p.textContent(".game-stats")),"遊戲開局（伺服器發局）");
+const G="/workspace/screens-game2/";(await import("node:fs")).mkdirSync(G,{recursive:true});
+await p.screenshot({path:S+"5-game-intro.png"});await p.screenshot({path:G+"1-intro-shrimp-rod.png"});
+ok((await p.locator(".pick-row").first().locator(".pick").allTextContents()).join("|").match(/蝦.*螃蟹.*龍蝦/),"三種目標可選");
+await p.click(".pick:has-text('龍蝦')");await p.click(".pick:has-text('蝦籠')");
+ok((await p.locator(".pick.on:has-text('蝦籠') .stars").textContent())==="★★★","蝦籠最適合龍蝦");
+ok((await p.locator(".pick:has-text('網子') .stars").textContent())==="☆☆☆","網子不適合龍蝦");
+await p.screenshot({path:G+"2-intro-lobster-cage.png"});
+await p.click(".pick:has-text('螃蟹')");await p.click(".pick:has-text('夾子')");ok((await p.textContent(".sheet.game .primary")).includes("開始抓螃蟹"),"選螃蟹＋夾子");
+await p.click(".sheet.game .primary");await p.waitForSelector(".pond");await p.waitForTimeout(800);
+ok(/0 \/ 3/.test(await p.textContent(".game-stats")),"伺服器發局：螃蟹 3 隻");
+// 實際玩一隻：按住螃蟹 → 抓住 → 慢慢拖到水桶放開
+let got=false;for(let attempt=0;attempt<4&&!got;attempt++){
+ const box=await p.locator(".pond").boundingBox();
+ const crab=await p.evaluate(()=>{const e=[...document.querySelectorAll(".pond-obj:not(.boot):not(.hidden)")][0];const r=e.getBoundingClientRect();return{x:r.x+r.width/2,y:r.y+r.height/2}});
+ await p.mouse.move(crab.x,crab.y);await p.mouse.down();
+ for(let i=0;i<10;i++){await p.waitForTimeout(60);const c=await p.evaluate(()=>{const e=document.querySelector(".pond-obj.carried");if(e)return null;const r=[...document.querySelectorAll(".pond-obj:not(.boot):not(.hidden)")][0].getBoundingClientRect();return{x:r.x+r.width/2,y:r.y+r.height/2}});if(!c)break;await p.mouse.move(c.x,c.y)}
+ if(!await p.locator(".pond-obj.carried").count()){await p.mouse.up();continue}
+ if(attempt===0)await p.screenshot({path:G+"3-play-crab-tongs-carry.png"});
+ const from=await p.evaluate(()=>{const r=document.querySelector(".pond-obj.carried").getBoundingClientRect();return{x:r.x+r.width/2,y:r.y}});
+ const to={x:box.x+box.width*.5,y:box.y+box.height*.09};
+ for(let i=1;i<=40;i++){await p.mouse.move(from.x+(to.x-from.x)*i/40,from.y+(to.y-from.y)*i/40);await p.waitForTimeout(60)}
+ await p.waitForTimeout(300);await p.screenshot({path:G+"4-bucket-ready.png"});await p.mouse.up();await p.waitForTimeout(200);
+ got=/1 \/ 3/.test(await p.textContent(".game-stats"));
+}
+ok(got,"真的抓到一隻螃蟹放進水桶");
+await p.screenshot({path:S+"6-game-play.png"});await p.screenshot({path:G+"5-after-catch.png"});
 await p.goto(B);
 // 經 API 完成一局取得券（同 IP）
-const g=(await j("/api/public/game/start",{method:"POST"})).data;await new Promise(r=>setTimeout(r,6500));
+const g=(await j("/api/public/game/start",{method:"POST"})).data;await new Promise(r=>setTimeout(r,8500));
 const f=await j("/api/public/game/finish",{method:"POST",body:{gameId:g.gameId,caught:4}});ok(f.data.won,"API 完成一局取得優惠券");
 await p.evaluate(c=>localStorage.setItem("shrimp-coupon",JSON.stringify(c)),f.data.coupon);
 await p.evaluate(()=>localStorage.setItem("shop-view","list"));await p.goto(B);await p.waitForSelector(".menu .item");
