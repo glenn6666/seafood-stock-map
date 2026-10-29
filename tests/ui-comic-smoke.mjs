@@ -33,7 +33,7 @@ await p.click(".pick:has-text('螃蟹')");await p.click(".pick:has-text('夾子'
 await p.click(".sheet.game .primary");await p.waitForSelector(".pond");await p.waitForTimeout(800);
 ok(/0 \/ 3/.test(await p.textContent(".game-stats")),"伺服器發局：螃蟹 3 隻");
 ok((await p.textContent(".game-stats .lives"))==="❤️❤️❤️","HUD 顯示 3 顆愛心");
-ok(!(await p.textContent("body")).includes("夜市"),"畫面沒有「夜市」字樣");
+ok(!(await p.textContent("body")).includes("夜市"),"畫面沒有「夜市」字樣");ok((await p.textContent(".sheet.game h2")).includes("樂湉釣蝦場"),"遊戲名稱為樂湉釣蝦場");await p.screenshot({path:G+"10-renamed.png"});
 const pb=await p.locator(".pond").boundingBox(),bb=await p.locator(".pond .bucket").boundingBox();
 ok(Math.abs(pb.width-pb.height)<4&&Math.abs((bb.x+bb.width/2)-(pb.x+pb.width/2))<4&&Math.abs((bb.y+bb.height/2)-(pb.y+pb.height/2))<4,"俯視方形池塘、水桶在中央");
 ok((await p.locator(".pond-obj").first().getAttribute("style")).includes("rotate("),"獵物依移動方向旋轉");

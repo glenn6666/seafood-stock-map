@@ -1,4 +1,4 @@
-// 安星釣蝦場（免費遊玩，俯視池塘）：先選目標（蝦／螃蟹／龍蝦）與工具（釣竿／網子／夾子／蝦籠），
+// 樂湉釣蝦場（免費遊玩，俯視池塘）：先選目標（蝦／螃蟹／龍蝦）與工具（釣竿／網子／夾子／蝦籠），
 // 按住水面放下工具、停在獵物身上一會兒抓住，按著「慢慢」拖到水桶上方放開即入桶；拖太快或獵物掙扎會掉回水裡。
 // 達標 → 伺服器發「滿 NT$1,000 折 NT$5」優惠券。開局與結算都經過 Worker；前端不產生優惠碼。
 import {useEffect,useRef,useState} from "react";
@@ -130,8 +130,8 @@ export default function ShrimpGame({origin,onClose,onCoupon}:{origin:string;onCl
  const pond=useRef<HTMLDivElement>(null);
  const at=(e:React.PointerEvent)=>{const r=pond.current!.getBoundingClientRect();st.current.ptr={x:Math.max(0,Math.min(100,(e.clientX-r.left)/r.width*100)),y:Math.max(0,Math.min(100,(e.clientY-r.top)/r.height*100))}};
  const s=st.current,holdPct=s.hold?Math.min(1,(performance.now()-s.hold.since)/(K.catchMs/K.fit[target])):0;
- return <div className="sheet-backdrop" onClick={phase==="play"?undefined:onClose}><div className={"sheet game"+(reduce?" reduce":"")} role="dialog" aria-label="安星釣蝦場" onClick={e=>e.stopPropagation()}>
-  <div className="sheet-grab"/><h2>🦐 安星釣蝦場</h2>
+ return <div className="sheet-backdrop" onClick={phase==="play"?undefined:onClose}><div className={"sheet game"+(reduce?" reduce":"")} role="dialog" aria-label="樂湉釣蝦場" onClick={e=>e.stopPropagation()}>
+  <div className="sheet-grab"/><h2>🦐 樂湉釣蝦場</h2>
   {phase==="intro"&&<>
    <p className="game-step">① 選要抓什麼</p>
    <div className="pick-row" role="radiogroup" aria-label="目標">{(Object.keys(TARGETS) as TargetId[]).map(id=><button key={id} role="radio" aria-checked={target===id} className={"pick"+(target===id?" on":"")} onClick={()=>setTarget(id)}><Sprite className="pick-icon" name={id} emoji={TARGETS[id].icon}/><b>{TARGETS[id].name}</b><small>{TARGETS[id].seconds} 秒抓 {TARGETS[id].goal} 隻</small></button>)}</div>

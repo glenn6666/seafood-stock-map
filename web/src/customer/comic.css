@@ -31,7 +31,7 @@ body:has(.comic){background:radial-gradient(ellipse at top,#fff6dc,#f3e3bf 70%);
 .pond-obj{position:absolute;font-size:26px;pointer-events:none}.pond-obj.boot{font-size:24px}
 .pond-flash{position:absolute;left:50%;top:8px;transform:translateX(-50%);background:#102735dd;color:#ffe6b1;padding:4px 12px;border-radius:999px;font-size:14px;white-space:nowrap}
 .coupon-card{display:flex;flex-direction:column;gap:4px;padding:14px;margin:8px 0;border:2px dashed #c89543;border-radius:12px;background:#fff6dc;text-align:center}.coupon-card b{font-family:"Noto Serif TC",serif;font-size:20px;color:#9c6c31}.coupon-card span{font-size:22px;font-weight:800;color:#163b4d}.coupon-card small{color:#6b5a43}
-/* 安星釣蝦場 v2 */
+/* 樂湉釣蝦場 v2 */
 .pond{height:260px}.pond.t-crab,.pond.t-lobster{background:linear-gradient(#4d999f 0,#1d5a6e 70%,#8a7a55 88%,#6f5f3e 100%)}
 .pond .line{position:absolute;top:0;width:2px;background:#f6e7be;transform:translateX(-50%);pointer-events:none}
 .bucket{position:absolute;font-size:34px;transform:translate(-50%,-50%);pointer-events:none;filter:drop-shadow(0 2px 0 #10273599);border-radius:50%;padding:4px}
