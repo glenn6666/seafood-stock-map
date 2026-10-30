@@ -139,15 +139,20 @@ async function updateUnit(env:Env,id:string,b:any){
 }
 
 // ---------- 商品販售設定 ----------
+// 與 0006 遷移相同規則：去掉逗號、空白、NT$、$、結尾「元」後必須是純整數，否則 NULL（待管理員確認）
+function parseCost(t:string):number|null{const c=t.trim().replace(/[,\s]/g,"").replace(/^NT\$|^\$/,"").replace(/元$/,"");return /^\d{1,9}$/.test(c)?parseInt(c,10):null}
 async function listProducts(env:Env,actor:Actor){
- const {results}=await env.DB.prepare("SELECT id,zone,name,spec,unit,category,price,cost,quantity,on_sale,daily_limit,per_order_max,display_zone FROM inventory ORDER BY zone,name").all<any>();
+ const {results}=await env.DB.prepare("SELECT id,zone,name,spec,unit,category,price,cost,cost_num,quantity,on_sale,daily_limit,per_order_max,display_zone FROM inventory ORDER BY zone,name").all<any>();
  const units=await getUnits(env);
- return {items:results.map(r=>({id:r.id,zone:r.zone,name:r.name,spec:r.spec,unit:r.unit,category:r.category,price:r.price,quantity:r.quantity,onSale:!!r.on_sale,dailyLimit:r.daily_limit,perOrderMax:r.per_order_max,displayZone:r.display_zone,displayUnitId:autoUnit(units,r)?.id??null,...(actor.role==="admin"?{cost:r.cost}:{})})),units:units.map(u=>({...u,active:!!u.active}))};
+ return {items:results.map(r=>({id:r.id,zone:r.zone,name:r.name,spec:r.spec,unit:r.unit,category:r.category,price:r.price,quantity:r.quantity,onSale:!!r.on_sale,dailyLimit:r.daily_limit,perOrderMax:r.per_order_max,displayZone:r.display_zone,displayUnitId:autoUnit(units,r)?.id??null,...(actor.role==="admin"?{cost:r.cost,costNum:r.cost_num,costUnparsed:r.cost_num===null&&String(r.cost??"").trim()!==""}:{})})),units:units.map(u=>({...u,active:!!u.active}))};
 }
 async function updateProduct(env:Env,id:string,b:any){
  const sets:string[]=[],binds:unknown[]=[];
  if(b.price!==undefined){if(typeof b.price!=="string"||b.price.length>30)throw new HttpError(400,"售價格式不正確");sets.push("price=?");binds.push(b.price)}
  if(b.cost!==undefined){if(typeof b.cost!=="string"||b.cost.length>30)throw new HttpError(400,"成本格式不正確");sets.push("cost=?");binds.push(b.cost)}
+ if(b.cost!==undefined&&b.costNum===undefined){sets.push("cost_num=?");binds.push(parseCost(b.cost))} // 舊版前端只送文字成本：能明確判讀才轉數字
+ if(b.costNum!==undefined){if(b.costNum!==null&&(!Number.isSafeInteger(b.costNum)||b.costNum<0||b.costNum>100000000))throw new HttpError(400,"成本需為 0 以上整數");sets.push("cost_num=?");binds.push(b.costNum);
+  if(b.cost===undefined){sets.push("cost=?");binds.push(b.costNum===null?"":String(b.costNum))}}
  if(b.onSale!==undefined){if(typeof b.onSale!=="boolean")throw new HttpError(400,"上架設定不正確");sets.push("on_sale=?");binds.push(b.onSale?1:0)}
  for(const [k,c] of [["dailyLimit","daily_limit"],["perOrderMax","per_order_max"]] as const)if(b[k]!==undefined){if(!Number.isSafeInteger(b[k])||b[k]<0||b[k]>100000)throw new HttpError(400,"限量需為 0 以上整數");sets.push(`${c}=?`);binds.push(b[k])}
  if(b.displayZone!==undefined){
@@ -229,6 +234,55 @@ async function couponCheck(env:Env,b:any){
  return {valid:true,discount:c.discount,minTotal:c.min_total,expiresAt:c.expires_at};
 }
 
+// ---------- 記帳匯出（對應 Google 試算表「每日收支紀錄」欄位順序） ----------
+// 每天一列「網站收入」（已扣優惠券的實收），另一列「進貨支出 網站訂單成本」；已取消訂單不計。公式欄位留空，交由試算表第一列函數延伸。
+const LEDGER_COLS=["項次","收支(每日)","日期","收支","會計項目","內容","備註 ","數量","單價","員工姓名","小計","稅金","總計","金額計算","客戶/廠商","記錄人","公司名稱","聯絡人","統編","付款方式","郵局/銀行","年月 ","年月日 ","入帳日","金流備註","年月","收支","員工薪資"];
+const DATE_RE=/^\d{4}-\d{2}-\d{2}$/;
+function ledgerRow(f:{cat:string;content:string;date:string;note:string;amount:number;recorder:string;party:string}){
+ const r=Array(LEDGER_COLS.length).fill("");
+ r[1]=`${f.cat} ${f.content}`;r[2]=f.date.replace(/-/g,"");r[4]=f.cat;r[5]=f.content;r[6]=f.note;r[7]="1";r[8]=String(f.amount);r[14]=f.party;r[15]=f.recorder;
+ return r;
+}
+async function bookkeepingExport(env:Env,actor:Actor,url:URL){
+ const from=url.searchParams.get("from")??"",to=url.searchParams.get("to")??"";
+ if(!DATE_RE.test(from)||!DATE_RE.test(to)||from>to)throw new HttpError(400,"請選擇正確的日期區間");
+ if((Date.parse(to)-Date.parse(from))/864e5>92)throw new HttpError(400,"一次最多匯出 93 天");
+ const {results:orders}=await env.DB.prepare("SELECT id,sale_date,total,COALESCE(subtotal,total) AS subtotal,discount,status FROM orders WHERE sale_date BETWEEN ? AND ? AND status<>'已取消' ORDER BY sale_date").bind(from,to).all<any>();
+ const {results:lines}=await env.DB.prepare(`SELECT oi.order_id,oi.qty,oi.unit_cost,i.cost_num AS cur_cost,oi.name FROM order_items oi JOIN orders o ON o.id=oi.order_id LEFT JOIN inventory i ON i.id=oi.item_id
+  WHERE o.sale_date BETWEEN ? AND ? AND o.status<>'已取消'`).bind(from,to).all<any>();
+ const recorder=actor.kind==="user"?actor.username:"管理密碼";
+ const byDay=new Map<string,any>();
+ for(const o of orders){const d=byDay.get(o.sale_date)??{date:o.sale_date,orders:0,pending:0,subtotal:0,discount:0,couponOrders:0,total:0,cost:0,costEstimatedLines:0,costMissingLines:0,missingNames:[] as string[]};
+  d.orders++;if(o.status!=="已完成")d.pending++;d.subtotal+=o.subtotal;d.discount+=o.discount;if(o.discount>0)d.couponOrders++;d.total+=o.total;byDay.set(o.sale_date,d)}
+ const dayOf=new Map(orders.map(o=>[o.id,o.sale_date]));
+ for(const l of lines){const d=byDay.get(dayOf.get(l.order_id));if(!d)continue;
+  if(l.unit_cost!==null&&l.unit_cost!==undefined)d.cost+=l.unit_cost*l.qty;
+  else if(l.cur_cost!==null&&l.cur_cost!==undefined){d.cost+=l.cur_cost*l.qty;d.costEstimatedLines++}
+  else{d.costMissingLines++;if(!d.missingNames.includes(l.name))d.missingNames.push(l.name)}}
+ const days=[...byDay.values()].sort((a,b)=>a.date<b.date?-1:1);
+ const rows:string[][]=[];const tag=`網站匯出 ${from}~${to}`;
+ for(const d of days){
+  const parts=[`網站訂單 ${d.orders} 筆`];
+  if(d.discount>0)parts.push(`優惠券 ${d.couponOrders} 筆折 NT$${d.discount}（原價 NT$${d.subtotal}）`);
+  if(d.pending)parts.push(`其中 ${d.pending} 筆尚未完成`);
+  rows.push(ledgerRow({cat:"網站收入",content:"網站訂單",date:d.date,note:`${parts.join("；")}；${tag}`,amount:d.total,recorder,party:"網站顧客"}));
+  const cn=[`網站訂單商品成本（${d.orders} 筆訂單）`];
+  if(d.costEstimatedLines)cn.push(`${d.costEstimatedLines} 項以目前成本估算`);
+  if(d.costMissingLines)cn.push(`${d.costMissingLines} 項缺成本未計`);
+  if(d.cost>0||d.costMissingLines)rows.push(ledgerRow({cat:"進貨支出",content:"網站訂單成本",party:"網站訂單成本",date:d.date,note:`${cn.join("；")}；${tag}`,amount:d.cost,recorder}));
+ }
+ const {results:prev}=await env.DB.prepare("SELECT from_date,to_date,days,exported_by,exported_at FROM export_log WHERE kind='bookkeeping' AND from_date<=? AND to_date>=? ORDER BY exported_at DESC LIMIT 50").bind(to,from).all<any>();
+ const dset=new Set(days.map(d=>d.date));
+ const already=[...new Set(prev.flatMap(p=>String(p.days).split(",").filter(x=>dset.has(x))))].sort();
+ return {from,to,columns:LEDGER_COLS,days,rows,alreadyExportedDays:already,previousExports:prev.map(p=>({from:p.from_date,to:p.to_date,days:p.days?p.days.split(","):[],by:p.exported_by,at:p.exported_at}))};
+}
+async function markExported(env:Env,actor:Actor,b:any){
+ if(typeof b.from!=="string"||typeof b.to!=="string"||!DATE_RE.test(b.from)||!DATE_RE.test(b.to)||b.from>b.to)throw new HttpError(400,"日期區間不正確");
+ const days=Array.isArray(b.days)?b.days.filter((x:unknown)=>typeof x==="string"&&DATE_RE.test(x)&&x>=b.from&&x<=b.to).slice(0,100):[];
+ await env.DB.prepare("INSERT INTO export_log (id,kind,from_date,to_date,days,exported_by,exported_at) VALUES (?,?,?,?,?,?,?)").bind(crypto.randomUUID(),"bookkeeping",b.from,b.to,days.join(","),actor.kind==="user"?actor.username:"管理密碼",nowIso()).run();
+ return {ok:true};
+}
+
 // ---------- 訂單 ----------
 type OrderLine={id:string;qty:number};
 function parseLines(raw:unknown):OrderLine[]{
@@ -254,7 +308,7 @@ async function createOrder(env:Env,b:any,source:"admin"|"customer",createdBy:str
  if(phone.length>20||note.length>300)throw new HttpError(400,"電話或備註過長");
  const lines=parseLines(b.items);
  const ph=lines.map(()=>"?").join(",");
- const {results:prods}=await env.DB.prepare(`SELECT id,name,spec,unit,price,quantity,on_sale,daily_limit,per_order_max FROM inventory WHERE id IN (${ph})`).bind(...lines.map(l=>l.id)).all<any>();
+ const {results:prods}=await env.DB.prepare(`SELECT id,name,spec,unit,price,cost_num,quantity,on_sale,daily_limit,per_order_max FROM inventory WHERE id IN (${ph})`).bind(...lines.map(l=>l.id)).all<any>();
  const byId=new Map(prods.map(p=>[p.id,p]));
  const saleDate=taipeiDate();
  for(const l of lines){
@@ -289,7 +343,7 @@ async function createOrder(env:Env,b:any,source:"admin"|"customer",createdBy:str
    guard("changes()=1"),
    env.DB.prepare("INSERT INTO daily_sales (item_id,sale_date,qty) VALUES (?,?,?) ON CONFLICT(item_id,sale_date) DO UPDATE SET qty=qty+excluded.qty").bind(l.id,saleDate,l.qty),
    guard("(SELECT daily_limit FROM inventory WHERE id=?)=0 OR (SELECT qty FROM daily_sales WHERE item_id=? AND sale_date=?)<=(SELECT daily_limit FROM inventory WHERE id=?)",l.id,l.id,saleDate,l.id),
-   env.DB.prepare("INSERT INTO order_items (order_id,item_id,name,spec,unit,qty,unit_price) VALUES (?,?,?,?,?,?,?)").bind(id,l.id,p.name,p.spec,p.unit,l.qty,toInt(p.price)),
+   env.DB.prepare("INSERT INTO order_items (order_id,item_id,name,spec,unit,qty,unit_price,unit_cost) VALUES (?,?,?,?,?,?,?,?)").bind(id,l.id,p.name,p.spec,p.unit,l.qty,toInt(p.price),p.cost_num??null),
   );
  }
  try{await env.DB.batch(stmts)}
@@ -444,6 +498,8 @@ async function route(request:Request,env:Env,url:URL):Promise<unknown>{
   if(om[2]==="cancel")return cancelOrder(env,om[1]);
   return setStatus(env,om[1],(await readJson(request)).status);
  }
+ if(p==="/api/export/bookkeeping"&&m==="GET")return bookkeepingExport(env,requireRole(actor,"admin"),url);
+ if(p==="/api/export/bookkeeping/mark"&&m==="POST"){const a=requireRole(actor,"admin");return markExported(env,a,await readJson(request))}
  if(p==="/api/users"&&m==="GET"){requireRole(actor,"admin");return listUsers(env)}
  if(p==="/api/users"&&m==="POST"){const a=requireRole(actor,"admin");if(a.kind==="legacy"&&await userCount(env)===0)throw new HttpError(403,"請先建立第一位管理員");return {user:await insertUser(env,await readJson(request),false)}}
  const um=p.match(/^\/api\/users\/([0-9a-f-]{36})$/);
