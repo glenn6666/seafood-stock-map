@@ -3,7 +3,7 @@ import {inventoryFetch} from "../lib/pages-api";
 import {errorText,newKey,STATUSES} from "../lib/api-config";
 import type {Me} from "../main";
 type Line={id?:string;name:string;spec:string;unit:string;qty:number;unitPrice:number};
-type O={id:string;orderNo:string;status:string;customerName:string;phone:string;note:string;source:string;createdBy:string;total:number;createdAt:string;lookupToken:string;items:Line[]};
+type O={id:string;orderNo:string;status:string;customerName:string;phone:string;note:string;source:string;createdBy:string;total:number;subtotal?:number;discount?:number;createdAt:string;lookupToken:string;items:Line[]};
 type P={id:string;name:string;spec:string;unit:string;price:string;quantity:number};
 const J={"Content-Type":"application/json"};
 const NEXT:Record<string,string>={"待處理":"備貨中","備貨中":"可取貨","可取貨":"已完成"};
@@ -24,7 +24,7 @@ export default function Orders({me:_me}:{me:Me}){
    <div className="row"><strong>{o.orderNo}</strong><span className={"tag status-"+o.status}>{o.status}</span><small>{o.source==="customer"?"顧客下單":"後台建立"}・{fmt(o.createdAt)}</small></div>
    <div>{o.customerName}{o.phone&&<> ・ <a href={`tel:${o.phone}`}>{o.phone}</a></>}</div>
    <ul className="order-lines">{o.items.map((l,i)=><li key={i}>{l.name} {l.spec} × {l.qty} {l.unit}<span>${l.unitPrice*l.qty}</span></li>)}</ul>
-   <div className="row"><strong>合計 ${o.total}</strong>{o.note&&<small>備註：{o.note}</small>}</div>
+   {(o.discount??0)>0&&<div className="row"><small>小計 ${o.subtotal}・<span className="tag">🎟 釣蝦優惠券 −${o.discount}</span></small></div>}<div className="row"><strong>合計 ${o.total}</strong>{o.note&&<small>備註：{o.note}</small>}</div>
    <div className="actions">
     {NEXT[o.status]&&<button className="primary" onClick={()=>act(o,"status",{status:NEXT[o.status]})}>改為「{NEXT[o.status]}」</button>}
     {!["已完成","已取消"].includes(o.status)&&<button className="danger" onClick={()=>confirm(`取消訂單 ${o.orderNo}？商品數量會補回庫存。`)&&act(o,"cancel",{},"已取消，庫存已補回")}>取消訂單</button>}
