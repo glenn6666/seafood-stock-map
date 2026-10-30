@@ -98,10 +98,41 @@ async function postInventory(env:Env,actor:Actor,i:any){
  return {item:{...item,photoId,fridgeId,positionNote:note}};
 }
 
+// ---------- 顧客端展示櫃（與實際儲位分開） ----------
+type Unit={id:string;name:string;type:"freezer"|"tank";sort:number;active:number};
+async function getUnits(env:Env){return (await env.DB.prepare("SELECT id,name,type,sort,active FROM display_units ORDER BY sort,id").all<Unit>()).results}
+const LIVE_RE=/活|鮮活|live/i,MEAT_RE=/肉|牛|豬|羊|雞|鴨/,SEA_RE=/海鮮|魚|蝦|蟹|貝|蛤|蚵|螺|鮑|魷|章|透抽|干貝|鮭|鱈/;
+// display_zone 空白時依分類自動分配；只回傳啟用中的展示櫃
+function autoUnit(units:Unit[],p:{display_zone:string;category:string;name:string}){
+ const act=units.filter(u=>u.active);
+ const set=act.find(u=>u.id===p.display_zone);if(set)return set;
+ const tanks=act.filter(u=>u.type==="tank"),fr=act.filter(u=>u.type==="freezer");
+ if(LIVE_RE.test(p.category)&&tanks.length)return tanks[0];
+ if(!fr.length)return act[0]??null;
+ const pick=(id:string)=>fr.find(u=>u.id===id);
+ const sea=()=>pick("freezer-1")??fr[0],meat=()=>pick("freezer-2")??fr[0],other=()=>pick("freezer-3")??fr[fr.length-1];
+ if(MEAT_RE.test(p.category))return meat();
+ if(SEA_RE.test(p.category))return sea();
+ if(/火鍋|丸|餃|熟食|加工|調理/.test(p.category))return other();
+ if(SEA_RE.test(p.name))return sea();
+ if(MEAT_RE.test(p.name))return meat();
+ return other();
+}
+async function updateUnit(env:Env,id:string,b:any){
+ const sets:string[]=[],binds:unknown[]=[];
+ if(b.name!==undefined){if(typeof b.name!=="string"||!b.name.trim()||b.name.length>30)throw new HttpError(400,"名稱需為 1～30 字");sets.push("name=?");binds.push(b.name.trim())}
+ if(b.sort!==undefined){if(!Number.isSafeInteger(b.sort))throw new HttpError(400,"排序需為整數");sets.push("sort=?");binds.push(b.sort)}
+ if(b.active!==undefined){if(typeof b.active!=="boolean")throw new HttpError(400,"格式不正確");sets.push("active=?");binds.push(b.active?1:0)}
+ if(!sets.length)throw new HttpError(400,"沒有要更新的欄位");
+ const r=await env.DB.prepare(`UPDATE display_units SET ${sets.join(",")} WHERE id=?`).bind(...binds,id).run();
+ if(!r.meta.changes)throw new HttpError(404,"找不到展示櫃");return {ok:true};
+}
+
 // ---------- 商品販售設定 ----------
 async function listProducts(env:Env,actor:Actor){
- const {results}=await env.DB.prepare("SELECT id,zone,name,spec,unit,category,price,cost,quantity,on_sale,daily_limit,per_order_max FROM inventory ORDER BY zone,name").all<any>();
- return {items:results.map(r=>({id:r.id,zone:r.zone,name:r.name,spec:r.spec,unit:r.unit,category:r.category,price:r.price,quantity:r.quantity,onSale:!!r.on_sale,dailyLimit:r.daily_limit,perOrderMax:r.per_order_max,...(actor.role==="admin"?{cost:r.cost}:{})}))};
+ const {results}=await env.DB.prepare("SELECT id,zone,name,spec,unit,category,price,cost,quantity,on_sale,daily_limit,per_order_max,display_zone FROM inventory ORDER BY zone,name").all<any>();
+ const units=await getUnits(env);
+ return {items:results.map(r=>({id:r.id,zone:r.zone,name:r.name,spec:r.spec,unit:r.unit,category:r.category,price:r.price,quantity:r.quantity,onSale:!!r.on_sale,dailyLimit:r.daily_limit,perOrderMax:r.per_order_max,displayZone:r.display_zone,displayUnitId:autoUnit(units,r)?.id??null,...(actor.role==="admin"?{cost:r.cost}:{})})),units:units.map(u=>({...u,active:!!u.active}))};
 }
 async function updateProduct(env:Env,id:string,b:any){
  const sets:string[]=[],binds:unknown[]=[];
@@ -109,6 +140,10 @@ async function updateProduct(env:Env,id:string,b:any){
  if(b.cost!==undefined){if(typeof b.cost!=="string"||b.cost.length>30)throw new HttpError(400,"成本格式不正確");sets.push("cost=?");binds.push(b.cost)}
  if(b.onSale!==undefined){if(typeof b.onSale!=="boolean")throw new HttpError(400,"上架設定不正確");sets.push("on_sale=?");binds.push(b.onSale?1:0)}
  for(const [k,c] of [["dailyLimit","daily_limit"],["perOrderMax","per_order_max"]] as const)if(b[k]!==undefined){if(!Number.isSafeInteger(b[k])||b[k]<0||b[k]>100000)throw new HttpError(400,"限量需為 0 以上整數");sets.push(`${c}=?`);binds.push(b[k])}
+ if(b.displayZone!==undefined){
+  if(typeof b.displayZone!=="string"||(b.displayZone!==""&&!(await getUnits(env)).some(u=>u.id===b.displayZone)))throw new HttpError(400,"展示櫃不存在");
+  sets.push("display_zone=?");binds.push(b.displayZone);
+ }
  if(!sets.length)throw new HttpError(400,"沒有要更新的欄位");
  const r=await env.DB.prepare(`UPDATE inventory SET ${sets.join(",")} WHERE id=?`).bind(...binds,id).run();
  if(!r.meta.changes)throw new HttpError(404,"找不到商品（請先在庫存地圖儲存過一次）");
@@ -258,8 +293,10 @@ async function route(request:Request,env:Env,url:URL):Promise<unknown>{
  // 顧客端（免登入）：只回傳可售商品的名稱／規格／售價／可訂數量
  if(p==="/api/public/menu"&&m==="GET"){
   const d=taipeiDate();
-  const {results}=await env.DB.prepare("SELECT i.id,i.name,i.spec,i.unit,i.category,i.price,i.quantity,i.daily_limit,i.per_order_max,COALESCE(s.qty,0) AS sold FROM inventory i LEFT JOIN daily_sales s ON s.item_id=i.id AND s.sale_date=? WHERE i.on_sale=1 ORDER BY i.category,i.name").bind(d).all<any>();
-  return {items:results.map(r=>{let a=Math.max(0,r.quantity);if(r.daily_limit>0)a=Math.min(a,Math.max(0,r.daily_limit-r.sold));if(r.per_order_max>0)a=Math.min(a,r.per_order_max);return {id:r.id,name:r.name,spec:r.spec,unit:r.unit,category:r.category,price:r.price,available:a}})};
+  const units=await getUnits(env);
+  const {results}=await env.DB.prepare("SELECT i.id,i.name,i.spec,i.unit,i.category,i.price,i.quantity,i.daily_limit,i.per_order_max,i.display_zone,COALESCE(s.qty,0) AS sold FROM inventory i LEFT JOIN daily_sales s ON s.item_id=i.id AND s.sale_date=? WHERE i.on_sale=1 ORDER BY i.category,i.name").bind(d).all<any>();
+  return {items:results.map(r=>{let a=Math.max(0,r.quantity);if(r.daily_limit>0)a=Math.min(a,Math.max(0,r.daily_limit-r.sold));if(r.per_order_max>0)a=Math.min(a,r.per_order_max);const u=autoUnit(units,r);return {id:r.id,name:r.name,spec:r.spec,unit:r.unit,category:r.category,price:r.price,available:a,displayUnit:u?{id:u.id,name:u.name,type:u.type}:null}}),
+   units:units.filter(u=>u.active).map(u=>({id:u.id,name:u.name,type:u.type}))};
  }
  if(p==="/api/public/orders"&&m==="POST"){
   await rateLimit(env,request,"order");
@@ -307,6 +344,9 @@ async function route(request:Request,env:Env,url:URL):Promise<unknown>{
   if(m==="POST")return postInventory(env,a,await readJson(request));
  }
  if(p==="/api/products"&&m==="GET")return listProducts(env,requireRole(actor,"admin","staff"));
+ if(p==="/api/display-units"&&m==="GET"){requireRole(actor,"admin","staff");return {units:(await getUnits(env)).map(u=>({...u,active:!!u.active}))}}
+ const du=p.match(/^\/api\/display-units\/([a-z0-9-]{1,40})$/);
+ if(du&&m==="PATCH"){requireRole(actor,"admin");return updateUnit(env,du[1],await readJson(request))}
  if(p==="/api/products/bulk-on-sale"&&m==="POST"){requireRole(actor,"admin");return bulkOnSale(env,await readJson(request))}
  const pm=p.match(/^\/api\/products\/(.{1,300})$/);
  if(pm&&m==="PATCH"){requireRole(actor,"admin");return updateProduct(env,decodeURIComponent(pm[1]),await readJson(request))}
