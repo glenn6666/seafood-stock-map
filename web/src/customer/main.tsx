@@ -4,7 +4,7 @@ import {loadApiOrigin,errorText,newKey} from "../lib/api-config";
 import "./customer.css";
 import "./comic.css";
 import type {Coupon} from "./ShrimpGame";
-import ShopMap from "./ShopMap";
+import ShopMap,{LIVE} from "./ShopMap";
 type M={id:string;name:string;spec:string;unit:string;category:string;price:string;available:number;displayUnit:U|null};
 type O={orderNo:string;status:string;customerName:string;total:number;subtotal?:number;discount?:number;createdAt:string;items:{name:string;spec:string;unit:string;qty:number;unitPrice:number}[]};
 const STEPS=["待處理","備貨中","可取貨","已完成"];
@@ -57,12 +57,14 @@ function Shop({origin}:{origin:string}){
  }
  const zoneNames=Object.fromEntries(units.map(u=>[u.id,u.name])),zoneCounts:Record<string,number>={};
  for(const u of units)zoneCounts[u.id]=(menu??[]).filter(m=>m.displayUnit?.id===u.id).length;
+ zoneNames.live="活鮮（三個魚缸）";zoneCounts.live=LIVE.reduce((s,id)=>s+(zoneCounts[id]??0),0);
+ const inZone=(m:M)=>!zone||(zone==="live"?LIVE.includes(m.displayUnit?.id??""):m.displayUnit?.id===zone);
  function pickZone(id:string){
   if(id==="all"){setZone(null);setFocus(-1);setCat("全部");setCheckout(false);setTimeout(()=>listRef.current?.scrollIntoView({behavior:reducedMotion()?"auto":"smooth",block:"start"}),50);return}
   if(!menu?.length){setToast("目前沒有開放訂購的商品");setTimeout(()=>setToast(""),1800);return}
   if(!zoneCounts[id]){setToast(`「${zoneNames[id]??id}」目前沒有商品`);setTimeout(()=>setToast(""),1800);return}
   setCheckout(false);setSel(null);
-  const i=sceneUnits.findIndex(u=>u.id===id);
+  const i=id==="live"?sceneUnits.findIndex(u=>LIVE.includes(u.id)&&zoneCounts[u.id]>0):sceneUnits.findIndex(u=>u.id===id);
   if(mode==="3d"&&i>=0){setZone(id);setFocus(i)}else{setZone(id);setCat("全部");if(mode!=="list")switchMode("list")}
   setTimeout(()=>listRef.current?.scrollIntoView({behavior:reducedMotion()?"auto":"smooth",block:"start"}),50);
  }
@@ -95,7 +97,7 @@ function Shop({origin}:{origin:string}){
   </section>:<>
    {zone&&<p className="zone-filter">📍 {zoneNames[zone]??zone}<button onClick={()=>setZone(null)}>顯示全部</button></p>}
    <div className="cats">{cats.map(c=><button key={c} className={cat===c?"active":""} onClick={()=>setCat(c)}>{c}</button>)}</div>
-   <div className="menu">{menu.filter(m=>(cat==="全部"||m.category===cat)&&(!zone||m.displayUnit?.id===zone)).map(m=><div key={m.id} className={"card item"+(m.available?"":" soldout")}>
+   <div className="menu">{menu.filter(m=>(cat==="全部"||m.category===cat)&&inZone(m)).map(m=><div key={m.id} className={"card item"+(m.available?"":" soldout")}>
     <div><strong>{m.name}</strong><small>{m.spec}</small><b>${m.price}</b><small>{m.available?`可訂 ${m.available} ${m.unit}`:"已售完"}</small></div>
     <div className="stepper"><button aria-label="減少" onClick={()=>setQty(m,(cart[m.id]??0)-1)} disabled={!cart[m.id]}>－</button><output>{cart[m.id]??0}</output><button aria-label="增加" onClick={()=>setQty(m,(cart[m.id]??0)+1)} disabled={(cart[m.id]??0)>=m.available}>＋</button></div>
    </div>)}</div></>}

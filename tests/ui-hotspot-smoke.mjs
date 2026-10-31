@@ -32,4 +32,10 @@ ok(!p.errs.length,"3D 模式無錯誤 "+p.errs.join("|"));
 p=await page(true);await p.goto(B);await p.waitForSelector(".shop-map");await p.waitForTimeout(800);
 ok((await p.textContent("body")).includes("目前沒有開放訂購的商品"),"無商品時仍顯示店面圖");
 await tap(p,"game");await p.waitForSelector(".sheet.game");ok(true,"無商品時仍可從店面圖開遊戲");await p.screenshot({path:S+"7-empty-menu-game.png"});
+// 圖下方「活鮮」→ 三個魚缸
+p=await page();await p.addInitScript(()=>localStorage.setItem("shop-view","list"));await p.goto(B);await p.waitForSelector(".menu .item");
+{const pt=await p.evaluate(()=>{const r=document.querySelector(".hot-menu.hot-live polygon").getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2}});await p.touchscreen.tap(pt.x,pt.y);await p.waitForTimeout(600);
+const n=await p.locator(".menu .item").count();ok(n===8&&(await p.textContent(".zone-filter")).includes("活鮮（三個魚缸）"),"「活鮮」→ 三個魚缸共 8 項（"+n+"）");
+ok(await p.locator(".hot.on:not(.hot-menu)").count()===3,"三個魚缸熱區同時標示");
+await p.evaluate(()=>scrollTo(0,0));await p.screenshot({path:S+"8-live-all-tanks.png",fullPage:true});}
 console.log(out.join("\n"));await b.close();
