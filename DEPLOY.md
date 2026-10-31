@@ -82,3 +82,12 @@ npm run build
    - 每日兩列：「網站收入 網站訂單」（客戶/廠商＝網站顧客）與「進貨支出 網站訂單成本」（客戶/廠商＝網站訂單成本，沿用試算表既有「進貨支出」科目；未完成訂單也計入，備註會註明筆數）。
 5. 上線後：管理員到「商品販售」補齊標示「成本待確認」的商品成本；到「記帳匯出」選日期 → 產生預覽 → 複製，貼到「每日收支紀錄」最後一列的「項次」欄。
 回復：`npx wrangler rollback`；新增的欄位／表不影響舊程式。
+
+## 記帳功能（migration 0007，尚未套用到正式環境）
+
+1. **先備份 D1**：`npx wrangler d1 export seafood-stock --remote --output backup-before-0007.sql`（備份檔不要提交）。
+2. 套用（只新增資料表，不改既有資料）：`npx wrangler d1 migrations apply seafood-stock --remote`。
+3. 部署 Worker 與前端。
+4. 以個人管理員帳號登入 →「記帳」→「匯入試算表」，上傳 Google 試算表下載的 xlsx。畫面會自動與「整合月報總表」核對。可以重複匯入，已有的資料會略過。
+5. 如需只限本人查看：「分類設定」→「只限我本人查看」。
+6. 測試：`node tests/api.test.mjs && node tests/ledger.test.mjs`（本機 worker:dev）；UI 測試：`LEDGER_XLSX=路徑 node tests/ui-ledger-smoke.mjs`。
