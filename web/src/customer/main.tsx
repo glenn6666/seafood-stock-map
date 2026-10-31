@@ -4,6 +4,7 @@ import {loadApiOrigin,errorText,newKey} from "../lib/api-config";
 import "./customer.css";
 import "./comic.css";
 import type {Coupon} from "./ShrimpGame";
+import ShopMap from "./ShopMap";
 type M={id:string;name:string;spec:string;unit:string;category:string;price:string;available:number;displayUnit:U|null};
 type O={orderNo:string;status:string;customerName:string;total:number;subtotal?:number;discount?:number;createdAt:string;items:{name:string;spec:string;unit:string;qty:number;unitPrice:number}[]};
 const STEPS=["待處理","備貨中","可取貨","已完成"];
@@ -13,7 +14,7 @@ function App(){
  const [token,setTokenState]=useState(tokenFromHash());
  useEffect(()=>{const f=()=>setTokenState(tokenFromHash());addEventListener("hashchange",f);return()=>removeEventListener("hashchange",f)},[]);
  const [origin,err]=useOrigin();
- return <main className="shop comic"><header className="comic-hero"><img src={import.meta.env.BASE_URL+"comic/comic-market.webp"} alt="" width={1080} height={720} decoding="async"/><div><h1>安星水產</h1><p>{token?"訂單查詢":"線上訂購・逛逛店裡挑海鮮"}</p></div></header>
+ return <main className="shop comic">{token&&<header className="comic-hero"><img src={import.meta.env.BASE_URL+"comic/comic-market.webp"} alt="" width={1080} height={720} decoding="async"/><div><h1>安星水產</h1><p>{token?"訂單查詢":"線上訂購・逛逛店裡挑海鮮"}</p></div></header>}{!token&&!origin&&<p className="hint">{err?"":"載入中…"}</p>}
   {err&&<p className="err" role="alert">{err}</p>}{origin&&(token?<Lookup origin={origin} token={token}/>:<Shop origin={origin}/>)}</main>;
 }
 type U={id:string;name:string;type:"freezer"|"tank";kind?:string;area?:string};
@@ -34,6 +35,7 @@ function Shop({origin}:{origin:string}){
  const [coupon,setCouponState]=useState<Coupon|null>(loadCoupon),[game,setGame]=useState(false);
  const setCoupon=(c:Coupon|null)=>{setCouponState(c);if(c)localStorage.setItem(COUPON_KEY,JSON.stringify(c));else localStorage.removeItem(COUPON_KEY)};
  const [focus,setFocus]=useState(-1),[sel,setSel]=useState<M|null>(null),[pick,setPick]=useState(1),[toast,setToast]=useState("");
+ const [zone,setZone]=useState<string|null>(null),listRef=useRef<HTMLDivElement>(null);
  const idem=useRef(newKey());
  const load=()=>fetch(origin+"/api/public/menu",{cache:"no-store",credentials:"omit"}).then(async r=>{if(!r.ok)throw new Error();const d=await r.json();setMenu(d.items);setUnits(d.units??[])}).catch(()=>setMsg("目前無法讀取商品，請稍後再試。"));
  useEffect(()=>{load()},[]);
@@ -53,9 +55,23 @@ function Shop({origin}:{origin:string}){
    const d=await r.json();if(couponOk)setCoupon(null);location.hash=`#/o/${d.lookupToken}`;
   }catch{setMsg("連線中斷，請再按一次送出（不會重複下單）。")}finally{setBusy(false)}
  }
- if(!menu)return <p className="hint">{msg||"載入中…"}</p>;
- if(!menu.length)return <p className="hint">目前沒有開放訂購的商品。</p>;
- if(checkout)return <form className="card form" onSubmit={submit}><h2>購物車</h2>
+ const zoneNames=Object.fromEntries(units.map(u=>[u.id,u.name])),zoneCounts:Record<string,number>={};
+ for(const u of units)zoneCounts[u.id]=(menu??[]).filter(m=>m.displayUnit?.id===u.id).length;
+ function pickZone(id:string){
+  if(id==="all"){setZone(null);setFocus(-1);setCat("全部");setCheckout(false);setTimeout(()=>listRef.current?.scrollIntoView({behavior:reducedMotion()?"auto":"smooth",block:"start"}),50);return}
+  if(!menu?.length){setToast("目前沒有開放訂購的商品");setTimeout(()=>setToast(""),1800);return}
+  if(!zoneCounts[id]){setToast(`「${zoneNames[id]??id}」目前沒有商品`);setTimeout(()=>setToast(""),1800);return}
+  setCheckout(false);setSel(null);
+  const i=sceneUnits.findIndex(u=>u.id===id);
+  if(mode==="3d"&&i>=0){setZone(id);setFocus(i)}else{setZone(id);setCat("全部");if(mode!=="list")switchMode("list")}
+  setTimeout(()=>listRef.current?.scrollIntoView({behavior:reducedMotion()?"auto":"smooth",block:"start"}),50);
+ }
+ const map=<ShopMap names={zoneNames} counts={zoneCounts} active={zone} onZone={pickZone} onGame={()=>setGame(true)} onCounter={()=>{if(lines.length)setCheckout(true);else{setToast("購物車是空的，先點店裡的櫃子挑商品");setTimeout(()=>setToast(""),1800)}}} subtitle="點店面圖挑分類・右上釣蝦池玩遊戲"/>;
+ const gameEl=game&&<Suspense fallback={null}><ShrimpGame origin={origin} onClose={()=>setGame(false)} onCoupon={c=>setCoupon(c)}/></Suspense>;
+ const toastEl=toast&&<p className="toast" role="status">{toast}</p>;
+ if(!menu)return <>{map}<p className="hint">{msg||"載入中…"}</p>{gameEl}</>;
+ if(!menu.length)return <>{map}<p className="hint">目前沒有開放訂購的商品，仍可先玩釣蝦遊戲拿優惠券。</p><button className="game-banner" onClick={()=>setGame(true)}><span>🦐</span><b>樂湉釣蝦場</b><small>抓蝦／螃蟹／龍蝦，過關贏滿 NT$1,000 折 NT$5</small></button>{toastEl}{gameEl}</>;
+ if(checkout)return <>{map} <form className="card form" onSubmit={submit}><h2>購物車</h2>
   <ul className="lines">{lines.map(m=><li key={m.id}><span>{m.name} <small>{m.spec}</small></span><span className="cart-qty"><button type="button" aria-label="減少" onClick={()=>setQty(m,cart[m.id]-1)}>－</button>{cart[m.id]}<button type="button" aria-label="增加" disabled={cart[m.id]>=m.available} onClick={()=>setQty(m,cart[m.id]+1)}>＋</button></span><span>${priceNum(m.price)*cart[m.id]}</span></li>)}</ul>
   {coupon&&<p className={"coupon-line"+(couponOk?" ok":"")}>🎟 釣蝦優惠券：{couponOk?`已套用，折 NT$${coupon.discount}`:`再買 NT$${coupon.minTotal-subtotal} 即可折 NT$${coupon.discount}`}</p>}
   {discount>0&&<p className="subtotal">小計 ${subtotal}・折抵 −${discount}</p>}<p className="total">合計 ${total}</p>
@@ -64,26 +80,27 @@ function Shop({origin}:{origin:string}){
   <label>聯絡電話<input value={f.phone} onChange={e=>setF({...f,phone:e.target.value})} required inputMode="tel" autoComplete="tel" pattern="[0-9+\-\s]{6,20}"/></label>
   <label>備註（選填）<textarea value={f.note} onChange={e=>setF({...f,note:e.target.value})} maxLength={300}/></label>
   {msg&&<p className="err" role="alert">{msg}</p>}
-  <button className="primary" disabled={busy||!lines.length}>{busy?"送出中…":"送出訂單"}</button><button type="button" onClick={()=>setCheckout(false)}>繼續選購</button></form>;
+  <button className="primary" disabled={busy||!lines.length}>{busy?"送出中…":"送出訂單"}</button><button type="button" onClick={()=>setCheckout(false)}>繼續選購</button></form>{gameEl}</>;
  const unitName=focus>=0?sceneUnits[focus]?.name:null,unitType=focus>=0?sceneUnits[focus]?.type:null;
- return <>
+ return <>{map}
   <button className="game-banner" onClick={()=>setGame(true)}><span>🦐</span><b>樂湉釣蝦場</b><small>{coupon?`已有優惠券：滿 ${coupon.minTotal} 折 ${coupon.discount}`:"抓蝦／螃蟹／龍蝦，過關贏滿 NT$1,000 折 NT$5"}</small></button>
-  <div className="view-toggle" role="group" aria-label="瀏覽方式">{auto3d&&<button className={mode==="3d"?"active":""} onClick={()=>switchMode("3d")}>🧊 3D 逛店</button>}<button className={mode==="list"?"active":""} onClick={()=>switchMode("list")}>☰ 列表</button></div>
+  <div ref={listRef}/><div className="view-toggle" role="group" aria-label="瀏覽方式">{auto3d&&<button className={mode==="3d"?"active":""} onClick={()=>switchMode("3d")}>🧊 3D 逛店</button>}<button className={mode==="list"?"active":""} onClick={()=>switchMode("list")}>☰ 列表</button></div>
   {mode==="3d"?<section className="stage">
-   <div className="unit-chips">{[{id:"all",name:"全部"},...sceneUnits].map((u,i)=><button key={u.id} className={focus===i-1?"active":""} onClick={()=>setFocus(i-1)}>{"type" in u?unitIcon(u)+" ":""}{u.name}</button>)}</div>
+   <div className="unit-chips">{[{id:"all",name:"全部"},...sceneUnits].map((u,i)=><button key={u.id} className={focus===i-1?"active":""} onClick={()=>{setFocus(i-1);setZone(i>0?u.id:null)}}>{"type" in u?unitIcon(u)+" ":""}{u.name}</button>)}</div>
    <Suspense fallback={<div className="stage-loading">正在擺設店面…</div>}>
     <Scene3D items={menu} units={sceneUnits} focus={focus} selectedId={sel?.id??null} onSelect={choose} onFocus={setFocus} onError={()=>{setMode("list");setMsg("此裝置無法顯示 3D，已切換為列表。")}}/>
    </Suspense>
    <p className="stage-hint">{focus<0?"點冰箱或魚缸靠近看看，左右滑動切換":unitType==="tank"?`${unitName}：點游動的海鮮挑選`:noDoor(sceneUnits[focus])?`${unitName}：點商品挑選`:`${unitName}：點門打開，再點商品`}</p>
    {focus>=0&&<div className="stage-nav"><button aria-label="上一個" onClick={()=>setFocus(Math.max(-1,focus-1))}>‹</button><button onClick={()=>setFocus(-1)}>總覽</button><button aria-label="下一個" disabled={focus>=sceneUnits.length-1} onClick={()=>setFocus(Math.min(sceneUnits.length-1,focus+1))}>›</button></div>}
   </section>:<>
+   {zone&&<p className="zone-filter">📍 {zoneNames[zone]??zone}<button onClick={()=>setZone(null)}>顯示全部</button></p>}
    <div className="cats">{cats.map(c=><button key={c} className={cat===c?"active":""} onClick={()=>setCat(c)}>{c}</button>)}</div>
-   <div className="menu">{menu.filter(m=>cat==="全部"||m.category===cat).map(m=><div key={m.id} className={"card item"+(m.available?"":" soldout")}>
+   <div className="menu">{menu.filter(m=>(cat==="全部"||m.category===cat)&&(!zone||m.displayUnit?.id===zone)).map(m=><div key={m.id} className={"card item"+(m.available?"":" soldout")}>
     <div><strong>{m.name}</strong><small>{m.spec}</small><b>${m.price}</b><small>{m.available?`可訂 ${m.available} ${m.unit}`:"已售完"}</small></div>
     <div className="stepper"><button aria-label="減少" onClick={()=>setQty(m,(cart[m.id]??0)-1)} disabled={!cart[m.id]}>－</button><output>{cart[m.id]??0}</output><button aria-label="增加" onClick={()=>setQty(m,(cart[m.id]??0)+1)} disabled={(cart[m.id]??0)>=m.available}>＋</button></div>
    </div>)}</div></>}
   {msg&&<p className="err">{msg}</p>}
-  {toast&&<p className="toast" role="status">{toast}</p>}
+  {toastEl}
   {sel&&<div className="sheet-backdrop" onClick={()=>setSel(null)}><div className="sheet" role="dialog" aria-label={sel.name} onClick={e=>e.stopPropagation()}>
    <div className="sheet-grab"/><span className="sheet-tag">{sel.displayUnit?unitIcon(sel.displayUnit)+" "+sel.displayUnit.name:""}・{sel.category}</span>
    <h2>{sel.name}</h2><p className="sheet-spec">{sel.spec}</p>
@@ -91,7 +108,7 @@ function Shop({origin}:{origin:string}){
    <p className="sheet-avail">{sel.available>0?`可訂 ${sel.available} ${sel.unit}`:"已售完，請挑選其他商品"}</p>
    {sel.available>0&&<div className="sheet-row"><div className="stepper big"><button aria-label="減少" disabled={pick<=1} onClick={()=>setPick(pick-1)}>－</button><output>{pick}</output><button aria-label="增加" disabled={pick>=sel.available} onClick={()=>setPick(pick+1)}>＋</button></div><button className="primary grow" onClick={addToCart}>加入購物車・${priceNum(sel.price)*pick}</button></div>}
    <button className="sheet-close" onClick={()=>setSel(null)}>關閉</button></div></div>}
-  {game&&<Suspense fallback={null}><ShrimpGame origin={origin} onClose={()=>setGame(false)} onCoupon={c=>setCoupon(c)}/></Suspense>}
+  {gameEl}
   {lines.length>0&&<div className="cartbar"><span>🛒 {count} 件・${total}{discount>0?"（已折 5）":""}</span><button className="primary" onClick={()=>{setSel(null);setCheckout(true)}}>查看購物車</button></div>}
  </>;
 }
