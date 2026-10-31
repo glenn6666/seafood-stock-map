@@ -80,3 +80,19 @@ body:has(.comic){background:radial-gradient(ellipse at top,#fff6dc,#f3e3bf 70%);
 .tool-cursor .ti.spr{width:auto;height:72px;aspect-ratio:1;max-width:none;transform:translateY(38%)}
 .tool-cursor.t-cage .ti.spr{height:56px;transform:none}
 .pond-obj .spr[data-sprite=shrimp]{width:48px;height:48px}
+/* 店面圖熱區 */
+.comic header.shop-map{aspect-ratio:3/2}
+.shop-map img{object-position:50% 50%}
+.shop-map svg{position:absolute;inset:0;width:100%;height:100%;touch-action:manipulation}
+.shop-map .hot polygon{fill:#fff0;stroke:#ffffff59;stroke-width:4;stroke-dasharray:14 10;transition:fill .15s,stroke .15s;cursor:pointer}
+.shop-map .hot:hover polygon,.shop-map .hot:focus-visible polygon{fill:#ffd76a33;stroke:#ffd76a}
+.shop-map .hot.on polygon{fill:#ffd76a44;stroke:#ffd76a;stroke-width:8}
+.shop-map .hot-game polygon{fill:#4fd1ff22;stroke:#4fd1ffaa;stroke-dasharray:18 10;animation:hotpulse 1.6s ease-in-out infinite}
+.shop-map .hot:focus{outline:none}
+@keyframes hotpulse{50%{fill:#4fd1ff44}}
+@media(prefers-reduced-motion:reduce){.shop-map .hot-game polygon{animation:none}}
+.shop-map .map-pin{position:absolute;right:6px;top:6px;background:#102735d9;color:#f6e7be;font-size:11px;padding:3px 8px;border-radius:10px;pointer-events:none}
+.shop-map>div{pointer-events:none;padding:6px 12px}
+.comic .shop-map h1{font-size:22px}
+.zone-filter{display:flex;align-items:center;gap:8px;margin:6px 0;font-size:14px}
+.zone-filter button{min-height:36px}
