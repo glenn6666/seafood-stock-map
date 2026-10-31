@@ -68,7 +68,7 @@ function Shop({origin}:{origin:string}){
   if(mode==="3d"&&i>=0){setZone(id);setFocus(i)}else{setZone(id);setCat("全部");if(mode!=="list")switchMode("list")}
   setTimeout(()=>listRef.current?.scrollIntoView({behavior:reducedMotion()?"auto":"smooth",block:"start"}),50);
  }
- const map=<ShopMap names={zoneNames} counts={zoneCounts} active={zone} onZone={pickZone} onGame={()=>setGame(true)} onCounter={()=>{if(lines.length)setCheckout(true);else{setToast("購物車是空的，先點店裡的櫃子挑商品");setTimeout(()=>setToast(""),1800)}}} subtitle="點店面圖挑分類・右上釣蝦池玩遊戲"/>;
+ const map=<ShopMap onList={()=>pickZone("all")} names={zoneNames} counts={zoneCounts} active={zone} onZone={pickZone} onGame={()=>setGame(true)} onCounter={()=>{if(lines.length)setCheckout(true);else{setToast("購物車是空的，先點店裡的櫃子挑商品");setTimeout(()=>setToast(""),1800)}}} subtitle="點店面圖挑分類・右上釣蝦池玩遊戲"/>;
  const gameEl=game&&<Suspense fallback={null}><ShrimpGame origin={origin} onClose={()=>setGame(false)} onCoupon={c=>setCoupon(c)}/></Suspense>;
  const toastEl=toast&&<p className="toast" role="status">{toast}</p>;
  if(!menu)return <>{map}<p className="hint">{msg||"載入中…"}</p>{gameEl}</>;

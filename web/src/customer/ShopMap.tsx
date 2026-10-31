@@ -19,17 +19,29 @@ export const HOTSPOTS:[string,string,string][]=[
  ["game","釣蝦","803,852 987,852 987,970 803,970"],
  ["counter","結帳","989,852 1149,852 1149,970 989,970"],
 ];
-type Props={names:Record<string,string>;counts:Record<string,number>;active:string|null;onZone:(id:string)=>void;onGame:()=>void;onCounter:()=>void;subtitle:string};
-export default function ShopMap({names,counts,active,onZone,onGame,onCounter,subtitle}:Props){
+import {useEffect,useRef} from "react";
+type Props={onList:()=>void;names:Record<string,string>;counts:Record<string,number>;active:string|null;onZone:(id:string)=>void;onGame:()=>void;onCounter:()=>void;subtitle:string};
+export default function ShopMap({onList,names,counts,active,onZone,onGame,onCounter,subtitle}:Props){
  const run=(id:string)=>id==="game"?onGame():id==="counter"?onCounter():onZone(id);
- return <header className="comic-hero shop-map">
-  <img src={import.meta.env.BASE_URL+"comic/comic-market.webp"} alt="安星水產店面" width={1080} height={720} decoding="async"/>
-  <svg viewBox="0 0 1536 1024" preserveAspectRatio="none" aria-label="點店面圖選分類或玩釣蝦" role="group">
-   {HOTSPOTS.map(([id,fallback,pts],k)=>{const name=k>=12||id==="game"||id==="counter"?fallback:(names[id]??fallback);const n=counts[id];
-    return <g key={k} className={(k>=12?"hot-menu ":"")+"hot hot-"+id+((active===id||(active==="live"&&LIVE.includes(id)))&&k<12?" on":"")+(n===0?" empty":"")} role="button" tabIndex={0} aria-label={name+(n!=null?`（${n} 項）`:"")} aria-pressed={active===id}
-     onClick={()=>run(id)} onKeyDown={e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();run(id)}}}><title>{name}</title><polygon points={pts}/></g>})}
-  </svg>
-  <span className="map-pin" aria-hidden>🦐 點右上釣蝦池玩遊戲</span>
-  <div><h1>安星水產</h1><p>{subtitle}</p></div>
- </header>;
+ const sc=useRef<HTMLDivElement>(null);
+ // 手機直式：圖片撐滿螢幕高度，左右滑動；一開始置中
+ const center=()=>{const e=sc.current;if(e)e.scrollLeft=(e.scrollWidth-e.clientWidth)/2};
+ useEffect(()=>{center();const ro=new ResizeObserver(center);if(sc.current)ro.observe(sc.current);return()=>ro.disconnect()},[]);
+ const pan=(d:number)=>sc.current?.scrollBy({left:d*sc.current.clientWidth*.6,behavior:"smooth"});
+ return <section className="fullmap">
+  <div className="fullmap-scroll" ref={sc}>
+   <header className="comic-hero shop-map">
+    <img src={import.meta.env.BASE_URL+"comic/comic-market.webp"} alt="安星水產店面" width={1080} height={720} decoding="async" fetchPriority="high"/>
+    <svg viewBox="0 0 1536 1024" preserveAspectRatio="none" aria-label="點店面圖選分類或玩釣蝦" role="group">
+     {HOTSPOTS.map(([id,fallback,pts],k)=>{const name=k>=12||id==="game"||id==="counter"?fallback:(names[id]??fallback);const n=counts[id];
+      return <g key={k} className={(k>=12?"hot-menu ":"")+"hot hot-"+id+((active===id||(active==="live"&&LIVE.includes(id)))&&k<12?" on":"")+(n===0?" empty":"")} role="button" tabIndex={0} aria-label={name+(n!=null?`（${n} 項）`:"")} aria-pressed={active===id}
+       onClick={()=>run(id)} onKeyDown={e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();run(id)}}}><title>{name}</title><polygon points={pts}/></g>})}
+    </svg>
+   </header>
+  </div>
+  <div className="fullmap-title"><h1>安星水產</h1><p>{subtitle}</p></div>
+  <span className="map-pin" aria-hidden>🦐 點釣蝦池玩遊戲</span>
+  <button className="pan pan-l" aria-label="往左看" onClick={()=>pan(-1)}>‹</button><button className="pan pan-r" aria-label="往右看" onClick={()=>pan(1)}>›</button>
+  <button className="fullmap-down" onClick={onList}>看全部商品 ↓</button>
+ </section>;
 }

@@ -96,3 +96,17 @@ body:has(.comic){background:radial-gradient(ellipse at top,#fff6dc,#f3e3bf 70%);
 .comic .shop-map h1{font-size:22px}
 .zone-filter{display:flex;align-items:center;gap:8px;margin:6px 0;font-size:14px}
 .zone-filter button{min-height:36px}
+/* 全螢幕店面圖：第一個畫面就是整張圖。直式手機撐滿高度、左右滑動；寬螢幕整張放到最大置中 */
+.fullmap{position:relative;width:100vw;margin:0 calc(50% - 50vw) 12px;height:100vh;height:100svh;background:#102735;overflow:hidden}
+.fullmap-scroll{height:100%;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none;overscroll-behavior-x:contain}
+.fullmap-scroll::-webkit-scrollbar{display:none}
+.comic .fullmap header.shop-map{height:100%;aspect-ratio:3/2;width:auto;margin:0 auto;border:0;border-radius:0;box-shadow:none}
+.fullmap-title{position:absolute;left:0;right:0;top:0;padding:10px 14px 18px;background:linear-gradient(#102735cc,transparent);pointer-events:none}
+.comic .fullmap-title h1{color:var(--gold2);font-family:"Noto Serif TC","Songti TC",serif;font-weight:900;letter-spacing:.18em;text-shadow:0 2px 0 #000a;margin:0;font-size:24px}
+.comic .fullmap-title p{color:#f6e7be;margin:2px 0 0;font-size:13px}
+.fullmap .map-pin{position:absolute;top:64px;right:10px;background:#102735d9;color:#f6e7be;font-size:12px;padding:4px 10px;border-radius:12px;pointer-events:none}
+.fullmap .pan{position:absolute;top:50%;transform:translateY(-50%);width:40px;height:56px;border:0;border-radius:12px;background:#102735b3;color:#ffd76a;font-size:30px;line-height:1;cursor:pointer}
+.fullmap .pan-l{left:6px}.fullmap .pan-r{right:6px}
+.fullmap-down{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);min-height:44px;padding:0 20px;border-radius:22px;border:2px solid var(--gold);background:#102735e6;color:#ffd76a;font-weight:700;font-size:15px;cursor:pointer}
+@media(min-aspect-ratio:3/2){.fullmap .pan{display:none}}
+body:has(.fullmap){overflow-x:hidden}
