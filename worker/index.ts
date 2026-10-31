@@ -1,9 +1,10 @@
 import {storagePhotos,photoSections,normalizePhotoId} from "../web/src/lib/storage-photos";
 import {catalogPrice} from "../web/src/lib/catalog";
+import {ledgerRoute} from "./ledger";
 
-type Env={DB:D1Database;INVENTORY_TOKEN:string;ALLOWED_ORIGIN:string};
+export type Env={DB:D1Database;INVENTORY_TOKEN:string;ALLOWED_ORIGIN:string};
 type Role="admin"|"staff";
-type Actor={kind:"user";id:string;role:Role;username:string}|{kind:"legacy";role:"admin"};
+export type Actor={kind:"user";id:string;role:Role;username:string}|{kind:"legacy";role:"admin"};
 
 const columns=["id","zone","name","spec","quantity","unit","minimum","batch","category","price","tracked","photo_id","position_note","fridge_id"];
 const ZONES=["01","02","03","04","05","06","07","08","09","unassigned","A","B","C","D","E"];
@@ -11,12 +12,12 @@ const STATUSES=["待處理","備貨中","可取貨","已完成","已取消"] as 
 const PBKDF2_ITER=100000; // Cloudflare Workers 上限
 const SESSION_DAYS=7;
 
-class HttpError extends Error{constructor(public status:number,message:string,public extra:Record<string,unknown>={}){super(message)}}
+export class HttpError extends Error{constructor(public status:number,message:string,public extra:Record<string,unknown>={}){super(message)}}
 const enc=new TextEncoder();
 const b64u=(buf:ArrayBuffer|Uint8Array)=>btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
 const randomToken=(n=32)=>b64u(crypto.getRandomValues(new Uint8Array(n)));
-const sha256=async(s:string)=>b64u(await crypto.subtle.digest("SHA-256",enc.encode(s)));
-const nowIso=()=>new Date().toISOString();
+export const sha256=async(s:string)=>b64u(await crypto.subtle.digest("SHA-256",enc.encode(s)));
+export const nowIso=()=>new Date().toISOString();
 const taipeiDate=()=>new Date(Date.now()+8*3600e3).toISOString().slice(0,10);
 const toInt=(p:unknown)=>{const n=parseInt(String(p??"").replace(/[^\d]/g,""),10);return Number.isFinite(n)?n:0};
 
@@ -59,7 +60,7 @@ async function authenticate(request:Request,env:Env):Promise<Actor|null>{
  if(await sameSecret(h,`Bearer ${env.INVENTORY_TOKEN}`)&&await legacyEnabled(env))return {kind:"legacy",role:"admin"};
  return null;
 }
-function requireRole(a:Actor|null,...roles:Role[]):Actor{
+export function requireRole(a:Actor|null,...roles:Role[]):Actor{
  if(!a)throw new HttpError(401,"未授權");
  if(!roles.includes(a.role))throw new HttpError(403,"沒有權限");return a;
 }
@@ -243,7 +244,7 @@ function ledgerRow(f:{cat:string;content:string;date:string;note:string;amount:n
  r[1]=`${f.cat} ${f.content}`;r[2]=f.date.replace(/-/g,"");r[4]=f.cat;r[5]=f.content;r[6]=f.note;r[7]="1";r[8]=String(f.amount);r[14]=f.party;r[15]=f.recorder;
  return r;
 }
-async function bookkeepingExport(env:Env,actor:Actor,url:URL){
+export async function bookkeepingExport(env:Env,actor:Actor,url:URL){
  const from=url.searchParams.get("from")??"",to=url.searchParams.get("to")??"";
  if(!DATE_RE.test(from)||!DATE_RE.test(to)||from>to)throw new HttpError(400,"請選擇正確的日期區間");
  if((Date.parse(to)-Date.parse(from))/864e5>92)throw new HttpError(400,"一次最多匯出 93 天");
@@ -498,6 +499,7 @@ async function route(request:Request,env:Env,url:URL):Promise<unknown>{
   if(om[2]==="cancel")return cancelOrder(env,om[1]);
   return setStatus(env,om[1],(await readJson(request)).status);
  }
+ if(p.startsWith("/api/ledger/"))return ledgerRoute(request,env,url,actor);
  if(p==="/api/export/bookkeeping"&&m==="GET")return bookkeepingExport(env,requireRole(actor,"admin"),url);
  if(p==="/api/export/bookkeeping/mark"&&m==="POST"){const a=requireRole(actor,"admin");return markExported(env,a,await readJson(request))}
  if(p==="/api/users"&&m==="GET"){requireRole(actor,"admin");return listUsers(env)}
