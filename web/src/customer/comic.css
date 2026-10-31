@@ -84,13 +84,7 @@ body:has(.comic){background:radial-gradient(ellipse at top,#fff6dc,#f3e3bf 70%);
 .comic header.shop-map{aspect-ratio:3/2}
 .shop-map img{object-position:50% 50%}
 .shop-map svg{position:absolute;inset:0;width:100%;height:100%;touch-action:manipulation}
-.shop-map .hot polygon{fill:#fff0;stroke:#ffffff59;stroke-width:4;stroke-dasharray:14 10;transition:fill .15s,stroke .15s;cursor:pointer}
-.shop-map .hot:hover polygon,.shop-map .hot:focus-visible polygon{fill:#ffd76a33;stroke:#ffd76a}
-.shop-map .hot.on polygon{fill:#ffd76a44;stroke:#ffd76a;stroke-width:8}
-.shop-map .hot-game polygon{fill:#4fd1ff22;stroke:#4fd1ffaa;stroke-dasharray:18 10;animation:hotpulse 1.6s ease-in-out infinite}
 .shop-map .hot:focus{outline:none}
-@keyframes hotpulse{50%{fill:#4fd1ff44}}
-@media(prefers-reduced-motion:reduce){.shop-map .hot-game polygon{animation:none}}
 .shop-map .map-pin{position:absolute;right:6px;top:6px;background:#102735d9;color:#f6e7be;font-size:11px;padding:3px 8px;border-radius:10px;pointer-events:none}
 .shop-map>div{pointer-events:none;padding:6px 12px}
 .comic .shop-map h1{font-size:22px}
@@ -104,9 +98,16 @@ body:has(.comic){background:radial-gradient(ellipse at top,#fff6dc,#f3e3bf 70%);
 .fullmap-title{position:absolute;left:0;right:0;top:0;padding:10px 14px 18px;background:linear-gradient(#102735cc,transparent);pointer-events:none}
 .comic .fullmap-title h1{color:var(--gold2);font-family:"Noto Serif TC","Songti TC",serif;font-weight:900;letter-spacing:.18em;text-shadow:0 2px 0 #000a;margin:0;font-size:24px}
 .comic .fullmap-title p{color:#f6e7be;margin:2px 0 0;font-size:13px}
-.fullmap .map-pin{position:absolute;top:64px;right:10px;background:#102735d9;color:#f6e7be;font-size:12px;padding:4px 10px;border-radius:12px;pointer-events:none}
+.fullmap .map-pin{position:absolute;bottom:68px;left:10px;right:auto;background:#102735d9;color:#f6e7be;font-size:12px;padding:4px 10px;border-radius:12px;pointer-events:none}
 .fullmap .pan{position:absolute;top:50%;transform:translateY(-50%);width:40px;height:56px;border:0;border-radius:12px;background:#102735b3;color:#ffd76a;font-size:30px;line-height:1;cursor:pointer}
 .fullmap .pan-l{left:6px}.fullmap .pan-r{right:6px}
 .fullmap-down{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);min-height:44px;padding:0 20px;border-radius:22px;border:2px solid var(--gold);background:#102735e6;color:#ffd76a;font-weight:700;font-size:15px;cursor:pointer}
 @media(min-aspect-ratio:3/2){.fullmap .pan{display:none}}
 body:has(.fullmap){overflow-x:hidden}
+
+/* 熱區：平常完全看不到框；按下／選取時柔和發光；鍵盤操作才顯示焦點框 */
+.shop-map .hot polygon{fill:transparent;stroke:none;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:fill .2s,filter .2s}
+.shop-map .hot{-webkit-tap-highlight-color:transparent}
+.shop-map .hot:active polygon,.shop-map .hot.on polygon{fill:#ffe7a033;filter:drop-shadow(0 0 14px #ffd76acc)}
+@media(hover:hover){.shop-map .hot:hover polygon{fill:#ffe7a01f}}
+.shop-map .hot:focus-visible polygon{stroke:#ffd76a;stroke-width:5}

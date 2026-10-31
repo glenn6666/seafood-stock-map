@@ -31,7 +31,7 @@ export default function ShopMap({onList,names,counts,active,onZone,onGame,onCoun
  return <section className="fullmap">
   <div className="fullmap-scroll" ref={sc}>
    <header className="comic-hero shop-map">
-    <img src={import.meta.env.BASE_URL+"comic/comic-market.webp"} alt="安星水產店面" width={1080} height={720} decoding="async" fetchPriority="high"/>
+    <img src={import.meta.env.BASE_URL+"comic/comic-market.webp?v=2"} alt="安星水產店面" width={1080} height={720} decoding="async" fetchPriority="high"/>
     <svg viewBox="0 0 1536 1024" preserveAspectRatio="none" aria-label="點店面圖選分類或玩釣蝦" role="group">
      {HOTSPOTS.map(([id,fallback,pts],k)=>{const name=k>=12||id==="game"||id==="counter"?fallback:(names[id]??fallback);const n=counts[id];
       return <g key={k} className={(k>=12?"hot-menu ":"")+"hot hot-"+id+((active===id||(active==="live"&&LIVE.includes(id)))&&k<12?" on":"")+(n===0?" empty":"")} role="button" tabIndex={0} aria-label={name+(n!=null?`（${n} 項）`:"")} aria-pressed={active===id}

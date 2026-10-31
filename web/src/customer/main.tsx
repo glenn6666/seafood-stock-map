@@ -14,7 +14,7 @@ function App(){
  const [token,setTokenState]=useState(tokenFromHash());
  useEffect(()=>{const f=()=>setTokenState(tokenFromHash());addEventListener("hashchange",f);return()=>removeEventListener("hashchange",f)},[]);
  const [origin,err]=useOrigin();
- return <main className="shop comic">{token&&<header className="comic-hero"><img src={import.meta.env.BASE_URL+"comic/comic-market.webp"} alt="" width={1080} height={720} decoding="async"/><div><h1>安星水產</h1><p>{token?"訂單查詢":"線上訂購・逛逛店裡挑海鮮"}</p></div></header>}{!token&&!origin&&<p className="hint">{err?"":"載入中…"}</p>}
+ return <main className="shop comic">{token&&<header className="comic-hero"><img src={import.meta.env.BASE_URL+"comic/comic-market.webp?v=2"} alt="" width={1080} height={720} decoding="async"/><div><h1>安星水產</h1><p>{token?"訂單查詢":"線上訂購・逛逛店裡挑海鮮"}</p></div></header>}{!token&&!origin&&<p className="hint">{err?"":"載入中…"}</p>}
   {err&&<p className="err" role="alert">{err}</p>}{origin&&(token?<Lookup origin={origin} token={token}/>:<Shop origin={origin}/>)}</main>;
 }
 type U={id:string;name:string;type:"freezer"|"tank";kind?:string;area?:string};

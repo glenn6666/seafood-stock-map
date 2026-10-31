@@ -15,6 +15,7 @@ ok(await p.locator(".shop-map .hot").count()===16,"店面圖 12 個熱區＋4 �
 const r=await p.locator(".shop-map").boundingBox(),fm=await p.locator(".fullmap").boundingBox();ok(Math.abs(r.width/r.height-1.5)<0.02&&Math.abs(fm.height-844)<2&&Math.abs(fm.width-390)<2,"第一個畫面＝整張店面圖撐滿螢幕（圖 "+Math.round(r.width)+"×"+Math.round(r.height)+"）");
 ok(await p.evaluate(()=>{const e=document.querySelector(".fullmap-scroll");return Math.abs(e.scrollLeft-(e.scrollWidth-e.clientWidth)/2)<3}),"一開始置中");
 ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),"頁面本身沒有橫向捲動");
+ok(await p.evaluate(()=>[...document.querySelectorAll(".shop-map .hot polygon")].every(e=>{const c=getComputedStyle(e);return c.stroke==="none"&&(c.fill==="transparent"||c.fill==="rgba(0, 0, 0, 0)"||c.fill==="none")})),"平常看不到熱區框");
 await p.screenshot({path:S+"1-map-phone.png"});
 await tap(p,"t1");await p.waitForTimeout(600);let names=await p.locator(".menu .item strong").allTextContents();
 ok(names.length===7&&(await p.textContent(".zone-filter")).includes("低溫缸"),"點低溫缸 → 只顯示低溫缸 7 項");ok(await p.locator(".hot-t1.on").count()===1,"低溫缸熱區標示選取");
