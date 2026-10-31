@@ -14,7 +14,7 @@ function App(){
  const [token,setTokenState]=useState(tokenFromHash());
  useEffect(()=>{const f=()=>setTokenState(tokenFromHash());addEventListener("hashchange",f);return()=>removeEventListener("hashchange",f)},[]);
  const [origin,err]=useOrigin();
- return <main className="shop comic">{token&&<header className="comic-hero"><img src={import.meta.env.BASE_URL+"comic/comic-market.webp?v=2"} alt="" width={1080} height={720} decoding="async"/><div><h1>安星水產</h1><p>{token?"訂單查詢":"線上訂購・逛逛店裡挑海鮮"}</p></div></header>}{!token&&!origin&&<p className="hint">{err?"":"載入中…"}</p>}
+ return <main className="shop comic">{token&&<header className="comic-hero"><img src={import.meta.env.BASE_URL+"comic/comic-market.webp?v=3"} alt="" width={1080} height={720} decoding="async"/><div><h1>安星水產</h1><p>{token?"訂單查詢":"線上訂購・逛逛店裡挑海鮮"}</p></div></header>}{!token&&!origin&&<p className="hint">{err?"":"載入中…"}</p>}
   {err&&<p className="err" role="alert">{err}</p>}{origin&&(token?<Lookup origin={origin} token={token}/>:<Shop origin={origin}/>)}</main>;
 }
 type U={id:string;name:string;type:"freezer"|"tank";kind?:string;area?:string};
@@ -72,7 +72,7 @@ function Shop({origin}:{origin:string}){
  const gameEl=game&&<Suspense fallback={null}><ShrimpGame origin={origin} onClose={()=>setGame(false)} onCoupon={c=>setCoupon(c)}/></Suspense>;
  const toastEl=toast&&<p className="toast" role="status">{toast}</p>;
  if(!menu)return <>{map}<p className="hint">{msg||"載入中…"}</p>{gameEl}</>;
- if(!menu.length)return <>{map}<p className="hint">目前沒有開放訂購的商品，仍可先玩釣蝦遊戲拿優惠券。</p><button className="game-banner" onClick={()=>setGame(true)}><span>🦐</span><b>樂湉釣蝦場</b><small>抓蝦／螃蟹／龍蝦，過關贏滿 NT$1,000 折 NT$5</small></button>{toastEl}{gameEl}</>;
+ if(!menu.length)return <>{map}<p className="hint">目前沒有開放訂購的商品，仍可先玩釣蝦遊戲拿優惠券。</p><button className="game-banner" onClick={()=>setGame(true)}><span>🦐</span><b>樂甜釣蝦場</b><small>抓蝦／螃蟹／龍蝦，過關贏滿 NT$1,000 折 NT$5</small></button>{toastEl}{gameEl}</>;
  if(checkout)return <>{map} <form className="card form" onSubmit={submit}><h2>購物車</h2>
   <ul className="lines">{lines.map(m=><li key={m.id}><span>{m.name} <small>{m.spec}</small></span><span className="cart-qty"><button type="button" aria-label="減少" onClick={()=>setQty(m,cart[m.id]-1)}>－</button>{cart[m.id]}<button type="button" aria-label="增加" disabled={cart[m.id]>=m.available} onClick={()=>setQty(m,cart[m.id]+1)}>＋</button></span><span>${priceNum(m.price)*cart[m.id]}</span></li>)}</ul>
   {coupon&&<p className={"coupon-line"+(couponOk?" ok":"")}>🎟 釣蝦優惠券：{couponOk?`已套用，折 NT$${coupon.discount}`:`再買 NT$${coupon.minTotal-subtotal} 即可折 NT$${coupon.discount}`}</p>}
@@ -85,7 +85,7 @@ function Shop({origin}:{origin:string}){
   <button className="primary" disabled={busy||!lines.length}>{busy?"送出中…":"送出訂單"}</button><button type="button" onClick={()=>setCheckout(false)}>繼續選購</button></form>{gameEl}</>;
  const unitName=focus>=0?sceneUnits[focus]?.name:null,unitType=focus>=0?sceneUnits[focus]?.type:null;
  return <>{map}
-  <button className="game-banner" onClick={()=>setGame(true)}><span>🦐</span><b>樂湉釣蝦場</b><small>{coupon?`已有優惠券：滿 ${coupon.minTotal} 折 ${coupon.discount}`:"抓蝦／螃蟹／龍蝦，過關贏滿 NT$1,000 折 NT$5"}</small></button>
+  <button className="game-banner" onClick={()=>setGame(true)}><span>🦐</span><b>樂甜釣蝦場</b><small>{coupon?`已有優惠券：滿 ${coupon.minTotal} 折 ${coupon.discount}`:"抓蝦／螃蟹／龍蝦，過關贏滿 NT$1,000 折 NT$5"}</small></button>
   <div ref={listRef}/><div className="view-toggle" role="group" aria-label="瀏覽方式">{auto3d&&<button className={mode==="3d"?"active":""} onClick={()=>switchMode("3d")}>🧊 3D 逛店</button>}<button className={mode==="list"?"active":""} onClick={()=>switchMode("list")}>☰ 列表</button></div>
   {mode==="3d"?<section className="stage">
    <div className="unit-chips">{[{id:"all",name:"全部"},...sceneUnits].map((u,i)=><button key={u.id} className={focus===i-1?"active":""} onClick={()=>{setFocus(i-1);setZone(i>0?u.id:null)}}>{"type" in u?unitIcon(u)+" ":""}{u.name}</button>)}</div>

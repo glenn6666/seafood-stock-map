@@ -1,7 +1,7 @@
 # 把店面圖招牌「釣蝦挑戰」改字（座標為 1080×720 原圖）：inpaint 去原字 → 霞鶩文楷依原字位置／斜度重寫
 import cv2,numpy as np,sys
 from PIL import Image,ImageDraw,ImageFont,ImageFilter
-TEXT=sys.argv[1] if len(sys.argv)>1 else "樂湉釣蝦"
+TEXT=sys.argv[1] if len(sys.argv)>1 else "樂甜釣蝦"
 OUT=sys.argv[2] if len(sys.argv)>2 else "/workspace/game-art-src/comic-market-sign.png"
 S=6
 src=Image.open('/workspace/game-art-src/comic-market-orig.webp').convert('RGB')

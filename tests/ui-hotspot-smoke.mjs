@@ -24,7 +24,7 @@ await p.evaluate(()=>scrollTo(0,0));await tap(p,"f2");await p.waitForTimeout(600
 await p.evaluate(()=>scrollTo(0,0));await tap(p,"c3");await p.waitForTimeout(300);ok((await p.textContent(".toast")).includes("目前沒有商品"),"空的分區 → 提示沒有商品");await p.screenshot({path:S+"4-tap-empty-c3.png"});
 await p.click(".zone-filter button");ok((await p.locator(".menu .item").count())===20,"顯示全部");
 await tap(p,"t4");await p.waitForTimeout(1200);await p.evaluate(()=>scrollTo(0,0));{const pt=await p.evaluate(()=>{const g=document.querySelector(".hot-menu.hot-all polygon");scrollTo(0,0);const sc=document.querySelector(".fullmap-scroll");let r=g.getBoundingClientRect();sc.scrollLeft+=r.x+r.width/2-innerWidth/2;r=g.getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2}});await p.touchscreen.tap(pt.x,pt.y);await p.waitForTimeout(400);{const n=await p.locator(".menu .item").count();ok(n===20,"圖下方「店面」選單 → 回到全部商品（"+n+"）")}}
-await p.evaluate(()=>scrollTo(0,0));await tap(p,"game");await p.waitForSelector(".sheet.game");ok((await p.textContent(".sheet.game h2")).includes("樂湉釣蝦場"),"點右上釣蝦池 → 開啟樂湉釣蝦場");await p.screenshot({path:S+"5-tap-game.png"});
+await p.evaluate(()=>scrollTo(0,0));await tap(p,"game");await p.waitForSelector(".sheet.game");ok((await p.textContent(".sheet.game h2")).includes("樂甜釣蝦場"),"點右上釣蝦池 → 開啟樂甜釣蝦場");await p.screenshot({path:S+"5-tap-game.png"});
 await p.click(".sheet.game .sheet-close, .sheet.game button:has-text('關閉')").catch(()=>{});
 ok(!p.errs.length,"列表模式無錯誤 "+p.errs.join("|"));
 // 3D 模式
