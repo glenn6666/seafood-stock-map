@@ -13,7 +13,9 @@ async function patch(path:string,body:unknown){const r=await inventoryFetch("/ap
 const tsvCell=(v:unknown)=>{const t=String(v??"");return /[\t\n"]/.test(t)?`"${t.replace(/"/g,'""')}"`:t};
 const csvCell=(v:unknown)=>{const t=String(v??"");return /[,\n"]/.test(t)?`"${t.replace(/"/g,'""')}"`:t};
 function downloadCsv(name:string,rows:unknown[][]){const a=document.createElement("a");a.href=URL.createObjectURL(new Blob(["\ufeff"+rows.map(r=>r.map(csvCell).join(",")).join("\r\n")],{type:"text/csv;charset=utf-8"}));a.download=name;a.click();URL.revokeObjectURL(a.href)}
-async function readSheets(file:File){const X=await import("xlsx");const buf=await file.arrayBuffer();const wb=/\.csv$/i.test(file.name)?X.read(new TextDecoder().decode(buf),{type:"string",cellDates:true}):X.read(buf,{cellDates:true});return sheetsFromXlsx(X,wb)}
+async function readSheets(file:File){const X=await import("xlsx");const buf=await file.arrayBuffer();
+ // 舊版 .xls（收銀機匯出）用 Big5 編碼，需載入字碼表才不會變亂碼
+ if(/\.xls$/i.test(file.name))X.set_cptable(await import("xlsx/dist/cpexcel.full.mjs"));const wb=/\.csv$/i.test(file.name)?X.read(new TextDecoder().decode(buf),{type:"string",cellDates:true}):X.read(buf,{cellDates:true});return sheetsFromXlsx(X,wb)}
 type Meta={categories:{id:number;category:string;item:string;kind:string;active:boolean}[];options:Record<string,string[]>;contacts:string[];employees:string[];range:{from:string|null;to:string|null;count:number}};
 const SUBS=[["entries","收支紀錄"],["monthly","月報"],["daily","日報"],["pnl","損益表"],["yearly","年度營業額"],["pos","每日營業額"],["payroll","員工薪資"],["contacts","客戶廠商"],["prepaid","團購對帳"],["settings","分類設定"],["import","匯入試算表"]] as const;
 type Sub=typeof SUBS[number][0];
