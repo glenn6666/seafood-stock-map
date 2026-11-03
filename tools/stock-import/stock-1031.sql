@@ -64,7 +64,7 @@ INSERT OR IGNORE INTO inventory (id,zone,name,spec,quantity,unit,minimum,batch,c
 INSERT OR IGNORE INTO inventory (id,zone,name,spec,quantity,unit,minimum,batch,category,price,tracked,on_sale,display_zone) VALUES ('stk1031-063','unassigned','組合貝','',2,'份',0,'1031盤點','貝類','299',1,1,'c2');
 INSERT OR IGNORE INTO inventory (id,zone,name,spec,quantity,unit,minimum,batch,category,price,tracked,on_sale,display_zone) VALUES ('stk1031-064','unassigned','透抽','',24,'份',0,'1031盤點','海鮮','165',1,1,'f2');
 INSERT OR IGNORE INTO inventory (id,zone,name,spec,quantity,unit,minimum,batch,category,price,tracked,on_sale,display_zone) VALUES ('stk1031-065','unassigned','有氧蝦（架上）','',8,'份',0,'1031盤點','蝦蟹','250',1,1,'c3');
-INSERT OR IGNORE INTO inventory (id,zone,name,spec,quantity,unit,minimum,batch,category,price,tracked,on_sale,display_zone) VALUES ('stk1031-066','unassigned','國王蝦（架上）','',6,'份',0,'1031盤點','蝦蟹','299',1,1,'c3');
+INSERT OR IGNORE INTO inventory (id,zone,name,spec,quantity,unit,minimum,batch,category,price,tracked,on_sale,display_zone) VALUES ('stk1031-066','unassigned','國王蝦（架上）','',6,'盒',0,'1031盤點','蝦蟹','299',1,1,'c3');
 INSERT OR IGNORE INTO inventory (id,zone,name,spec,quantity,unit,minimum,batch,category,price,tracked,on_sale,display_zone) VALUES ('stk1031-067','unassigned','50/60白蝦（架上）','',9,'份',0,'1031盤點','蝦蟹','250',1,1,'c3');
 INSERT OR IGNORE INTO inventory (id,zone,name,spec,quantity,unit,minimum,batch,category,price,tracked,on_sale,display_zone) VALUES ('stk1031-068','unassigned','4P草蝦（架上）','',8,'份',0,'1031盤點','蝦蟹','200',1,1,'c3');
 INSERT OR IGNORE INTO inventory (id,zone,name,spec,quantity,unit,minimum,batch,category,price,tracked,on_sale,display_zone) VALUES ('stk1031-069','unassigned','8P草蝦（架上）','',14,'份',0,'1031盤點','蝦蟹','165',1,1,'c3');
@@ -91,7 +91,7 @@ INSERT OR IGNORE INTO inventory (id,zone,name,spec,quantity,unit,minimum,batch,c
 INSERT OR IGNORE INTO inventory (id,zone,name,spec,quantity,unit,minimum,batch,category,price,tracked,on_sale,display_zone) VALUES ('stk1031-090','unassigned','豬五花小','',11,'份',0,'1031盤點','牛肉','190',1,1,'f1');
 INSERT OR IGNORE INTO inventory (id,zone,name,spec,quantity,unit,minimum,batch,category,price,tracked,on_sale,display_zone) VALUES ('stk1031-091','unassigned','板建牛卷','',3,'份',0,'1031盤點','牛肉','280',1,1,'f1');
 INSERT OR IGNORE INTO inventory (id,zone,name,spec,quantity,unit,minimum,batch,category,price,tracked,on_sale,display_zone) VALUES ('stk1031-092','unassigned','綿羊卷','',9,'份',0,'1031盤點','牛肉','299',1,1,'f1');
-INSERT OR IGNORE INTO inventory (id,zone,name,spec,quantity,unit,minimum,batch,category,price,tracked,on_sale,display_zone) VALUES ('stk1031-093','unassigned','國王蝦（冷凍）','',108,'份',0,'1031盤點','蝦蟹','299',1,1,'c3');
+INSERT OR IGNORE INTO inventory (id,zone,name,spec,quantity,unit,minimum,batch,category,price,tracked,on_sale,display_zone) VALUES ('stk1031-093','unassigned','國王蝦（冷凍）','',36,'盒',0,'1031盤點','蝦蟹','299',1,1,'c3');
 INSERT OR IGNORE INTO inventory (id,zone,name,spec,quantity,unit,minimum,batch,category,price,tracked,on_sale,display_zone) VALUES ('stk1031-094','unassigned','蟹管肉（冷凍）','',30,'份',0,'1031盤點','蝦蟹','69',1,1,'c3');
 INSERT OR IGNORE INTO inventory (id,zone,name,spec,quantity,unit,minimum,batch,category,price,tracked,on_sale,display_zone) VALUES ('stk1031-095','unassigned','開背天使紅蝦20','',20,'份',0,'1031盤點','蝦蟹','280',1,1,'c3');
 INSERT OR IGNORE INTO inventory (id,zone,name,spec,quantity,unit,minimum,batch,category,price,tracked,on_sale,display_zone) VALUES ('stk1031-096','unassigned','鮭魚腹鰭（冷凍）','',16,'份',0,'1031盤點','冰鮮魚','95',1,1,'c1');
