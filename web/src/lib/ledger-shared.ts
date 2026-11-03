@@ -56,7 +56,8 @@ export const POS_FIELDS:[string,string,RegExp][]=[["date","日期",/期間|日�
 export function parsePosRows(rows:unknown[][],mapping?:Record<string,number>){
  const hi=mapping?-1:rows.findIndex(r=>r.some(c=>/期間|日期|營業日|date/i.test(s(c))));
  const head=hi>=0?rows[hi].map(s):[];const map:Record<string,number>=mapping??{};
- if(!mapping)for(const [k,,re] of POS_FIELDS){const i=head.findIndex(h=>re.test(h));if(i>=0)map[k]=i}
+ // 先找與欄名完全相同的表頭（例：收銀機同時有「信用卡」「其他付款」時取「其他付款」），找不到再用關鍵字
+ if(!mapping)for(const [k,label,re] of POS_FIELDS){let i=head.findIndex(h=>h===label);if(i<0)i=head.findIndex(h=>re.test(h));if(i>=0)map[k]=i}
  const out:any[]=[];
  for(const r of rows.slice(hi+1)){const date=toDate(r[map.date]);if(!date)continue;const v=(k:string)=>map[k]===undefined?0:num(r[map[k]]);
   const row={date,gross:v("gross"),discount:v("discount"),cash:v("cash"),otherPay:v("otherPay"),customers:Math.round(v("customers")),revenue:v("revenue")||(v("gross")-v("discount")),uber:v("uber")};
