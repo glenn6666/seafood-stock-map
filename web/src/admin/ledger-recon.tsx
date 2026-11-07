@@ -14,8 +14,18 @@ export const accLabel=(a:{account:string;label?:string})=>a.label?`${a.label}（
 type Cat={category:string;item:string;kind:string;active:boolean};
 type Line={type:"store"|"partner";category?:string;item?:string;account?:string;amount:string};
 
-async function uploadReceipt(pid:string,f:File){const r=await inventoryFetch(`/api/ledger/payments/${pid}/receipts`,{method:"POST",headers:{"Content-Type":f.type||"image/jpeg"},body:f});if(!r.ok)throw new Error(await errorText(r))}
-function Receipt({id}:{id:string}){const [u,setU]=useState("");useEffect(()=>{let url="";inventoryFetch("/api/ledger/receipts/"+id).then(r=>r.ok?r.blob():null).then(b=>{if(b){url=URL.createObjectURL(b);setU(url)}});return()=>{if(url)URL.revokeObjectURL(url)}},[id]);
+/** 照片先在瀏覽器壓縮：長邊 ≤1600px、JPEG 品質 0.7；超過 300KB 再逐步降品質／尺寸（伺服器上限 400KB） */
+export async function compressImage(f:File|Blob):Promise<Blob>{
+ const bmp=await createImageBitmap(f).catch(()=>{throw new Error("無法讀取這張照片，請改用 JPG／PNG")});
+ for(const [edge,q] of [[1600,.7],[1600,.6],[1400,.55],[1200,.5],[1000,.5],[800,.45]] as const){
+  const k=Math.min(1,edge/Math.max(bmp.width,bmp.height)),w=Math.round(bmp.width*k),h=Math.round(bmp.height*k);
+  const c=document.createElement("canvas");c.width=w;c.height=h;const g=c.getContext("2d")!;g.fillStyle="#fff";g.fillRect(0,0,w,h);g.drawImage(bmp,0,0,w,h);
+  const b=await new Promise<Blob|null>(r=>c.toBlob(r,"image/jpeg",q));if(b&&b.size<=300*1024)return b}
+ throw new Error("照片太大，壓縮後仍超過 300KB");
+}
+async function uploadReceipt(pid:string,f:File){const b=await compressImage(f);const r=await inventoryFetch(`/api/ledger/payments/${pid}/receipts`,{method:"POST",headers:{"Content-Type":"image/jpeg"},body:b});if(!r.ok)throw new Error(await errorText(r))}
+function Receipt({id,expired}:{id:string;expired?:boolean}){const [u,setU]=useState(""),[gone,setGone]=useState(!!expired);useEffect(()=>{if(expired)return;let url="";inventoryFetch("/api/ledger/receipts/"+id).then(r=>{if(r.status===410)setGone(true);return r.ok?r.blob():null}).then(b=>{if(b){url=URL.createObjectURL(b);setU(url)}});return()=>{if(url)URL.revokeObjectURL(url)}},[id,expired]);
+ if(gone)return <span className="receipt-thumb expired" title="照片保存 2 年，已自動刪除；付款與對帳紀錄仍保留">照片已過期刪除</span>;
  return u?<a href={u} target="_blank" rel="noreferrer"><img className="receipt-thumb" src={u} alt="單據照片"/></a>:<span className="receipt-thumb">…</span>}
 
 /** 登記一筆付款並拆分 */
@@ -44,7 +54,7 @@ export function PaymentForm({cats,accounts:allAcc,prefill,onSaved,onCancel}:{cat
   <div className="actions"><button onClick={()=>add("store")}>＋店內支出</button><button onClick={()=>add("partner")}>＋團購對帳</button></div>
   <p className={diff===0&&total>0?"admin-hint ok":"admin-msg warn"} data-testid="split-diff">{total<=0?"請輸入付款總額":diff===0?"✅ 拆分合計等於付款總額":`拆分合計 ${money(sum)}，還差 ${money(diff)}`}</p>
   <p className="admin-hint">店內的部分記入收支紀錄（算成本）；團購的部分記入對帳，表示對方欠我們（正數），不算店內支出。</p>
-  <label className="file">單據照片<input type="file" accept="image/*" capture="environment" multiple onChange={e=>setFiles([...(e.target.files??[])])} aria-label="單據照片"/></label>{files.length>0&&<small>已選 {files.length} 張</small>}
+  <label className="file">單據照片<input type="file" accept="image/*" capture="environment" multiple onChange={e=>setFiles([...(e.target.files??[])])} aria-label="單據照片"/></label>{files.length>0&&<small>已選 {files.length} 張</small>}<small className="admin-hint">照片會自動壓縮後存檔，保存 2 年後自動刪除（付款紀錄保留）。</small>
   <label>備註<input value={f.note} onChange={e=>setF({...f,note:e.target.value})}/></label>
   {msg&&<p className="admin-msg">{msg}</p>}
   <div className="actions"><button className="primary" disabled={busy||diff!==0||total<=0} onClick={save}>{busy?"儲存中…":"儲存"}</button>{onCancel&&<button onClick={onCancel}>取消</button>}</div></div>;
@@ -58,7 +68,7 @@ export function Payments({cats}:{cats:Cat[]}){
   {r&&!r.rows.length&&<p className="admin-hint">這個月還沒有登記付款。</p>}
   {r?.rows.map((p:any)=><div key={p.id} className="admin-card pay-card"><div className="pay-head"><strong>{p.date.slice(5)} {p.vendor||"（未填廠商）"}</strong><span>NT${money(p.total)}</span><small>{p.payMethod}{p.cashout?`・收銀代支 ${p.cashout.biz_date.slice(5)}`:""}</small></div>
    <ul className="pay-lines">{p.lines.map((l:any,i:number)=><li key={i}><span className={"tag"+(l.type==="partner"?" partner":"")}>{l.type==="store"?"店內":"團購"}</span>{l.type==="store"?l.category:accLabel(acc.find(a=>a.account===l.account)??{account:l.account})} {l.item}<b>{money(l.amount)}</b></li>)}</ul>
-   <div className="receipts">{p.receipts.map((x:any)=><Receipt key={x.id} id={x.id}/>)}<label className="file small">＋照片<input type="file" accept="image/*" capture="environment" onChange={async e=>{const f=e.target.files?.[0];if(f){try{await uploadReceipt(p.id,f);load()}catch(x:any){alert(x.message)}}}}/></label></div>
+   <div className="receipts">{p.receipts.map((x:any)=><Receipt key={x.id} id={x.id} expired={x.expired}/>)}<label className="file small">＋照片<input type="file" accept="image/*" capture="environment" onChange={async e=>{const f=e.target.files?.[0];if(f){try{await uploadReceipt(p.id,f);load()}catch(x:any){alert(x.message)}}}}/></label></div>
    <button onClick={()=>confirm("刪除這筆付款？（拆分的收支與對帳也會一起刪除）")&&api(`/payments/${p.id}/delete`,{}).then(load)}>刪除</button></div>)}</>;
 }
 

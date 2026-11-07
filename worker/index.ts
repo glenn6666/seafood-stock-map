@@ -2,7 +2,7 @@ import {storagePhotos,photoSections,normalizePhotoId} from "../web/src/lib/stora
 import {catalogPrice} from "../web/src/lib/catalog";
 import {ledgerRoute} from "./ledger";
 
-export type Env={DB:D1Database;INVENTORY_TOKEN:string;ALLOWED_ORIGIN:string;RECEIPTS?:R2Bucket};
+export type Env={DB:D1Database;INVENTORY_TOKEN:string;ALLOWED_ORIGIN:string};
 type Role="admin"|"staff";
 export type Actor={kind:"user";id:string;role:Role;username:string}|{kind:"legacy";role:"admin"};
 
@@ -509,7 +509,10 @@ async function route(request:Request,env:Env,url:URL):Promise<unknown>{
  throw new HttpError(404,"Not found");
 }
 
-export default {async fetch(request:Request,env:Env):Promise<Response>{
+export default {
+ /** 每日排程：刪除超過 2 年的單據照片（只刪照片內容，紀錄保留） */
+ async scheduled(_c:ScheduledController,env:Env,ctx:ExecutionContext){ctx.waitUntil(import("./ledger-recon").then(m=>m.purgeOldReceipts(env)).then(r=>console.log("receipts purge",JSON.stringify(r))))},
+ async fetch(request:Request,env:Env):Promise<Response>{
  const origin=request.headers.get("Origin");
  const headers=new Headers({"Content-Type":"application/json","Cache-Control":"no-store","Vary":"Origin","X-Content-Type-Options":"nosniff"});
  const reply=(data:unknown,status=200)=>new Response(JSON.stringify(data),{status,headers});

@@ -22,7 +22,6 @@ migrations_dir = "migrations"
 
 # 機密值不放這裡。請用：npx wrangler secret put INVENTORY_TOKEN
 
-# 單據照片（只有記帳權限的人能透過 API 讀取，不公開）。上線前需先建立：npx wrangler r2 bucket create seafood-receipts
-[[r2_buckets]]
-binding = "RECEIPTS"
-bucket_name = "seafood-receipts"
+# 單據照片存在 D1（ledger_receipt_data），不用 R2。每天台灣時間 03:30 刪除超過 2 年的照片。
+[triggers]
+crons = ["30 19 * * *"]

@@ -4,8 +4,17 @@ const DATE=/^\d{4}-\d{2}-\d{2}$/,YM=/^\d{4}-\d{2}$/;
 const str=(v:unknown,max=500)=>{const t=v===null||v===undefined?"":String(v).trim();if(t.length>max)throw new HttpError(400,"文字過長");return t};
 const n=(v:unknown)=>{if(v===""||v===null||v===undefined)return 0;const x=typeof v==="number"?v:parseFloat(String(v).replace(/,/g,""));if(!Number.isFinite(x)||Math.abs(x)>1e10)throw new HttpError(400,"金額不正確");return x};
 const r2=(x:number)=>Math.round(x*100)/100;
-const IMG=new Set(["image/jpeg","image/png","image/webp","image/heic","image/heif"]);
-const MAX_IMG=8*1024*1024;
+const IMG=new Set(["image/jpeg","image/webp"]);
+/** 照片存在 D1：瀏覽器先壓縮，伺服器只收 ≤400KB（D1 單值上限 2MB，留足空間） */
+export const MAX_IMG=400*1024;
+/** 照片保存期限：2 年。到期只刪照片內容，付款／對帳紀錄保留 */
+export const RECEIPT_KEEP_DAYS=730;
+export async function purgeOldReceipts(env:Env,now=new Date()){
+ const cut=new Date(now.getTime()-RECEIPT_KEEP_DAYS*86400e3).toISOString();let n=0;
+ for(;;){const {results}=await env.DB.prepare("SELECT id FROM ledger_receipts WHERE expired_at IS NULL AND created_at<? LIMIT 50").bind(cut).all<any>();if(!results.length)break;
+  const t=nowIso();await env.DB.batch(results.flatMap(r=>[env.DB.prepare("DELETE FROM ledger_receipt_data WHERE receipt_id=?").bind(r.id),env.DB.prepare("UPDATE ledger_receipts SET expired_at=? WHERE id=?").bind(t,r.id)]));n+=results.length}
+ return {expired:n,cutoff:cut};
+}
 
 export type ReconCtx={request:Request;env:Env;url:URL;a:Actor;who:string;readBig:(r:Request)=>Promise<any>;
  hashEntry:(e:any)=>Promise<string>;cleanEntry:(b:any,rec:string)=>any;ENTRY_SQL:string;entryBind:(id:string,e:any,source:string,webKey:string|null,hash:string)=>unknown[]};
@@ -41,11 +50,11 @@ async function listPayments(env:Env,ym:string){
  if(!pays.length)return {rows:[]};const ids=pays.map(p=>p.id),qs=ids.map(()=>"?").join(",");
  const st=(await env.DB.prepare(`SELECT id,payment_id,category,item,amount FROM ledger_entries WHERE deleted=0 AND payment_id IN (${qs})`).bind(...ids).all<any>()).results;
  const pp=(await env.DB.prepare(`SELECT id,payment_id,account,item,amount FROM ledger_prepaid WHERE deleted=0 AND payment_id IN (${qs})`).bind(...ids).all<any>()).results;
- const rc=(await env.DB.prepare(`SELECT id,payment_id,mime,size FROM ledger_receipts WHERE deleted=0 AND payment_id IN (${qs})`).bind(...ids).all<any>()).results;
+ const rc=(await env.DB.prepare(`SELECT id,payment_id,mime,size,created_at,expired_at FROM ledger_receipts WHERE deleted=0 AND payment_id IN (${qs})`).bind(...ids).all<any>()).results;
  const cs=(await env.DB.prepare(`SELECT id,payment_id,biz_date,item,amount FROM ledger_pos_cashout WHERE payment_id IN (${qs})`).bind(...ids).all<any>()).results;
  return {rows:pays.map(p=>({id:p.id,date:p.pay_date,vendor:p.vendor,total:p.total,payMethod:p.pay_method,note:p.note,recorder:p.recorder,
   lines:[...st.filter(x=>x.payment_id===p.id).map(x=>({type:"store",category:x.category,item:x.item,amount:x.amount})),...pp.filter(x=>x.payment_id===p.id).map(x=>({type:"partner",account:x.account,item:x.item,amount:x.amount}))],
-  receipts:rc.filter(x=>x.payment_id===p.id).map(x=>({id:x.id,mime:x.mime,size:x.size})),cashout:cs.find(x=>x.payment_id===p.id)??null}))};
+  receipts:rc.filter(x=>x.payment_id===p.id).map(x=>({id:x.id,mime:x.mime,size:x.size,createdAt:x.created_at,expired:!!x.expired_at})),cashout:cs.find(x=>x.payment_id===p.id)??null}))};
 }
 async function deletePayment(env:Env,id:string){
  const r=await env.DB.prepare("UPDATE ledger_payments SET deleted=1,updated_at=? WHERE id=? AND deleted=0").bind(nowIso(),id).run();if(!r.meta.changes)throw new HttpError(404,"找不到這筆付款");
@@ -83,16 +92,17 @@ export async function reconRoute(c:ReconCtx):Promise<unknown|undefined>{
  const pm=p.match(/^\/payments\/([0-9a-f-]{36})(\/delete|\/receipts)?$/);
  if(pm&&pm[2]==="/delete"&&m==="POST")return deletePayment(env,pm[1]);
  if(pm&&pm[2]==="/receipts"&&m==="POST"){
-  if(!env.RECEIPTS)throw new HttpError(503,"單據照片空間尚未設定");
-  const type=(request.headers.get("Content-Type")??"").split(";")[0].trim().toLowerCase();if(!IMG.has(type))throw new HttpError(415,"只接受 JPG／PNG／WEBP／HEIC 照片");
-  const len=+(request.headers.get("Content-Length")??0);if(len>MAX_IMG)throw new HttpError(413,"照片不可超過 8MB");
+  const type=(request.headers.get("Content-Type")??"").split(";")[0].trim().toLowerCase();if(!IMG.has(type))throw new HttpError(415,"請用網頁上傳（會自動壓縮成 JPG）");
+  const len=+(request.headers.get("Content-Length")??0);if(len>MAX_IMG)throw new HttpError(413,"照片壓縮後仍超過 400KB，請重新拍攝");
   if(!await env.DB.prepare("SELECT 1 FROM ledger_payments WHERE id=? AND deleted=0").bind(pm[1]).first())throw new HttpError(404,"找不到這筆付款");
-  const buf=await request.arrayBuffer();if(!buf.byteLength||buf.byteLength>MAX_IMG)throw new HttpError(413,"照片不可超過 8MB");
-  const id=crypto.randomUUID(),key=`receipts/${pm[1]}/${id}`;await env.RECEIPTS.put(key,buf,{httpMetadata:{contentType:type}});
-  await env.DB.prepare("INSERT INTO ledger_receipts (id,payment_id,r2_key,mime,size,created_at) VALUES (?,?,?,?,?,?)").bind(id,pm[1],key,type,buf.byteLength,nowIso()).run();return {id}}
+  const buf=await request.arrayBuffer();if(!buf.byteLength||buf.byteLength>MAX_IMG)throw new HttpError(413,"照片壓縮後仍超過 400KB，請重新拍攝");
+  const id=crypto.randomUUID();
+  await env.DB.batch([env.DB.prepare("INSERT INTO ledger_receipts (id,payment_id,r2_key,mime,size,created_at) VALUES (?,?,?,?,?,?)").bind(id,pm[1],"d1",type,buf.byteLength,nowIso()),env.DB.prepare("INSERT INTO ledger_receipt_data (receipt_id,data) VALUES (?,?)").bind(id,buf)]);return {id}}
  const rm=p.match(/^\/receipts\/([0-9a-f-]{36})(\/delete)?$/);
- if(rm&&!rm[2]&&m==="GET"){if(!env.RECEIPTS)throw new HttpError(503,"單據照片空間尚未設定");const r=await env.DB.prepare("SELECT * FROM ledger_receipts WHERE id=? AND deleted=0").bind(rm[1]).first<any>();if(!r)throw new HttpError(404,"找不到照片");
-  const o=await env.RECEIPTS.get(r.r2_key);if(!o)throw new HttpError(404,"找不到照片");return new Response(o.body,{headers:{"Content-Type":r.mime,"Cache-Control":"private, no-store","X-Content-Type-Options":"nosniff"}})}
+ if(rm&&!rm[2]&&m==="GET"){const r=await env.DB.prepare("SELECT * FROM ledger_receipts WHERE id=? AND deleted=0").bind(rm[1]).first<any>();if(!r)throw new HttpError(404,"找不到照片");
+  if(r.expired_at)throw new HttpError(410,"照片已超過 2 年，已自動刪除");
+  const d=await env.DB.prepare("SELECT data FROM ledger_receipt_data WHERE receipt_id=?").bind(rm[1]).first<any>();if(!d)throw new HttpError(404,"找不到照片");
+  return new Response(new Uint8Array(d.data as ArrayBuffer|number[]),{headers:{"Content-Type":r.mime,"Cache-Control":"private, no-store","X-Content-Type-Options":"nosniff"}})}
  if(rm&&rm[2]&&m==="POST"){await env.DB.prepare("UPDATE ledger_receipts SET deleted=1 WHERE id=?").bind(rm[1]).run();return {ok:true}}
  if(p==="/statement"&&m==="GET"){const ac=str(q.get("account")??"",40);if(!ac)throw new HttpError(400,"請指定對帳對象");return statement(env,ac,q.get("ym")??"")}
  if(p==="/cashout"&&m==="GET"){const ym=q.get("ym")??"";if(!YM.test(ym))throw new HttpError(400,"年月不正確");
