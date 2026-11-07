@@ -4,6 +4,7 @@ import {errorText} from "../lib/api-config";
 import {parseLedgerWorkbook,sheetsFromXlsx,parsePosRows,POS_FIELDS,type Parsed} from "../lib/ledger-shared";
 import "./ledger.css";
 import {Payments,Cashout,Statement,accLabel} from "./ledger-recon";
+import {Pnl} from "./ledger-pnl";
 
 const today=()=>new Date(Date.now()+8*3600e3).toISOString().slice(0,10);
 const thisYm=()=>today().slice(0,7);
@@ -97,36 +98,6 @@ function Daily(){
   {r&&<div className="export-table"><table className="ledger-table num"><thead><tr><th>會計項目</th>{r.net.map((_:any,i:number)=><th key={i}>{i+1}</th>)}<th>合計</th></tr></thead>
    <tbody><tr className="profit"><th>每日變動收支</th>{r.net.map((v:number,i:number)=><td key={i} className={v<0?"neg":"pos"}>{money(v)}</td>)}<td>{money(r.total)}</td></tr>
     {r.rows.map((x:any)=><tr key={x.category}><th>{x.category}</th>{x.days.map((v:number,i:number)=><td key={i} className={v<0?"neg":v>0?"pos":"zero"}>{v?money(v):""}</td>)}<td>{money(x.total)}</td></tr>)}</tbody></table></div>}</>;
-}
-const BAL_SECTIONS=["流動資產","非流動資產","負債","資本額","損益表備註"];
-function Pnl(){
- const [ym,setYm]=useState(thisYm()),[r,setR]=useState<any>(null),[msg,setMsg]=useState(""),[nb,setNb]=useState({section:"流動資產",label:"",amount:""});
- const load=()=>api("/report/pnl?ym="+ym).then(setR).catch(e=>setMsg(e.message));useEffect(()=>{load()},[ym]);
- const line=(l:string,a:number|undefined,b:number|undefined,cls="")=><tr key={l} className={cls}><th>{l}</th><td>{money(a??0)}</td><td>{money(b??0)}</td><td>{money((a??0)-(b??0))}</td></tr>;
- async function saveBal(rows:any[]){try{await api("/balance",{rows});setNb({...nb,label:"",amount:""});load()}catch(e:any){setMsg(e.message)}}
- if(!r)return msg?<p className="admin-msg">{msg}</p>:null;
- const c=r.current,p=r.previous,keys=(a:any,b:any)=>[...new Set([...Object.keys(a),...Object.keys(b)])];
- const [y,m]=ym.split("-");
- return <><div className="admin-filter"><label>年月 <input type="month" value={ym} onChange={e=>setYm(e.target.value)} aria-label="年月"/></label></div>{msg&&<p className="admin-msg">{msg}</p>}
-  <div className="pnl-grid"><div className="admin-card"><h2>安星水產損益表</h2><small>民國{+y-1911}年{+m}月（與上月 {r.prevYm} 比較）</small>
-   <table className="ledger-table num pnl" data-testid="pnl"><thead><tr><th></th><th>本月</th><th>上月</th><th>差額</th></tr></thead><tbody>
-    <tr className="sec"><th colSpan={4}>營業收入</th></tr>{keys(c.income,p.income).map(k=>line(k==="店面收入"?"銷貨收入":k,c.income[k],p.income[k]))}{line("收入合計",c.incomeTotal,p.incomeTotal,"sum")}
-    <tr className="sec"><th colSpan={4}>營業成本</th></tr>{line("銷貨成本（進貨＋團購）",c.cogs,p.cogs)}{line("銷售毛利",c.gross,p.gross,"sum")}
-    <tr className="sec"><th colSpan={4}>營業費用</th></tr>{keys(c.expense,p.expense).map(k=>line(k,c.expense[k],p.expense[k]))}{line("費用合計",c.expenseTotal,p.expenseTotal,"sum")}
-    {(c.capital||p.capital)?line("股東投資（不算營業額）",c.capital,p.capital):null}
-    {line("本月營餘",c.profit,p.profit,"profit")}
-    {r.balance.filter((b:any)=>b.section==="損益表備註").map((b:any)=><tr key={b.label} className="memo"><th>備註：{b.label}</th><td>{money(b.amount)}</td><td colSpan={2}></td></tr>)}
-   </tbody></table></div>
-  <div className="admin-card"><h2>資產負債表（手動輸入）</h2>
-   <table className="ledger-table num"><thead><tr><th></th><th>本月</th><th>上月</th><th></th></tr></thead><tbody>
-    {BAL_SECTIONS.filter(s=>s!=="損益表備註").map(s=>{const rows=r.balance.filter((b:any)=>b.section===s),prev=r.balancePrev.filter((b:any)=>b.section===s);const labels=[...new Set([...rows,...prev].map((b:any)=>b.label))];
-     return [<tr key={s} className="sec"><th colSpan={4}>{s}</th></tr>,...labels.map(l=>{const cur=rows.find((b:any)=>b.label===l);return <tr key={s+l}><th>{l}</th><td><input className="cell" defaultValue={cur?.amount??""} aria-label={`${l} 本月`} onBlur={e=>{if(e.target.value!==String(cur?.amount??""))saveBal([{ym,section:s,label:l,amount:e.target.value||0}])}}/></td><td>{money(prev.find((b:any)=>b.label===l)?.amount??0)}</td><td>{cur&&<button onClick={()=>saveBal([{ym,section:s,label:l,delete:true}])}>刪</button>}</td></tr>})]})}
-    <tr className="sum"><th>總資產</th><td>{money(r.balance.filter((b:any)=>b.section.includes("資產")).reduce((s:number,b:any)=>s+b.amount,0))}</td><td>{money(r.balancePrev.filter((b:any)=>b.section.includes("資產")).reduce((s:number,b:any)=>s+b.amount,0))}</td><td></td></tr>
-   </tbody></table>
-   <div className="admin-filter"><select value={nb.section} onChange={e=>setNb({...nb,section:e.target.value})} aria-label="區塊">{BAL_SECTIONS.map(s=><option key={s}>{s}</option>)}</select><input placeholder="項目（例：庫存現金(店內)）" value={nb.label} onChange={e=>setNb({...nb,label:e.target.value})} aria-label="項目"/><input placeholder="金額" inputMode="decimal" value={nb.amount} onChange={e=>setNb({...nb,amount:e.target.value})} aria-label="金額"/>
-    <button onClick={()=>nb.label&&saveBal([{ym,...nb,amount:nb.amount||0}])}>新增</button>
-    {r.balancePrev.length>0&&<button onClick={()=>saveBal(r.balancePrev.filter((b:any)=>!r.balance.some((x:any)=>x.section===b.section&&x.label===b.label)).map((b:any)=>({ym,section:b.section,label:b.label,amount:b.amount,sort:b.sort})))}>沿用上月數字</button>}</div>
-  </div></div></>;
 }
 function Yearly(){
  const [r,setR]=useState<any>(null);useEffect(()=>{api("/report/yearly").then(setR)},[]);
