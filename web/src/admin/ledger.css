@@ -30,7 +30,7 @@ label.file{display:inline-flex;flex-direction:column;gap:4px;font-size:14px}.imp
 .pl-top{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;justify-content:space-between;background:linear-gradient(120deg,#173c51,#1f6f8b);color:#fff;border-radius:14px;padding:16px 18px}
 .pl-title{display:flex;align-items:center;gap:8px;margin:0;font-size:22px;color:#fff}.pl-period{display:flex;align-items:center;gap:6px;font-size:13px;opacity:.85;margin-top:4px}
 .pl-actions{display:flex;gap:8px;flex-wrap:wrap}.pl-month{display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.14);border-radius:10px;padding:4px 10px}.pl-month input{border:0;background:#fff;border-radius:6px;padding:6px;font-size:14px}
-.pl-print{display:inline-flex;align-items:center;gap:6px;border:1px solid rgba(255,255,255,.5);background:transparent;color:#fff;border-radius:10px;padding:6px 12px;min-height:40px;cursor:pointer}
+.pl-dl{background:#fff!important;color:#173c51!important;font-weight:700}.pl-print{display:inline-flex;align-items:center;gap:6px;border:1px solid rgba(255,255,255,.5);background:transparent;color:#fff;border-radius:10px;padding:6px 12px;min-height:40px;cursor:pointer}
 .pl-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}
 .pl-kpi{display:flex;gap:12px;align-items:flex-start;background:#fff;border:1px solid #e3eded;border-radius:14px;padding:14px;box-shadow:0 1px 3px rgba(23,60,81,.06);border-top:4px solid var(--c)}
 .pl-kpi-ic{flex:none;width:42px;height:42px;border-radius:12px;display:grid;place-items:center;background:var(--bg);color:var(--c)}
