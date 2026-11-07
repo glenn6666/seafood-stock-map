@@ -21,3 +21,7 @@ database_id = "09536e00-1025-476a-bf5f-42e680ad7e60"
 migrations_dir = "migrations"
 
 # 機密值不放這裡。請用：npx wrangler secret put INVENTORY_TOKEN
+
+# 單據照片存在 D1（ledger_receipt_data），不用 R2。每天台灣時間 03:30 刪除超過 2 年的照片。
+[triggers]
+crons = ["30 19 * * *"]

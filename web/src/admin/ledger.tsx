@@ -3,6 +3,8 @@ import {inventoryFetch} from "../lib/pages-api";
 import {errorText} from "../lib/api-config";
 import {parseLedgerWorkbook,sheetsFromXlsx,parsePosRows,POS_FIELDS,type Parsed} from "../lib/ledger-shared";
 import "./ledger.css";
+import {Payments,Cashout,Statement,accLabel} from "./ledger-recon";
+import {Pnl} from "./ledger-pnl";
 
 const today=()=>new Date(Date.now()+8*3600e3).toISOString().slice(0,10);
 const thisYm=()=>today().slice(0,7);
@@ -17,7 +19,7 @@ async function readSheets(file:File){const X=await import("xlsx");const buf=awai
  // 舊版 .xls（收銀機匯出）用 Big5 編碼，需載入字碼表才不會變亂碼
  if(/\.xls$/i.test(file.name))X.set_cptable(await import("xlsx/dist/cpexcel.full.mjs"));const wb=/\.csv$/i.test(file.name)?X.read(new TextDecoder().decode(buf),{type:"string",cellDates:true}):X.read(buf,{cellDates:true});return sheetsFromXlsx(X,wb)}
 type Meta={categories:{id:number;category:string;item:string;kind:string;active:boolean}[];options:Record<string,string[]>;contacts:string[];employees:string[];range:{from:string|null;to:string|null;count:number}};
-const SUBS=[["entries","收支紀錄"],["monthly","月報"],["daily","日報"],["pnl","損益表"],["yearly","年度營業額"],["pos","每日營業額"],["payroll","員工薪資"],["contacts","客戶廠商"],["prepaid","團購對帳"],["settings","分類設定"],["import","匯入試算表"]] as const;
+const SUBS=[["entries","收支紀錄"],["monthly","月報"],["daily","日報"],["pnl","損益表"],["yearly","年度營業額"],["pos","每日營業額"],["payroll","員工薪資"],["contacts","客戶廠商"],["payments","付款拆分"],["cashout","收銀代支"],["prepaid","團購對帳"],["settings","分類設定"],["import","匯入試算表"]] as const;
 type Sub=typeof SUBS[number][0];
 
 export default function Ledger(){
@@ -31,7 +33,7 @@ export default function Ledger(){
   <nav className="ledger-sub" aria-label="記帳功能">{SUBS.map(([k,l])=><button key={k} className={sub===k?"active":""} onClick={()=>setSub(k)}>{l}</button>)}</nav>
   {!meta.range.count&&sub!=="import"&&<p className="admin-msg">還沒有記帳資料。可先到「匯入試算表」上傳 Google 試算表匯出的 xlsx。</p>}
   {sub==="entries"&&<Entries meta={meta} onChange={reload}/>}{sub==="monthly"&&<Monthly/>}{sub==="daily"&&<Daily/>}{sub==="pnl"&&<Pnl/>}{sub==="yearly"&&<Yearly/>}
-  {sub==="pos"&&<Pos/>}{sub==="payroll"&&<Payroll meta={meta} onChange={reload}/>}{sub==="contacts"&&<Contacts onChange={reload}/>}{sub==="prepaid"&&<Prepaid/>}
+  {sub==="pos"&&<Pos/>}{sub==="payroll"&&<Payroll meta={meta} onChange={reload}/>}{sub==="contacts"&&<Contacts onChange={reload}/>}{sub==="prepaid"&&<Prepaid/>}{sub==="payments"&&<Payments cats={meta.categories}/>}{sub==="cashout"&&<Cashout cats={meta.categories}/>}
   {sub==="settings"&&<Settings meta={meta} access={access} onChange={()=>{reload();api("/access").then(setAccess)}}/>}{sub==="import"&&<Import onDone={reload}/>}
  </main>;
 }
@@ -97,36 +99,6 @@ function Daily(){
    <tbody><tr className="profit"><th>每日變動收支</th>{r.net.map((v:number,i:number)=><td key={i} className={v<0?"neg":"pos"}>{money(v)}</td>)}<td>{money(r.total)}</td></tr>
     {r.rows.map((x:any)=><tr key={x.category}><th>{x.category}</th>{x.days.map((v:number,i:number)=><td key={i} className={v<0?"neg":v>0?"pos":"zero"}>{v?money(v):""}</td>)}<td>{money(x.total)}</td></tr>)}</tbody></table></div>}</>;
 }
-const BAL_SECTIONS=["流動資產","非流動資產","負債","資本額","損益表備註"];
-function Pnl(){
- const [ym,setYm]=useState(thisYm()),[r,setR]=useState<any>(null),[msg,setMsg]=useState(""),[nb,setNb]=useState({section:"流動資產",label:"",amount:""});
- const load=()=>api("/report/pnl?ym="+ym).then(setR).catch(e=>setMsg(e.message));useEffect(()=>{load()},[ym]);
- const line=(l:string,a:number|undefined,b:number|undefined,cls="")=><tr key={l} className={cls}><th>{l}</th><td>{money(a??0)}</td><td>{money(b??0)}</td><td>{money((a??0)-(b??0))}</td></tr>;
- async function saveBal(rows:any[]){try{await api("/balance",{rows});setNb({...nb,label:"",amount:""});load()}catch(e:any){setMsg(e.message)}}
- if(!r)return msg?<p className="admin-msg">{msg}</p>:null;
- const c=r.current,p=r.previous,keys=(a:any,b:any)=>[...new Set([...Object.keys(a),...Object.keys(b)])];
- const [y,m]=ym.split("-");
- return <><div className="admin-filter"><label>年月 <input type="month" value={ym} onChange={e=>setYm(e.target.value)} aria-label="年月"/></label></div>{msg&&<p className="admin-msg">{msg}</p>}
-  <div className="pnl-grid"><div className="admin-card"><h2>安星水產損益表</h2><small>民國{+y-1911}年{+m}月（與上月 {r.prevYm} 比較）</small>
-   <table className="ledger-table num pnl" data-testid="pnl"><thead><tr><th></th><th>本月</th><th>上月</th><th>差額</th></tr></thead><tbody>
-    <tr className="sec"><th colSpan={4}>營業收入</th></tr>{keys(c.income,p.income).map(k=>line(k==="店面收入"?"銷貨收入":k,c.income[k],p.income[k]))}{line("收入合計",c.incomeTotal,p.incomeTotal,"sum")}
-    <tr className="sec"><th colSpan={4}>營業成本</th></tr>{line("銷貨成本（進貨＋團購）",c.cogs,p.cogs)}{line("銷售毛利",c.gross,p.gross,"sum")}
-    <tr className="sec"><th colSpan={4}>營業費用</th></tr>{keys(c.expense,p.expense).map(k=>line(k,c.expense[k],p.expense[k]))}{line("費用合計",c.expenseTotal,p.expenseTotal,"sum")}
-    {(c.capital||p.capital)?line("股東投資（不算營業額）",c.capital,p.capital):null}
-    {line("本月營餘",c.profit,p.profit,"profit")}
-    {r.balance.filter((b:any)=>b.section==="損益表備註").map((b:any)=><tr key={b.label} className="memo"><th>備註：{b.label}</th><td>{money(b.amount)}</td><td colSpan={2}></td></tr>)}
-   </tbody></table></div>
-  <div className="admin-card"><h2>資產負債表（手動輸入）</h2>
-   <table className="ledger-table num"><thead><tr><th></th><th>本月</th><th>上月</th><th></th></tr></thead><tbody>
-    {BAL_SECTIONS.filter(s=>s!=="損益表備註").map(s=>{const rows=r.balance.filter((b:any)=>b.section===s),prev=r.balancePrev.filter((b:any)=>b.section===s);const labels=[...new Set([...rows,...prev].map((b:any)=>b.label))];
-     return [<tr key={s} className="sec"><th colSpan={4}>{s}</th></tr>,...labels.map(l=>{const cur=rows.find((b:any)=>b.label===l);return <tr key={s+l}><th>{l}</th><td><input className="cell" defaultValue={cur?.amount??""} aria-label={`${l} 本月`} onBlur={e=>{if(e.target.value!==String(cur?.amount??""))saveBal([{ym,section:s,label:l,amount:e.target.value||0}])}}/></td><td>{money(prev.find((b:any)=>b.label===l)?.amount??0)}</td><td>{cur&&<button onClick={()=>saveBal([{ym,section:s,label:l,delete:true}])}>刪</button>}</td></tr>})]})}
-    <tr className="sum"><th>總資產</th><td>{money(r.balance.filter((b:any)=>b.section.includes("資產")).reduce((s:number,b:any)=>s+b.amount,0))}</td><td>{money(r.balancePrev.filter((b:any)=>b.section.includes("資產")).reduce((s:number,b:any)=>s+b.amount,0))}</td><td></td></tr>
-   </tbody></table>
-   <div className="admin-filter"><select value={nb.section} onChange={e=>setNb({...nb,section:e.target.value})} aria-label="區塊">{BAL_SECTIONS.map(s=><option key={s}>{s}</option>)}</select><input placeholder="項目（例：庫存現金(店內)）" value={nb.label} onChange={e=>setNb({...nb,label:e.target.value})} aria-label="項目"/><input placeholder="金額" inputMode="decimal" value={nb.amount} onChange={e=>setNb({...nb,amount:e.target.value})} aria-label="金額"/>
-    <button onClick={()=>nb.label&&saveBal([{ym,...nb,amount:nb.amount||0}])}>新增</button>
-    {r.balancePrev.length>0&&<button onClick={()=>saveBal(r.balancePrev.filter((b:any)=>!r.balance.some((x:any)=>x.section===b.section&&x.label===b.label)).map((b:any)=>({ym,section:b.section,label:b.label,amount:b.amount,sort:b.sort})))}>沿用上月數字</button>}</div>
-  </div></div></>;
-}
 function Yearly(){
  const [r,setR]=useState<any>(null);useEffect(()=>{api("/report/yearly").then(setR)},[]);
  if(!r)return null;const years=[...new Set(r.months.map((m:any)=>m.ym.slice(0,4)))] as string[];const get=(y:string,i:number)=>r.months.find((m:any)=>m.ym===`${y}-${String(i+1).padStart(2,"0")}`);
@@ -191,15 +163,16 @@ function Contacts({onChange}:{onChange:()=>void}){
   <AddRow fields={["客戶/廠商","電話","地址"]} onAdd={([n,p,a])=>save({name:n,phone:p,address:a})}/></>;
 }
 function Prepaid(){
- const [acc,setAcc]=useState("龍龍"),[r,setR]=useState<any>(null),[f,setF]=useState({item:"",unitPrice:"",qty:"1",status:""});
- const load=()=>api("/prepaid?account="+encodeURIComponent(acc)).then(setR);useEffect(()=>{load()},[acc]);
+ const [acc,setAcc]=useState("蟹老大"),[accs,setAccs]=useState<any[]>([]),[r,setR]=useState<any>(null),[f,setF]=useState({item:"",unitPrice:"",qty:"1",status:""});
+ const load=()=>api("/prepaid?account="+encodeURIComponent(acc)).then(setR);useEffect(()=>{load()},[acc]);useEffect(()=>{api("/accounts").then(x=>setAccs(x.rows))},[]);
  const post=async(b:any)=>{await api("/prepaid",{account:acc,...b});load()};
- return <><div className="admin-filter"><label>對帳對象 <input list="pp-acc" value={acc} onChange={e=>setAcc(e.target.value)} aria-label="對帳對象"/><datalist id="pp-acc">{(r?.accounts??[]).concat(["龍龍","右右"]).map((a:string)=><option key={a} value={a}/>)}</datalist></label>{r&&<strong data-testid="prepaid-balance">目前餘額 NT${r.balance.toLocaleString("en-US",{maximumFractionDigits:2})}</strong>}</div>
-  <p className="admin-hint">預付貨款記正數，進貨／扣款記負數（單價填負數），與試算表「龍龍團購對帳」相同。</p>
+ return <><div className="admin-filter"><label>對帳對象 <select value={acc} onChange={e=>setAcc(e.target.value)} aria-label="對帳對象">{(accs.length?accs:[{account:acc}]).map((a:any)=><option key={a.account} value={a.account}>{accLabel(a)}</option>)}</select></label>{r?.label&&<strong>{r.label}</strong>}{r&&<strong data-testid="prepaid-balance">目前餘額 NT${r.balance.toLocaleString("en-US",{maximumFractionDigits:2})}</strong>}</div>
+  <p className="admin-hint">正數＝對方欠我們（我們代支、對方取貨、我們匯款）；負數＝我們欠對方（我們入庫的貨，單價填負數）。與對方試算表「安星對帳」相同。</p>
+  <Statement account={acc}/>
   <div className="admin-filter"><input placeholder="品項" value={f.item} onChange={e=>setF({...f,item:e.target.value})} aria-label="品項"/><input placeholder="單價（扣款填負數）" inputMode="decimal" value={f.unitPrice} onChange={e=>setF({...f,unitPrice:e.target.value})} aria-label="單價"/><input placeholder="數量" inputMode="decimal" value={f.qty} onChange={e=>setF({...f,qty:e.target.value})} aria-label="數量"/>
    <select value={f.status} onChange={e=>setF({...f,status:e.target.value})} aria-label="狀態"><option value="">狀態</option><option>已匯款</option><option>已入庫</option><option>未到貨</option></select><button onClick={()=>f.item&&post(f).then(()=>setF({item:"",unitPrice:"",qty:"1",status:""}))}>新增</button></div>
-  {r&&<div className="export-table"><table className="ledger-table num"><thead><tr><th>#</th><th>品項</th><th>單價</th><th>數量</th><th>金額</th><th>到貨正確</th><th>備註</th><th></th></tr></thead><tbody>
-   {r.rows.map((x:any,i:number)=><tr key={x.id}><td>{i+1}</td><th>{x.item}</th><td>{money(x.unit_price)}</td><td>{x.qty}</td><td className={x.amount<0?"neg":"pos"}>{x.amount.toLocaleString("en-US")}</td><td><input type="checkbox" checked={x.checked==="○"} onChange={e=>post({id:x.id,checked:e.target.checked?"○":"",status:x.status})} aria-label="到貨正確"/></td><td>{x.status}</td><td><button onClick={()=>confirm("刪除這筆？")&&post({deleteId:x.id})}>刪</button></td></tr>)}</tbody></table></div>}</>;
+  {r&&<div className="export-table"><table className="ledger-table num"><thead><tr><th>#</th><th>日期</th><th>品項</th><th>單價</th><th>數量</th><th>金額</th><th>到貨正確</th><th>備註</th><th></th></tr></thead><tbody>
+   {r.rows.map((x:any,i:number)=><tr key={x.id}><td>{i+1}</td><td>{x.entry_date?x.entry_date.slice(2):""}</td><th>{x.item}</th><td>{money(x.unit_price)}</td><td>{x.qty}</td><td className={x.amount<0?"neg":"pos"}>{x.amount.toLocaleString("en-US")}</td><td><input type="checkbox" checked={x.checked==="○"} onChange={e=>post({id:x.id,checked:e.target.checked?"○":"",status:x.status})} aria-label="到貨正確"/></td><td>{x.status}</td><td><button onClick={()=>confirm("刪除這筆？")&&post({deleteId:x.id})}>刪</button></td></tr>)}</tbody></table></div>}</>;
 }
 function Settings({meta,access,onChange}:{meta:Meta;access:any;onChange:()=>void}){
  const [msg,setMsg]=useState("");const cats=[...new Set(meta.categories.map(c=>c.category))];

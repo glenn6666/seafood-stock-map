@@ -509,7 +509,10 @@ async function route(request:Request,env:Env,url:URL):Promise<unknown>{
  throw new HttpError(404,"Not found");
 }
 
-export default {async fetch(request:Request,env:Env):Promise<Response>{
+export default {
+ /** 每日排程：刪除超過 2 年的單據照片（只刪照片內容，紀錄保留） */
+ async scheduled(_c:ScheduledController,env:Env,ctx:ExecutionContext){ctx.waitUntil(import("./ledger-recon").then(m=>m.purgeOldReceipts(env)).then(r=>console.log("receipts purge",JSON.stringify(r))))},
+ async fetch(request:Request,env:Env):Promise<Response>{
  const origin=request.headers.get("Origin");
  const headers=new Headers({"Content-Type":"application/json","Cache-Control":"no-store","Vary":"Origin","X-Content-Type-Options":"nosniff"});
  const reply=(data:unknown,status=200)=>new Response(JSON.stringify(data),{status,headers});
@@ -524,6 +527,9 @@ export default {async fetch(request:Request,env:Env):Promise<Response>{
   headers.set("Access-Control-Max-Age","600");
   return new Response(null,{status:204,headers});
  }
- try{return reply(await route(request,env,url))}
+ try{const out=await route(request,env,url);
+  // 單據照片等二進位回應：沿用 CORS 標頭直接回傳
+  if(out instanceof Response){const h=new Headers(out.headers);const ao=headers.get("Access-Control-Allow-Origin");if(ao){h.set("Access-Control-Allow-Origin",ao);h.set("Vary","Origin")}return new Response(out.body,{status:out.status,headers:h})}
+  return reply(out)}
  catch(e){if(e instanceof HttpError)return reply({error:e.message,...e.extra},e.status);console.error(e);return reply({error:"資料庫目前無法使用，請稍後再試"},503)}
 }};
