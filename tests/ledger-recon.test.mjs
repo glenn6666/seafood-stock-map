@@ -9,7 +9,7 @@ const admin=await login("boss","boss-pass-123");const su="rclerk"+Date.now()%100
 let pid,cid;
 await t("店員、未登入不能用付款、對帳單、照片、代支",async()=>{for(const p of ["/api/ledger/payments?ym=2001-05","/api/ledger/statement?account=蟹老大&ym=2001-05","/api/ledger/cashout?ym=2001-05","/api/ledger/accounts"]){assert.equal((await api(p,{token:staff})).status,403,p);assert.equal((await api(p)).status,401,p)}});
 await t("蟹老大中港店為目前對象；龍龍為舊版封存，不能再拆分進去",async()=>{const rows=(await api("/api/ledger/accounts",{token:admin})).data.rows;assert.equal(rows.find(x=>x.account==="蟹老大").label,"蟹老大中港店");assert.equal(rows.find(x=>x.account==="龍龍").archived,true);
- assert.equal((await api("/api/ledger/payments",{method:"POST",token:admin,body:{date:"2001-05-02",total:10,lines:[{type:"partner",account:"蟹老大",amount:10}]}})).status,400)});
+ assert.equal((await api("/api/ledger/payments",{method:"POST",token:admin,body:{date:"2001-05-02",total:10,lines:[{type:"partner",account:"龍龍",amount:10}]}})).status,400)});
 await t("代支匯入：重複上傳不重複",async()=>{const rows=[{date:"2001-05-03",time:"10:20",type:"代支(-)",item:"泰國蝦",staff:"小王",amount:-4600},{date:"2001-05-03",time:"15:00",type:"代支(-)",item:"運費",staff:"小王",amount:200}];
  let r=await api("/api/ledger/import",{method:"POST",token:admin,body:{kind:"cashout",rows}});assert.deepEqual([r.data.inserted,r.data.skipped],[2,0]);
  r=await api("/api/ledger/import",{method:"POST",token:admin,body:{kind:"cashout",rows}});assert.deepEqual([r.data.inserted,r.data.skipped],[0,2]);
