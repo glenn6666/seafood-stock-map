@@ -19,14 +19,14 @@ function Receipt({id}:{id:string}){const [u,setU]=useState("");useEffect(()=>{le
  return u?<a href={u} target="_blank" rel="noreferrer"><img className="receipt-thumb" src={u} alt="單據照片"/></a>:<span className="receipt-thumb">…</span>}
 
 /** 登記一筆付款並拆分 */
-export function PaymentForm({cats,accounts,prefill,onSaved,onCancel}:{cats:Cat[];accounts:any[];prefill?:{date:string;total:number;vendor?:string;cashoutId?:string;note?:string};onSaved:()=>void;onCancel?:()=>void}){
- const expense=[...new Set(cats.filter(c=>c.kind==="支出"&&c.active).map(c=>c.category))];
+export function PaymentForm({cats,accounts:allAcc,prefill,onSaved,onCancel}:{cats:Cat[];accounts:any[];prefill?:{date:string;total:number;vendor?:string;cashoutId?:string;note?:string};onSaved:()=>void;onCancel?:()=>void}){
+ const accounts=allAcc.filter((a:any)=>!a.archived);const expense=[...new Set(cats.filter(c=>c.kind==="支出"&&c.active).map(c=>c.category))];
  const [f,setF]=useState({date:prefill?.date??today(),vendor:prefill?.vendor??"",total:prefill?String(prefill.total):"",payMethod:prefill?.cashoutId?"收銀機代支":"現金",note:prefill?.note??""});
  const [lines,setLines]=useState<Line[]>([{type:"store",category:expense.includes("進貨支出")?"進貨支出":expense[0]??"",amount:prefill?String(prefill.total):""}]);
  const [files,setFiles]=useState<File[]>([]),[msg,setMsg]=useState(""),[busy,setBusy]=useState(false);
  const total=parseFloat(f.total)||0,sum=r2(lines.reduce((s,l)=>s+(parseFloat(l.amount)||0),0)),diff=r2(total-sum);
  const set=(i:number,p:Partial<Line>)=>setLines(ls=>ls.map((l,j)=>j===i?{...l,...p}:l));
- const add=(type:Line["type"])=>setLines(ls=>[...ls,type==="store"?{type,category:"進貨支出",amount:diff>0?String(diff):""}:{type,account:accounts[0]?.account??"龍龍",amount:diff>0?String(diff):""}]);
+ const add=(type:Line["type"])=>setLines(ls=>[...ls,type==="store"?{type,category:"進貨支出",amount:diff>0?String(diff):""}:{type,account:accounts[0]?.account??"蟹老大",amount:diff>0?String(diff):""}]);
  async function save(){setBusy(true);setMsg("");try{const r=await api("/payments",{...f,total,cashoutId:prefill?.cashoutId,lines:lines.map(l=>({...l,amount:parseFloat(l.amount)||0}))});
   for(const x of files)await uploadReceipt(r.id,x);onSaved()}catch(e:any){setMsg(e.message)}finally{setBusy(false)}}
  return <div className="admin-card pay-form" data-testid="payment-form"><h2>登記付款{prefill?.cashoutId?"（收銀機代支）":""}</h2>

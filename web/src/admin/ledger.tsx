@@ -192,16 +192,16 @@ function Contacts({onChange}:{onChange:()=>void}){
   <AddRow fields={["客戶/廠商","電話","地址"]} onAdd={([n,p,a])=>save({name:n,phone:p,address:a})}/></>;
 }
 function Prepaid(){
- const [acc,setAcc]=useState("龍龍"),[r,setR]=useState<any>(null),[f,setF]=useState({item:"",unitPrice:"",qty:"1",status:""});
- const load=()=>api("/prepaid?account="+encodeURIComponent(acc)).then(setR);useEffect(()=>{load()},[acc]);
+ const [acc,setAcc]=useState("蟹老大"),[accs,setAccs]=useState<any[]>([]),[r,setR]=useState<any>(null),[f,setF]=useState({item:"",unitPrice:"",qty:"1",status:""});
+ const load=()=>api("/prepaid?account="+encodeURIComponent(acc)).then(setR);useEffect(()=>{load()},[acc]);useEffect(()=>{api("/accounts").then(x=>setAccs(x.rows))},[]);
  const post=async(b:any)=>{await api("/prepaid",{account:acc,...b});load()};
- return <><div className="admin-filter"><label>對帳對象 <input list="pp-acc" value={acc} onChange={e=>setAcc(e.target.value)} aria-label="對帳對象"/><datalist id="pp-acc">{[...new Set<string>((r?.accounts??[]).concat(["龍龍"]))].map((a:string)=><option key={a} value={a}>{a===r?.account&&r?.label?accLabel({account:a,label:r.label}):a}</option>)}</datalist></label>{r?.label&&<strong>{r.label}</strong>}{r&&<strong data-testid="prepaid-balance">目前餘額 NT${r.balance.toLocaleString("en-US",{maximumFractionDigits:2})}</strong>}</div>
+ return <><div className="admin-filter"><label>對帳對象 <select value={acc} onChange={e=>setAcc(e.target.value)} aria-label="對帳對象">{(accs.length?accs:[{account:acc}]).map((a:any)=><option key={a.account} value={a.account}>{accLabel(a)}</option>)}</select></label>{r?.label&&<strong>{r.label}</strong>}{r&&<strong data-testid="prepaid-balance">目前餘額 NT${r.balance.toLocaleString("en-US",{maximumFractionDigits:2})}</strong>}</div>
   <p className="admin-hint">正數＝對方欠我們（我們代支、對方取貨、我們匯款）；負數＝我們欠對方（我們入庫的貨，單價填負數）。與對方試算表「安星對帳」相同。</p>
   <Statement account={acc}/>
   <div className="admin-filter"><input placeholder="品項" value={f.item} onChange={e=>setF({...f,item:e.target.value})} aria-label="品項"/><input placeholder="單價（扣款填負數）" inputMode="decimal" value={f.unitPrice} onChange={e=>setF({...f,unitPrice:e.target.value})} aria-label="單價"/><input placeholder="數量" inputMode="decimal" value={f.qty} onChange={e=>setF({...f,qty:e.target.value})} aria-label="數量"/>
    <select value={f.status} onChange={e=>setF({...f,status:e.target.value})} aria-label="狀態"><option value="">狀態</option><option>已匯款</option><option>已入庫</option><option>未到貨</option></select><button onClick={()=>f.item&&post(f).then(()=>setF({item:"",unitPrice:"",qty:"1",status:""}))}>新增</button></div>
-  {r&&<div className="export-table"><table className="ledger-table num"><thead><tr><th>#</th><th>品項</th><th>單價</th><th>數量</th><th>金額</th><th>到貨正確</th><th>備註</th><th></th></tr></thead><tbody>
-   {r.rows.map((x:any,i:number)=><tr key={x.id}><td>{i+1}</td><th>{x.item}</th><td>{money(x.unit_price)}</td><td>{x.qty}</td><td className={x.amount<0?"neg":"pos"}>{x.amount.toLocaleString("en-US")}</td><td><input type="checkbox" checked={x.checked==="○"} onChange={e=>post({id:x.id,checked:e.target.checked?"○":"",status:x.status})} aria-label="到貨正確"/></td><td>{x.status}</td><td><button onClick={()=>confirm("刪除這筆？")&&post({deleteId:x.id})}>刪</button></td></tr>)}</tbody></table></div>}</>;
+  {r&&<div className="export-table"><table className="ledger-table num"><thead><tr><th>#</th><th>日期</th><th>品項</th><th>單價</th><th>數量</th><th>金額</th><th>到貨正確</th><th>備註</th><th></th></tr></thead><tbody>
+   {r.rows.map((x:any,i:number)=><tr key={x.id}><td>{i+1}</td><td>{x.entry_date?x.entry_date.slice(2):""}</td><th>{x.item}</th><td>{money(x.unit_price)}</td><td>{x.qty}</td><td className={x.amount<0?"neg":"pos"}>{x.amount.toLocaleString("en-US")}</td><td><input type="checkbox" checked={x.checked==="○"} onChange={e=>post({id:x.id,checked:e.target.checked?"○":"",status:x.status})} aria-label="到貨正確"/></td><td>{x.status}</td><td><button onClick={()=>confirm("刪除這筆？")&&post({deleteId:x.id})}>刪</button></td></tr>)}</tbody></table></div>}</>;
 }
 function Settings({meta,access,onChange}:{meta:Meta;access:any;onChange:()=>void}){
  const [msg,setMsg]=useState("");const cats=[...new Set(meta.categories.map(c=>c.category))];

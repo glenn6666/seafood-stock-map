@@ -20,7 +20,8 @@ CREATE TABLE IF NOT EXISTS ledger_pos_cashout (    -- 收銀機「代支」匯�
   payment_id text, created_at text NOT NULL
 );
 CREATE INDEX IF NOT EXISTS ledger_pos_cashout_date ON ledger_pos_cashout(biz_date);
-CREATE TABLE IF NOT EXISTS ledger_accounts (       -- 對帳對象顯示名稱（保留原代號，例：龍龍＝蟹老大中港店）
-  account text PRIMARY KEY NOT NULL, label text NOT NULL DEFAULT ''
+CREATE TABLE IF NOT EXISTS ledger_accounts (       -- 對帳對象顯示名稱；archived＝舊版封存（保留資料，不算進目前餘額、不出現在新登記）
+  account text PRIMARY KEY NOT NULL, label text NOT NULL DEFAULT '', archived integer NOT NULL DEFAULT 0
 );
-INSERT OR IGNORE INTO ledger_accounts (account,label) VALUES ('龍龍','蟹老大中港店');
+-- 蟹老大中港店：2026 起以對方試算表「安星對帳」為準（期初＋2026 明細）；原「龍龍」533 筆（約至 2024/8）保留為舊版封存
+INSERT OR IGNORE INTO ledger_accounts (account,label,archived) VALUES ('蟹老大','蟹老大中港店',0),('龍龍','蟹老大中港店（舊版，至 2024/8）',1);

@@ -212,7 +212,7 @@ export async function ledgerRoute(request:Request,env:Env,url:URL,actor:Actor|nu
   const {results}=await env.DB.prepare("SELECT * FROM ledger_pos_daily WHERE sale_date LIKE ? ORDER BY sale_date").bind(ym+"-%").all<any>();
   const led=await env.DB.prepare("SELECT COALESCE(SUM(CASE WHEN category='店面收入' THEN signed END),0) AS shop,COALESCE(SUM(CASE WHEN category='UBER收入' THEN signed END),0) AS uber FROM ledger_entries WHERE deleted=0 AND entry_date LIKE ?").bind(ym+"-%").first<any>();
   return {rows:results,ledger:{shop:Math.round(led.shop),uber:Math.round(led.uber)}}}
- if(k==="prepaid"&&m==="GET"){const ac=acct(q.get("account")??"龍龍");const {results}=await env.DB.prepare("SELECT * FROM ledger_prepaid WHERE account=? AND deleted=0 ORDER BY seq,created_at").bind(ac).all<any>();
+ if(k==="prepaid"&&m==="GET"){const ac=acct(q.get("account")??"蟹老大");const {results}=await env.DB.prepare("SELECT * FROM ledger_prepaid WHERE account=? AND deleted=0 ORDER BY seq,created_at").bind(ac).all<any>();
   const accts=(await env.DB.prepare("SELECT DISTINCT account FROM ledger_prepaid WHERE deleted=0").all<any>()).results.map(r=>r.account);
   const lb=(await env.DB.prepare("SELECT label FROM ledger_accounts WHERE account=?").bind(ac).first<any>())?.label??"";
   return {account:ac,label:lb,accounts:accts,rows:results,balance:r2(results.reduce((s,r)=>s+r.amount,0))}}

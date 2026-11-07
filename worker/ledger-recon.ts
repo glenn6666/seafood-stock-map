@@ -11,6 +11,7 @@ export type ReconCtx={request:Request;env:Env;url:URL;a:Actor;who:string;readBig
  hashEntry:(e:any)=>Promise<string>;cleanEntry:(b:any,rec:string)=>any;ENTRY_SQL:string;entryBind:(id:string,e:any,source:string,webKey:string|null,hash:string)=>unknown[]};
 
 async function labels(env:Env){const {results}=await env.DB.prepare("SELECT account,label FROM ledger_accounts").all<any>();return Object.fromEntries(results.map(r=>[r.account,r.label]))}
+async function archived(env:Env){const {results}=await env.DB.prepare("SELECT account FROM ledger_accounts WHERE archived=1").all<any>();return new Set(results.map(r=>r.account as string))}
 const dirOf=(amount:number,d:string)=>d==="we_owe"||d==="they_owe"?d:amount<0?"we_owe":"they_owe";
 
 /** 一次付款拆成多行：store＝店內支出（記入收支紀錄），partner＝團購對帳（正數＝對方欠我們） */
@@ -19,6 +20,7 @@ async function savePayment(c:ReconCtx,b:any){
  const total=r2(n(b.total));if(total<=0)throw new HttpError(400,"請輸入付款總額");
  const lines=Array.isArray(b.lines)?b.lines:[];if(!lines.length||lines.length>30)throw new HttpError(400,"請至少拆成一行");
  let sum=0;for(const l of lines){const amt=r2(n(l.amount));if(amt<=0)throw new HttpError(400,"每一行金額需大於 0");sum+=amt;if(l.type==="partner"){if(!str(l.account,40))throw new HttpError(400,"請選擇對帳對象")}else if(l.type!=="store")throw new HttpError(400,"行的類型不正確");else if(!str(l.category,40))throw new HttpError(400,"請選擇會計項目")}
+ const arch=await archived(c.env);if(lines.some((l:any)=>l.type==="partner"&&arch.has(str(l.account,40))))throw new HttpError(400,"這個對帳對象是舊版封存，請改選目前的對象");
  if(Math.abs(r2(sum)-total)>0.005)throw new HttpError(400,`拆分合計 ${r2(sum)} 與付款總額 ${total} 不同`);
  const cash=b.cashoutId?await c.env.DB.prepare("SELECT * FROM ledger_pos_cashout WHERE id=?").bind(str(b.cashoutId,40)).first<any>():null;
  if(b.cashoutId&&!cash)throw new HttpError(404,"找不到這筆收銀機代支");if(cash?.payment_id)throw new HttpError(409,"這筆收銀機代支已經對應過了");
@@ -53,8 +55,9 @@ async function deletePayment(env:Env,id:string){
 /** 對帳月結單：期初（含沒有日期的舊資料）＋本月明細＋期末；正負與對方試算表「安星對帳」相同（負數＝我們欠對方） */
 async function statement(env:Env,account:string,ym:string){
  if(!YM.test(ym))throw new HttpError(400,"年月不正確");const from=ym+"-01";
- const open=await env.DB.prepare("SELECT COALESCE(SUM(amount),0) AS s,COUNT(*) AS c FROM ledger_prepaid WHERE deleted=0 AND account=? AND (entry_date='' OR entry_date<?)").bind(account,from).first<any>();
- const {results}=await env.DB.prepare("SELECT id,entry_date,item,unit_price,qty,amount,status,direction,payment_id FROM ledger_prepaid WHERE deleted=0 AND account=? AND entry_date LIKE ? ORDER BY entry_date,seq").bind(account,ym+"-%").all<any>();
+ // 期初：本月以前的資料＋沒有日期的舊資料＋本月的「期初」結轉列
+ const open=await env.DB.prepare("SELECT COALESCE(SUM(amount),0) AS s,COUNT(CASE WHEN entry_date='' THEN 1 END) AS c FROM ledger_prepaid WHERE deleted=0 AND account=? AND (entry_date='' OR entry_date<? OR (status='期初' AND entry_date LIKE ?))").bind(account,from,ym+"-%").first<any>();
+ const {results}=await env.DB.prepare("SELECT id,entry_date,item,unit_price,qty,amount,status,direction,payment_id FROM ledger_prepaid WHERE deleted=0 AND account=? AND entry_date LIKE ? AND status<>'期初' ORDER BY entry_date,seq").bind(account,ym+"-%").all<any>();
  const rows=results.map(r=>({id:r.id,date:r.entry_date,item:r.item,unitPrice:r.unit_price,qty:r.qty,amount:r.amount,status:r.status,direction:dirOf(r.amount,r.direction),paymentId:r.payment_id}));
  const theyOwe=r2(rows.filter(r=>r.amount>0).reduce((s,r)=>s+r.amount,0)),weOwe=r2(rows.filter(r=>r.amount<0).reduce((s,r)=>s+r.amount,0));
  const opening=r2(open.s),closing=r2(opening+theyOwe+weOwe);
@@ -72,8 +75,8 @@ async function importCashout(env:Env,rows:any[]){
 
 export async function reconRoute(c:ReconCtx):Promise<unknown|undefined>{
  const {request,env,url}=c,p=url.pathname.slice("/api/ledger".length),m=request.method,q=url.searchParams;
- if(p==="/accounts"&&m==="GET"){const {results}=await env.DB.prepare("SELECT account,SUM(amount) AS bal,COUNT(*) AS c FROM ledger_prepaid WHERE deleted=0 GROUP BY account").all<any>();const lb=await labels(env);
-  const names=[...new Set([...Object.keys(lb),...results.map(r=>r.account)])];return {rows:names.map(a=>{const r=results.find(x=>x.account===a);return {account:a,label:lb[a]??"",balance:r2(r?.bal??0),count:r?.c??0}})}}
+ if(p==="/accounts"&&m==="GET"){const {results}=await env.DB.prepare("SELECT account,SUM(amount) AS bal,COUNT(*) AS c FROM ledger_prepaid WHERE deleted=0 GROUP BY account").all<any>();const lb=await labels(env),arch=await archived(env);
+  const names=[...new Set([...Object.keys(lb),...results.map(r=>r.account)])];return {rows:names.map(a=>{const r=results.find(x=>x.account===a);return {account:a,label:lb[a]??"",archived:arch.has(a),balance:r2(r?.bal??0),count:r?.c??0}}).sort((x,y)=>Number(x.archived)-Number(y.archived))}}
  if(p==="/accounts"&&m==="POST"){const b=await c.readBig(request);const ac=str(b.account,40);if(!ac)throw new HttpError(400,"請指定對帳對象");await env.DB.prepare("INSERT INTO ledger_accounts (account,label) VALUES (?,?) ON CONFLICT(account) DO UPDATE SET label=excluded.label").bind(ac,str(b.label,40)).run();return {ok:true}}
  if(p==="/payments"&&m==="GET")return listPayments(env,q.get("ym")??"");
  if(p==="/payments"&&m==="POST")return savePayment(c,await c.readBig(request));
