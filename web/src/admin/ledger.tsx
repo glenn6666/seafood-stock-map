@@ -3,6 +3,7 @@ import {inventoryFetch} from "../lib/pages-api";
 import {errorText} from "../lib/api-config";
 import {parseLedgerWorkbook,sheetsFromXlsx,parsePosRows,POS_FIELDS,type Parsed} from "../lib/ledger-shared";
 import "./ledger.css";
+import {Payments,Cashout,Statement,accLabel} from "./ledger-recon";
 
 const today=()=>new Date(Date.now()+8*3600e3).toISOString().slice(0,10);
 const thisYm=()=>today().slice(0,7);
@@ -17,7 +18,7 @@ async function readSheets(file:File){const X=await import("xlsx");const buf=awai
  // 舊版 .xls（收銀機匯出）用 Big5 編碼，需載入字碼表才不會變亂碼
  if(/\.xls$/i.test(file.name))X.set_cptable(await import("xlsx/dist/cpexcel.full.mjs"));const wb=/\.csv$/i.test(file.name)?X.read(new TextDecoder().decode(buf),{type:"string",cellDates:true}):X.read(buf,{cellDates:true});return sheetsFromXlsx(X,wb)}
 type Meta={categories:{id:number;category:string;item:string;kind:string;active:boolean}[];options:Record<string,string[]>;contacts:string[];employees:string[];range:{from:string|null;to:string|null;count:number}};
-const SUBS=[["entries","收支紀錄"],["monthly","月報"],["daily","日報"],["pnl","損益表"],["yearly","年度營業額"],["pos","每日營業額"],["payroll","員工薪資"],["contacts","客戶廠商"],["prepaid","團購對帳"],["settings","分類設定"],["import","匯入試算表"]] as const;
+const SUBS=[["entries","收支紀錄"],["monthly","月報"],["daily","日報"],["pnl","損益表"],["yearly","年度營業額"],["pos","每日營業額"],["payroll","員工薪資"],["contacts","客戶廠商"],["payments","付款拆分"],["cashout","收銀代支"],["prepaid","團購對帳"],["settings","分類設定"],["import","匯入試算表"]] as const;
 type Sub=typeof SUBS[number][0];
 
 export default function Ledger(){
@@ -31,7 +32,7 @@ export default function Ledger(){
   <nav className="ledger-sub" aria-label="記帳功能">{SUBS.map(([k,l])=><button key={k} className={sub===k?"active":""} onClick={()=>setSub(k)}>{l}</button>)}</nav>
   {!meta.range.count&&sub!=="import"&&<p className="admin-msg">還沒有記帳資料。可先到「匯入試算表」上傳 Google 試算表匯出的 xlsx。</p>}
   {sub==="entries"&&<Entries meta={meta} onChange={reload}/>}{sub==="monthly"&&<Monthly/>}{sub==="daily"&&<Daily/>}{sub==="pnl"&&<Pnl/>}{sub==="yearly"&&<Yearly/>}
-  {sub==="pos"&&<Pos/>}{sub==="payroll"&&<Payroll meta={meta} onChange={reload}/>}{sub==="contacts"&&<Contacts onChange={reload}/>}{sub==="prepaid"&&<Prepaid/>}
+  {sub==="pos"&&<Pos/>}{sub==="payroll"&&<Payroll meta={meta} onChange={reload}/>}{sub==="contacts"&&<Contacts onChange={reload}/>}{sub==="prepaid"&&<Prepaid/>}{sub==="payments"&&<Payments cats={meta.categories}/>}{sub==="cashout"&&<Cashout cats={meta.categories}/>}
   {sub==="settings"&&<Settings meta={meta} access={access} onChange={()=>{reload();api("/access").then(setAccess)}}/>}{sub==="import"&&<Import onDone={reload}/>}
  </main>;
 }
@@ -194,8 +195,9 @@ function Prepaid(){
  const [acc,setAcc]=useState("龍龍"),[r,setR]=useState<any>(null),[f,setF]=useState({item:"",unitPrice:"",qty:"1",status:""});
  const load=()=>api("/prepaid?account="+encodeURIComponent(acc)).then(setR);useEffect(()=>{load()},[acc]);
  const post=async(b:any)=>{await api("/prepaid",{account:acc,...b});load()};
- return <><div className="admin-filter"><label>對帳對象 <input list="pp-acc" value={acc} onChange={e=>setAcc(e.target.value)} aria-label="對帳對象"/><datalist id="pp-acc">{(r?.accounts??[]).concat(["龍龍","右右"]).map((a:string)=><option key={a} value={a}/>)}</datalist></label>{r&&<strong data-testid="prepaid-balance">目前餘額 NT${r.balance.toLocaleString("en-US",{maximumFractionDigits:2})}</strong>}</div>
-  <p className="admin-hint">預付貨款記正數，進貨／扣款記負數（單價填負數），與試算表「龍龍團購對帳」相同。</p>
+ return <><div className="admin-filter"><label>對帳對象 <input list="pp-acc" value={acc} onChange={e=>setAcc(e.target.value)} aria-label="對帳對象"/><datalist id="pp-acc">{[...new Set<string>((r?.accounts??[]).concat(["龍龍"]))].map((a:string)=><option key={a} value={a}>{a===r?.account&&r?.label?accLabel({account:a,label:r.label}):a}</option>)}</datalist></label>{r?.label&&<strong>{r.label}</strong>}{r&&<strong data-testid="prepaid-balance">目前餘額 NT${r.balance.toLocaleString("en-US",{maximumFractionDigits:2})}</strong>}</div>
+  <p className="admin-hint">正數＝對方欠我們（我們代支、對方取貨、我們匯款）；負數＝我們欠對方（我們入庫的貨，單價填負數）。與對方試算表「安星對帳」相同。</p>
+  <Statement account={acc}/>
   <div className="admin-filter"><input placeholder="品項" value={f.item} onChange={e=>setF({...f,item:e.target.value})} aria-label="品項"/><input placeholder="單價（扣款填負數）" inputMode="decimal" value={f.unitPrice} onChange={e=>setF({...f,unitPrice:e.target.value})} aria-label="單價"/><input placeholder="數量" inputMode="decimal" value={f.qty} onChange={e=>setF({...f,qty:e.target.value})} aria-label="數量"/>
    <select value={f.status} onChange={e=>setF({...f,status:e.target.value})} aria-label="狀態"><option value="">狀態</option><option>已匯款</option><option>已入庫</option><option>未到貨</option></select><button onClick={()=>f.item&&post(f).then(()=>setF({item:"",unitPrice:"",qty:"1",status:""}))}>新增</button></div>
   {r&&<div className="export-table"><table className="ledger-table num"><thead><tr><th>#</th><th>品項</th><th>單價</th><th>數量</th><th>金額</th><th>到貨正確</th><th>備註</th><th></th></tr></thead><tbody>

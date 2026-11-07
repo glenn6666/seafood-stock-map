@@ -1,6 +1,7 @@
 // 後台記帳（取代／並行 Google 試算表「安星水產記帳」）。只有記帳負責人（管理員）可用。
 import {HttpError,requireRole,nowIso,sha256,bookkeepingExport,type Env,type Actor} from "./index";
 import {entryKey,LEDGER_COLS} from "../web/src/lib/ledger-shared";
+import {reconRoute} from "./ledger-recon";
 
 const DATE=/^\d{4}-\d{2}-\d{2}$/,YM=/^\d{4}-\d{2}$/;
 const str=(v:unknown,max=500)=>{const t=v===null||v===undefined?"":String(v).trim();if(t.length>max)throw new HttpError(400,"文字過長");return t};
@@ -175,6 +176,7 @@ const acct=(v:unknown)=>{const a=str(v,40);if(!a)throw new HttpError(400,"請指
 export async function ledgerRoute(request:Request,env:Env,url:URL,actor:Actor|null):Promise<unknown>{
  const p=url.pathname.slice("/api/ledger".length),m=request.method,q=url.searchParams;
  const {a,o}=await ledgerActor(env,actor);
+ const rc=await reconRoute({request,env,url,a,who:who(a),readBig,hashEntry:hashOf,cleanEntry,ENTRY_SQL,entryBind});if(rc!==undefined)return rc;
  if(p==="/access"&&m==="GET")return {ok:true,locked:!!o,isOwner:a.kind==="user"&&a.id===o,canLock:a.kind==="user"};
  if(p==="/access"&&m==="POST"){if(a.kind!=="user")throw new HttpError(403,"請用個人帳號登入後再設定");const b=await readBig(request);
   if(b.lock)await env.DB.prepare("INSERT INTO settings (key,value,updated_at,updated_by) VALUES ('ledger_owner',?,?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=excluded.updated_at,updated_by=excluded.updated_by").bind(a.id,nowIso(),a.username).run();
@@ -212,12 +214,13 @@ export async function ledgerRoute(request:Request,env:Env,url:URL,actor:Actor|nu
   return {rows:results,ledger:{shop:Math.round(led.shop),uber:Math.round(led.uber)}}}
  if(k==="prepaid"&&m==="GET"){const ac=acct(q.get("account")??"龍龍");const {results}=await env.DB.prepare("SELECT * FROM ledger_prepaid WHERE account=? AND deleted=0 ORDER BY seq,created_at").bind(ac).all<any>();
   const accts=(await env.DB.prepare("SELECT DISTINCT account FROM ledger_prepaid WHERE deleted=0").all<any>()).results.map(r=>r.account);
-  return {account:ac,accounts:accts,rows:results,balance:r2(results.reduce((s,r)=>s+r.amount,0))}}
+  const lb=(await env.DB.prepare("SELECT label FROM ledger_accounts WHERE account=?").bind(ac).first<any>())?.label??"";
+  return {account:ac,label:lb,accounts:accts,rows:results,balance:r2(results.reduce((s,r)=>s+r.amount,0))}}
  if(k==="prepaid"&&m==="POST"){const b=await readBig(request);const ac=acct(b.account);
   if(b.deleteId){await env.DB.prepare("UPDATE ledger_prepaid SET deleted=1 WHERE id=? AND account=?").bind(str(b.deleteId,40),ac).run();return {ok:true}}
   if(b.id){await env.DB.prepare("UPDATE ledger_prepaid SET checked=?,status=? WHERE id=? AND account=?").bind(str(b.checked,10),str(b.status,200),str(b.id,40),ac).run();return {ok:true}}
   const max=(await env.DB.prepare("SELECT COALESCE(MAX(seq),0) AS s FROM ledger_prepaid WHERE account=?").bind(ac).first<any>()).s;
   const up=n(b.unitPrice),qq=b.qty===undefined||b.qty===""?1:n(b.qty);
-  await env.DB.prepare("INSERT INTO ledger_prepaid (id,account,seq,item,unit_price,qty,amount,checked,status,hash,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)").bind(crypto.randomUUID(),ac,max+1,str(b.item,200),up,qq,r2(up*qq),str(b.checked,10),str(b.status,200),(await sha256(`${str(b.item,200)}|${r2(up)}|${r2(qq)}|${r2(up*qq)}`)).slice(0,22),nowIso()).run();return {ok:true}}
+  await env.DB.prepare("INSERT INTO ledger_prepaid (id,account,seq,item,unit_price,qty,amount,checked,status,hash,created_at,entry_date,direction) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)").bind(crypto.randomUUID(),ac,max+1,str(b.item,200),up,qq,r2(up*qq),str(b.checked,10),str(b.status,200),(await sha256(`${str(b.item,200)}|${r2(up)}|${r2(qq)}|${r2(up*qq)}`)).slice(0,22),nowIso(),DATE.test(str(b.date,10))?str(b.date,10):"",up*qq<0?"we_owe":"they_owe").run();return {ok:true}}
  throw new HttpError(404,"Not found");
 }

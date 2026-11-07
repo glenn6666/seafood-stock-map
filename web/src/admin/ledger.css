@@ -11,3 +11,17 @@
 .cat-group{margin:10px 0}.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}.chip{display:inline-flex;align-items:center;gap:4px;border:1px solid #abc8ca;border-radius:999px;padding:4px 10px;font-size:13px;background:#f7fbfb}.chip.off{opacity:.5;text-decoration:line-through}.chip button{border:0;background:none;padding:0 2px;min-height:0;cursor:pointer}
 label.file{display:inline-flex;flex-direction:column;gap:4px;font-size:14px}.import-counts{columns:2}.admin-card.ok{border-color:#7cc49a;background:#effaf3}.admin-card.warn{border-color:#f0b35a;background:#fff8ec}
 @media (max-width:640px){.ledger-sub button{padding:6px 10px;font-size:13px;min-height:36px}.import-counts{columns:1}}
+/* 付款拆分／收銀代支／對帳單 */
+.pay-form .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+.split-line{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:6px 0;border-bottom:1px dashed #ddd}
+.split-line select,.split-line input{min-width:0;flex:1 1 120px}.split-line .amt{flex:0 1 100px;text-align:right}
+.tag{display:inline-block;white-space:nowrap;flex:none;padding:1px 8px;border-radius:10px;background:#e6f0ff;color:#1d4ed8;font-size:.8em;margin-right:4px}
+.tag.partner{background:#fff1e6;color:#c2410c}.tag.ok{background:#e7f8ec;color:#15803d}
+.admin-hint.ok{color:#15803d}
+.pay-head{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}.pay-head span{margin-left:auto;font-weight:700}
+.pay-lines{list-style:none;padding:0;margin:6px 0}.pay-lines li{display:flex;gap:6px;align-items:center;padding:2px 0}.pay-lines b{margin-left:auto}
+.receipts{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:6px 0}
+.receipt-thumb{width:64px;height:64px;object-fit:cover;border-radius:6px;border:1px solid #ddd;display:inline-block}
+.file.small{font-size:.85em}
+.stmt{list-style:none;padding:0}.stmt li{display:flex;gap:8px;align-items:baseline;padding:3px 0}.stmt b{margin-left:auto}
+.neg{color:#b91c1c}.pos{color:#15803d}

@@ -71,3 +71,15 @@ export function sheetsFromXlsx(X:any,wb:any):Workbook{
   o[n]=X.utils.sheet_to_json(ws,{header:1,raw:true,defval:null,blankrows:true})}
  return o;
 }
+/** 收銀機「代支」匯出：帳日、時間、型態（代支(-)）、項目、經辦、金額。只取型態含「代支」或「支出」的列；金額一律取正數 */
+export function parseCashoutRows(rows:unknown[][]){
+ const hi=rows.findIndex(r=>r.some(c=>/帳日|日期/.test(s(c)))&&r.some(c=>/金額/.test(s(c))));if(hi<0)return {rows:[] as any[],header:[] as string[]};
+ const head=rows[hi].map(s);const col=(re:RegExp)=>head.findIndex(h=>re.test(h));
+ const c={date:col(/帳日|日期/),time:col(/時間/),type:col(/型態|類型/),item:col(/項目|品項|說明/),staff:col(/經辦|人員/),amount:col(/金額/)};
+ const out:any[]=[];
+ for(const r of rows.slice(hi+1)){const date=toDate(r[c.date]);if(!date)continue;const type=c.type>=0?s(r[c.type]):"代支";if(c.type>=0&&!/代支|支出/.test(type))continue;
+  const amount=Math.abs(num(r[c.amount]));if(!amount)continue;
+  let time=c.time>=0?r[c.time]:"";if(time instanceof Date)time=`${pad(time.getHours())}:${pad(time.getMinutes())}`;else if(typeof time==="number"&&time<1){const m=Math.round(time*1440);time=`${pad(Math.floor(m/60))}:${pad(m%60)}`}
+  out.push({date,time:s(time).slice(0,8),type,item:c.item>=0?s(r[c.item]):"",staff:c.staff>=0?s(r[c.staff]):"",amount})}
+ return {rows:out,header:head};
+}

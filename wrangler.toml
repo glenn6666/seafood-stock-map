@@ -21,3 +21,8 @@ database_id = "09536e00-1025-476a-bf5f-42e680ad7e60"
 migrations_dir = "migrations"
 
 # 機密值不放這裡。請用：npx wrangler secret put INVENTORY_TOKEN
+
+# 單據照片（只有記帳權限的人能透過 API 讀取，不公開）。上線前需先建立：npx wrangler r2 bucket create seafood-receipts
+[[r2_buckets]]
+binding = "RECEIPTS"
+bucket_name = "seafood-receipts"

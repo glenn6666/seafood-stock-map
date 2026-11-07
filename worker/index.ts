@@ -2,7 +2,7 @@ import {storagePhotos,photoSections,normalizePhotoId} from "../web/src/lib/stora
 import {catalogPrice} from "../web/src/lib/catalog";
 import {ledgerRoute} from "./ledger";
 
-export type Env={DB:D1Database;INVENTORY_TOKEN:string;ALLOWED_ORIGIN:string};
+export type Env={DB:D1Database;INVENTORY_TOKEN:string;ALLOWED_ORIGIN:string;RECEIPTS?:R2Bucket};
 type Role="admin"|"staff";
 export type Actor={kind:"user";id:string;role:Role;username:string}|{kind:"legacy";role:"admin"};
 
@@ -524,6 +524,9 @@ export default {async fetch(request:Request,env:Env):Promise<Response>{
   headers.set("Access-Control-Max-Age","600");
   return new Response(null,{status:204,headers});
  }
- try{return reply(await route(request,env,url))}
+ try{const out=await route(request,env,url);
+  // 單據照片等二進位回應：沿用 CORS 標頭直接回傳
+  if(out instanceof Response){const h=new Headers(out.headers);const ao=headers.get("Access-Control-Allow-Origin");if(ao){h.set("Access-Control-Allow-Origin",ao);h.set("Vary","Origin")}return new Response(out.body,{status:out.status,headers:h})}
+  return reply(out)}
  catch(e){if(e instanceof HttpError)return reply({error:e.message,...e.extra},e.status);console.error(e);return reply({error:"資料庫目前無法使用，請稍後再試"},503)}
 }};
