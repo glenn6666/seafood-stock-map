@@ -52,3 +52,27 @@ label.file{display:inline-flex;flex-direction:column;gap:4px;font-size:14px}.imp
 @media (max-width:640px){.pl-top{padding:12px}.pl-title{font-size:19px}.pl-kpis{grid-template-columns:1fr 1fr}.pl-kpi{padding:10px;gap:8px}.pl-kpi-ic{width:34px;height:34px}.pl-kpi-v{font-size:19px}.pl-kpis .pl-kpi:last-child{grid-column:1/-1}.pl-legend{display:none}.pl-tick{font-size:16px}}
 @media print{.ledger-sub,.admin-nav,.pl-actions,.pl-noprint,header{display:none!important}.pl-top{background:#173c51!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.pl *{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
 .receipt-thumb.expired{display:inline-grid;place-items:center;font-size:10px;line-height:1.2;text-align:center;color:#8aa0ad;background:#f4f6f7;border-style:dashed;padding:2px}
+/* 下載 PDF：隱藏的 A4 頁面（只在產生 PDF 時短暫存在） */
+.pl-xls{padding:6px 10px!important;font-size:13px}.pl-actions button:disabled{opacity:.6;cursor:wait}
+.pdf-host{position:fixed;left:-20000px;top:0;z-index:-1;pointer-events:none}
+.pdf-page{box-sizing:border-box;background:#fff;position:relative;overflow:hidden;display:block;margin:0 0 20px;font-family:Arial,"Noto Sans TC","Noto Sans CJK TC","PingFang TC","Microsoft JhengHei",sans-serif;color:#173c51}
+.pdf-body{display:flex;flex-direction:column;gap:10px}
+.pdf-runhead{font-size:10px;color:#8aa0ad;border-bottom:1px solid #e3eded;padding-bottom:4px;margin-bottom:8px}
+.pdf-foot{position:absolute;left:30px;right:30px;bottom:14px;font-size:10px;color:#8aa0ad;text-align:right;border-top:1px solid #e3eded;padding-top:4px}
+.pdf-stamp{width:100%;font-size:11px;opacity:.75}
+.pdf-page .pl-top{padding:14px 16px}.pdf-page .pl-title{font-size:20px}
+.pdf-page .pl-kpis{grid-template-columns:repeat(5,1fr);gap:8px}
+.pdf-page .pl-kpi{flex-direction:column;gap:6px;padding:10px}.pdf-page .pl-kpi-ic{width:32px;height:32px;border-radius:9px}.pdf-page .pl-kpi-v{font-size:18px}.pdf-page .pl-kpi-l{font-size:12px}.pdf-page .pl-kpi-s{font-size:10.5px}.pdf-page .pl-delta,.pdf-page .pl-chip{font-size:10.5px}
+.pdf-page .admin-card{margin:0;padding:12px 14px;box-shadow:none}
+.pdf-page .pl-two{grid-template-columns:1fr 1fr}.pdf-page .pl-break{gap:7px}
+.pdf-page .pnl-grid,.pdf-page .pnl{width:100%}.pdf-page .pl-table th,.pdf-page .pl-table td{padding:4px 8px;font-size:12px}
+.pdf-page .ledger-table thead th{position:static}
+.pdf-h{margin:6px 0 0;font-size:15px}.pdf-h svg{flex:none}.pdf-cont{font-size:12px;color:#8aa0ad;font-weight:400}
+.pdf-t{font-size:10.5px;table-layout:auto}.pdf-t th,.pdf-t td{padding:3px 5px;border-bottom:1px solid #e3eded;line-height:1.35}.pdf-t thead th{background:#173c51;color:#fff;font-weight:600}
+.pdf-t tbody tr:nth-child(even){background:#f7fafa}.pdf-t tr.sum{background:#fff6dd!important;font-weight:700}.pdf-t tr.none td{color:#b8c4c8}
+.pdf-pos td:nth-child(n+3){text-align:right;font-variant-numeric:tabular-nums}.pdf-pos th:nth-child(n+3){text-align:right}
+.pdf-ent td:nth-child(6),.pdf-ent td:nth-child(7),.pdf-ent th:nth-child(6),.pdf-ent th:nth-child(7){text-align:right;font-variant-numeric:tabular-nums}
+.pdf-ent td:nth-child(4),.pdf-ent td:nth-child(5),.pdf-ent td:nth-child(8){white-space:normal;word-break:break-all}.pdf-ent td:nth-child(4){max-width:150px}.pdf-ent td:nth-child(5){max-width:170px;color:#536b7b}.pdf-ent td:nth-child(8){max-width:100px}
+.pdf-ent td:nth-child(6){color:#0b6b3a}.pdf-ent td:nth-child(7){color:#b42318}
+/* 手機上產生 PDF 時，不套用手機版排版 */
+.pdf-page .pl-kpis .pl-kpi:last-child{grid-column:auto}.pdf-page .pl-legend{display:flex}.pdf-page .pl-tick{font-size:12px}.pdf-page .pl-kpi-ic{width:32px;height:32px}
