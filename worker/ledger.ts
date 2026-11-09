@@ -1,7 +1,7 @@
 // 後台記帳（取代／並行 Google 試算表「安星水產記帳」）。只有記帳負責人（管理員）可用。
 import {HttpError,requireRole,nowIso,sha256,bookkeepingExport,type Env,type Actor} from "./index";
 import {entryKey,LEDGER_COLS} from "../web/src/lib/ledger-shared";
-import {reconRoute} from "./ledger-recon";
+import {reconRoute,displayLabel} from "./ledger-recon";
 
 const DATE=/^\d{4}-\d{2}-\d{2}$/,YM=/^\d{4}-\d{2}$/;
 const str=(v:unknown,max=500)=>{const t=v===null||v===undefined?"":String(v).trim();if(t.length>max)throw new HttpError(400,"文字過長");return t};
@@ -214,7 +214,7 @@ export async function ledgerRoute(request:Request,env:Env,url:URL,actor:Actor|nu
   return {rows:results,ledger:{shop:Math.round(led.shop),uber:Math.round(led.uber)}}}
  if(k==="prepaid"&&m==="GET"){const ac=acct(q.get("account")??"蟹老大");const {results}=await env.DB.prepare("SELECT * FROM ledger_prepaid WHERE account=? AND deleted=0 ORDER BY seq,created_at").bind(ac).all<any>();
   const accts=(await env.DB.prepare("SELECT DISTINCT account FROM ledger_prepaid WHERE deleted=0").all<any>()).results.map(r=>r.account);
-  const lb=(await env.DB.prepare("SELECT label FROM ledger_accounts WHERE account=?").bind(ac).first<any>())?.label??"";
+  const lb=displayLabel(ac,(await env.DB.prepare("SELECT label FROM ledger_accounts WHERE account=?").bind(ac).first<any>())?.label);
   return {account:ac,label:lb,accounts:accts,rows:results,balance:r2(results.reduce((s,r)=>s+r.amount,0))}}
  if(k==="prepaid"&&m==="POST"){const b=await readBig(request);const ac=acct(b.account);
   if(b.deleteId){await env.DB.prepare("UPDATE ledger_prepaid SET deleted=1 WHERE id=? AND account=?").bind(str(b.deleteId,40),ac).run();return {ok:true}}

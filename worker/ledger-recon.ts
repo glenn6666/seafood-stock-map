@@ -19,7 +19,11 @@ export async function purgeOldReceipts(env:Env,now=new Date()){
 export type ReconCtx={request:Request;env:Env;url:URL;a:Actor;who:string;readBig:(r:Request)=>Promise<any>;
  hashEntry:(e:any)=>Promise<string>;cleanEntry:(b:any,rec:string)=>any;ENTRY_SQL:string;entryBind:(id:string,e:any,source:string,webKey:string|null,hash:string)=>unknown[]};
 
-async function labels(env:Env){const {results}=await env.DB.prepare("SELECT account,label FROM ledger_accounts").all<any>();return Object.fromEntries(results.map(r=>[r.account,r.label]))}
+/** 顯示名稱（只改畫面上的名稱）：資料庫裡的對帳對象代號（account）與 ledger_accounts.label 都不動，
+ *  所以匯入程式 tools/recon-2026-import.py（ACC="蟹老大"）與內容雜湊 id 都不受影響。 */
+export const DISPLAY_LABEL:Record<string,string>={"蟹老大":"安星水產中港店","龍龍":"安星水產中港店（舊版，至 2024/8）"};
+export const displayLabel=(account:string,dbLabel?:string|null)=>DISPLAY_LABEL[account]??dbLabel??"";
+async function labels(env:Env){const {results}=await env.DB.prepare("SELECT account,label FROM ledger_accounts").all<any>();const o:Record<string,string>=Object.fromEntries(results.map(r=>[r.account,displayLabel(r.account,r.label)]));for(const [a,l] of Object.entries(DISPLAY_LABEL))if(a in o)o[a]=l;return o}
 async function archived(env:Env){const {results}=await env.DB.prepare("SELECT account FROM ledger_accounts WHERE archived=1").all<any>();return new Set(results.map(r=>r.account as string))}
 const dirOf=(amount:number,d:string)=>d==="we_owe"||d==="they_owe"?d:amount<0?"we_owe":"they_owe";
 
