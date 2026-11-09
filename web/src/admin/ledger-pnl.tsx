@@ -2,6 +2,7 @@ import {useEffect,useRef,useState,type ReactNode} from "react";
 import {ArrowDownRight,ArrowUpRight,Banknote,Bike,Building2,CalendarDays,ChartColumn,ChartPie,CircleDollarSign,Coins,Droplets,Fish,Flame,HandCoins,Hammer,Home,Landmark,Minus,Package,Percent,PiggyBank,Printer,Receipt,FileSpreadsheet,FileText,Scale,ShoppingCart,Store,StickyNote,TrendingDown,TrendingUp,Truck,Users,Wallet,Wifi,Wrench,Zap} from "lucide-react";
 import {inventoryFetch} from "../lib/pages-api";
 import {errorText} from "../lib/api-config";
+import {HIGH_SALES_DAY} from "../lib/ledger-shared";
 
 async function api(path:string,body?:unknown){const r=await inventoryFetch("/api/ledger"+path,body===undefined?{}:{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});if(!r.ok)throw new Error(await errorText(r));return r.json()}
 const money=(n:number)=>(n<0?"-":"")+Math.abs(Math.round(n)).toLocaleString("en-US");
@@ -67,12 +68,12 @@ async function exportMonthPdf(root:HTMLElement,ym:string,onProgress:(s:string)=>
 async function exportMonth(ym:string,r:any){
  const [X,md]=await Promise.all([import("xlsx"),loadMonth(ym)]);const {last}=md;
  const W="日一二三四五六",R=(n:number)=>Math.round(n*100)/100;
- const posHead=["日期","星期","原銷售額","結帳折讓","現金","其他付款（刷卡／行動支付等）","消費人次","人均消費","營收金額","UBER","總計（營收＋UBER）","帳差（現金＋其他付款－營收）","資料來源"];
+ const posHead=["日期","星期","原銷售額","結帳折讓","現金","其他付款（刷卡／行動支付等）","消費人次","人均消費","營收金額","UBER","總計（營收＋UBER）","帳差（現金＋其他付款－營收）","資料來源",`營收達 ${HIGH_SALES_DAY.toLocaleString("en-US")}`];
  const posRows:any[][]=[];const t=md.posTotal,days=md.days,ent={total:md.entTotal};
  for(let d=1;d<=last;d++){const ds=`${ym}-${String(d).padStart(2,"0")}`,w=W[new Date(+ym.slice(0,4),+ym.slice(5)-1,d).getDay()],x:any=md.pos[d-1];
   if(!x){posRows.push([ds,w,"","","","","","","","","","","無日結資料"]);continue}
-  posRows.push([ds,w,R(x.gross),R(x.discount),R(x.cash),R(x.other_pay),x.customers,x.customers?R(x.revenue/x.customers):"",R(x.revenue),R(x.uber),R(x.revenue+x.uber),R(x.cash+x.other_pay-x.revenue),x.source??""])}
- posRows.push(["合計",`${days} 天`,R(t.gross),R(t.discount),R(t.cash),R(t.other_pay),t.customers,t.customers?R(t.revenue/t.customers):"",R(t.revenue),R(t.uber),R(t.revenue+t.uber),R(t.cash+t.other_pay-t.revenue),""]);
+  posRows.push([ds,w,R(x.gross),R(x.discount),R(x.cash),R(x.other_pay),x.customers,x.customers?R(x.revenue/x.customers):"",R(x.revenue),R(x.uber),R(x.revenue+x.uber),R(x.cash+x.other_pay-x.revenue),x.source??"",x.revenue>=HIGH_SALES_DAY?"★":""])}
+ posRows.push(["合計",`${days} 天`,R(t.gross),R(t.discount),R(t.cash),R(t.other_pay),t.customers,t.customers?R(t.revenue/t.customers):"",R(t.revenue),R(t.uber),R(t.revenue+t.uber),R(t.cash+t.other_pay-t.revenue),"",`${md.pos.filter((x:any)=>x&&x.revenue>=HIGH_SALES_DAY).length} 天`]);
  const entHead=["日期","收支","會計項目","內容","備註","數量","單價","稅金","金額","收入","支出","客戶/廠商","員工","付款方式","銀行","入帳日","記錄人","來源"];
  const es=md.entries;
  const entRows=es.map((e:any)=>[e.date,e.kind,e.category,e.item,e.note,e.qty,e.unitPrice,e.tax||"",R(e.amount),e.signed>0?R(e.signed):"",e.signed<0?R(-e.signed):"",e.party,e.staff,e.payMethod,e.bank,e.postedDate,e.recorder,e.source]);
@@ -84,7 +85,7 @@ async function exportMonth(ym:string,r:any){
   ["收支紀錄","金額"],["筆數",ent.total.count],["收入合計",R(ent.total.income)],["支出合計",R(-ent.total.expense)],["淨額",R(ent.total.net)],[],
   ["說明：損益表的營業收入取自收支紀錄（店面收入／UBER收入），每日營業額工作表為收銀機日結，兩者可互相核對。"]];
  const wb=X.utils.book_new(),add=(name:string,aoa:any[][],cols:number[])=>{const ws=X.utils.aoa_to_sheet(aoa);ws["!cols"]=cols.map(w=>({wch:w}));X.utils.book_append_sheet(wb,ws,name)};
- add("摘要",sum,[30,16]);add("每日營業額",[posHead,...posRows],[12,6,11,10,11,16,9,9,11,10,14,16,10]);add("收支紀錄",[entHead,...entRows],[12,6,12,18,24,6,10,8,11,11,11,14,8,10,10,12,8,8]);
+ add("摘要",sum,[30,16]);add("每日營業額",[posHead,...posRows],[12,6,11,10,11,16,9,9,11,10,14,16,10,12]);add("收支紀錄",[entHead,...entRows],[12,6,12,18,24,6,10,8,11,11,11,14,8,10,10,12,8,8]);
  X.writeFile(wb,`安星水產_${ym}_每日營業額與收支紀錄.xlsx`);
  return {days,entries:es.length};
 }

@@ -83,3 +83,7 @@ export function parseCashoutRows(rows:unknown[][]){
   out.push({date,time:s(time).slice(0,8),type,item:c.item>=0?s(r[c.item]):"",staff:c.staff>=0?s(r[c.staff]):"",amount})}
  return {rows:out,header:head};
 }
+
+/** 單日收銀機營收（revenue，不含 UBER）達此金額就標示底色；與薪資「當日業績獎金」門檻相同 */
+export const HIGH_SALES_DAY=45000;
+export const HIGH_SALES_NOTE=`底色標示：當日營收達 ${HIGH_SALES_DAY.toLocaleString("en-US")}`;

@@ -18,6 +18,10 @@ for(const vp of [{width:1280,height:900},{width:390,height:844}]){
  ok(txt.startsWith("%PDF-")&&txt.trimEnd().endsWith("%%EOF")&&/MediaBox \[0 0 595.28 841.89\]/.test(txt),`${vp.width}px：A4 PDF`);
  ok(pages>=2,`${vp.width}px：${pages} 頁`);
  ok(await p.locator(".pdf-host").count()===0,`${vp.width}px：隱藏頁面已清除`);
+ if(vp.width>700){await p.click(".ledger-sub button:has-text('每日營業額')");await p.fill('[aria-label="年月"]',YM);await p.waitForTimeout(1500);
+  const rv=await p.locator(".export-table tbody tr").evaluateAll(rs=>rs.map(r=>({v:+r.cells[8].textContent.replace(/,/g,""),hi:r.classList.contains("hi-day")})));
+  ok(rv.length>0&&rv.every(x=>x.hi===(x.v>=45000)),`每日營業額：營收達 45,000 整列標色（${rv.filter(x=>x.hi).length} 天）`);ok(await p.locator(".hi-note").count()===1,"每日營業額：有底色說明");
+  await p.click(".ledger-sub button:has-text('損益表')");await p.fill('[aria-label="年月"]',YM);await p.waitForTimeout(1500)}
  if(vp.width>700){const [x]=await Promise.all([p.waitForEvent("download"),p.getByRole("button",{name:"Excel"}).click()]);ok(x.suggestedFilename().endsWith(".xlsx"),"Excel 仍可下載："+x.suggestedFilename())}
  await ctx.close()}
 ok(!errs.length,"沒有前端錯誤"+(errs.length?"："+errs.join(" | "):""));

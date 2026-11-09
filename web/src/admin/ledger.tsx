@@ -1,7 +1,7 @@
 import {useEffect,useMemo,useState} from "react";
 import {inventoryFetch} from "../lib/pages-api";
 import {errorText} from "../lib/api-config";
-import {parseLedgerWorkbook,sheetsFromXlsx,parsePosRows,POS_FIELDS,type Parsed} from "../lib/ledger-shared";
+import {parseLedgerWorkbook,sheetsFromXlsx,parsePosRows,POS_FIELDS,HIGH_SALES_DAY,HIGH_SALES_NOTE,type Parsed} from "../lib/ledger-shared";
 import "./ledger.css";
 import {Payments,Cashout,Statement,accLabel} from "./ledger-recon";
 import {Pnl} from "./ledger-pnl";
@@ -126,8 +126,8 @@ function Pos(){
    {parsed.length>0&&<p className="admin-hint">第一天：{parsed[0].date}　營收 {money(parsed[0].revenue)}　最後一天：{parsed.at(-1).date}</p>}
    <div className="actions"><button className="primary" disabled={!parsed.length} onClick={commit}>匯入 {parsed.length} 天</button><button onClick={()=>setUp(null)}>取消</button></div></div>}
   {r&&<><div className="admin-card ledger-total"><span>營收 {money(tot("revenue"))}</span><span>UBER {money(tot("uber"))}</span><span>人次 {tot("customers")}</span><span>收支紀錄「店面收入」{money(r.ledger.shop)}</span><span>「UBER收入」{money(r.ledger.uber)}</span></div>
-   <div className="export-table"><table className="ledger-table num"><thead><tr><th>星期</th><th>日期</th><th>原銷售額</th><th>結帳折讓</th><th>現金</th><th>其他付款</th><th>消費人次</th><th>人均消費</th><th>營收金額</th><th>UBER</th><th>總計</th><th>帳差</th></tr></thead>
-    <tbody>{r.rows.map((x:any)=><tr key={x.sale_date}><td>{"日一二三四五六"[new Date(x.sale_date).getDay()]}</td><td>{x.sale_date}</td><td>{money(x.gross)}</td><td>{money(x.discount)}</td><td>{money(x.cash)}</td><td>{money(x.other_pay)}</td><td>{x.customers}</td><td>{x.customers?money(x.revenue/x.customers):""}</td><td>{money(x.revenue)}</td><td>{money(x.uber)}</td><td>{money(x.revenue+x.uber)}</td><td className={Math.round(x.cash+x.other_pay-x.revenue)?"neg":""}>{money(x.cash+x.other_pay-x.revenue)}</td></tr>)}</tbody></table></div></>}</>;
+   <p className="hi-note"><i/>{HIGH_SALES_NOTE}</p><div className="export-table"><table className="ledger-table num"><thead><tr><th>星期</th><th>日期</th><th>原銷售額</th><th>結帳折讓</th><th>現金</th><th>其他付款</th><th>消費人次</th><th>人均消費</th><th>營收金額</th><th>UBER</th><th>總計</th><th>帳差</th></tr></thead>
+    <tbody>{r.rows.map((x:any)=><tr key={x.sale_date} className={x.revenue>=HIGH_SALES_DAY?"hi-day":undefined}><td>{"日一二三四五六"[new Date(x.sale_date).getDay()]}</td><td>{x.sale_date}</td><td>{money(x.gross)}</td><td>{money(x.discount)}</td><td>{money(x.cash)}</td><td>{money(x.other_pay)}</td><td>{x.customers}</td><td>{x.customers?money(x.revenue/x.customers):""}</td><td>{money(x.revenue)}</td><td>{money(x.uber)}</td><td>{money(x.revenue+x.uber)}</td><td className={Math.round(x.cash+x.other_pay-x.revenue)?"neg":""}>{money(x.cash+x.other_pay-x.revenue)}</td></tr>)}</tbody></table></div></>}</>;
 }
 
 // ---------- 員工 ----------

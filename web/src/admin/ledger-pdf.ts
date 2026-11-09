@@ -4,6 +4,7 @@
  * 表格逐列排版、放不下就換頁並重複表頭（不會把一列切成兩半），
  * 每頁用 html2canvas-pro 轉成 JPEG，再寫成 PDF。html2canvas-pro 只在按下按鈕時才載入。
  */
+import {HIGH_SALES_DAY, HIGH_SALES_NOTE} from "../lib/ledger-shared";
 const PAGE_W = 794, PAGE_H = 1123, PAD = 30; // A4 @96dpi（CSS px）
 const FOOT = 26;
 const money = (n: number) => (n < 0 ? "-" : "") + Math.abs(Math.round(n)).toLocaleString("en-US");
@@ -50,7 +51,7 @@ function paginate(host: HTMLElement, blocks: Block[], header: string) {
     if ("node" in b) { body.appendChild(b.node); if (!fits() && body.childElementCount > 1) { b.node.remove(); newPage(); body.appendChild(b.node); } continue; }
     const rows = [...b.table.tBodies[0].rows];
     const start = (cont: boolean) => {
-      const title = b.title.cloneNode(true) as HTMLElement; if (cont) title.appendChild(el("small", "pdf-cont", "（續）"));
+      const title = b.title.cloneNode(true) as HTMLElement; if (cont) (title.querySelector("h3") ?? title).appendChild(el("small", "pdf-cont", "（續）"));
       const t = b.table.cloneNode(false) as HTMLTableElement; t.appendChild(b.table.tHead!.cloneNode(true)); const tb = el("tbody"); t.appendChild(tb);
       body.appendChild(title); body.appendChild(t); return {title, t, tb};
     };
@@ -110,9 +111,12 @@ export async function exportMonthPdf(root: HTMLElement, d: MonthData, onProgress
     });
     const t = d.posTotal;
     posRows.push(["合計", `${d.days} 天`, money(t.revenue), money(t.cash), money(t.other_pay), money(t.uber), money(t.revenue + t.uber), t.customers, t.customers ? money(t.revenue / t.customers) : ""]);
-    const posT = buildTable(["日期", "星期", "營收金額", "現金", "其他付款", "UBER", "總計", "人次", "客單價"], posRows, "pdf-pos", i => i === posRows.length - 1 ? "sum" : d.pos[i] ? "" : "none");
-    const posTitle = el("h3", "pl-h pdf-h"); posTitle.innerHTML = ICON_CAL; posTitle.append(`每日營業額（收銀機日結）`); posTitle.appendChild(el("span", "pl-h-r", `${d.days} 天・總計 ${money(t.revenue + t.uber)}`));
-    blocks.push({table: posT, title: posTitle});
+    const posT = buildTable(["日期", "星期", "營收金額", "現金", "其他付款", "UBER", "總計", "人次", "客單價"], posRows, "pdf-pos", i => i === posRows.length - 1 ? "sum" : !d.pos[i] ? "none" : d.pos[i].revenue >= HIGH_SALES_DAY ? "hi-day" : "");
+    const posTitle = el("h3", "pl-h pdf-h"); posTitle.innerHTML = ICON_CAL; posTitle.append(`每日營業額（收銀機日結）`); const hiN = d.pos.filter(x => x && x.revenue >= HIGH_SALES_DAY).length;
+    posTitle.appendChild(el("span", "pl-h-r", `${d.days} 天・總計 ${money(t.revenue + t.uber)}`));
+    const posHead = el("div", "pdf-tblhead"); posHead.appendChild(posTitle);
+    const note = el("p", "hi-note"); note.appendChild(el("i")); note.append(`${HIGH_SALES_NOTE}（本月 ${hiN} 天）`); posHead.appendChild(note);
+    blocks.push({table: posT, title: posHead});
 
     // 3) 收支紀錄
     const es = d.entries;
