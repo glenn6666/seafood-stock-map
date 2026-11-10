@@ -170,7 +170,14 @@ function Shop({origin}:{origin:string}){
  return <div className="shop-shell">
   <div className={"shop-map-pane"+(tab==="browse"?" is-on":"")}>{map}</div>
   <section className={"shop-panel"+(tab==="catalog"||checkout?" is-on":"")} aria-label="商品列表">
-   <header className="panel-hero"><span className="brand">ANXING OCEAN MARKET</span><p className="tagline">今天，帶點海味回家。</p></header>
+   <header className="panel-hero">
+    <div className="panel-hero-text">
+     <span className="brand">ANXING OCEAN MARKET</span>
+     <p className="tagline">今天，帶點海味回家。</p>
+     <p className="hero-sub">從冰箱到活鮮缸，慢慢挑一份喜歡。</p>
+    </div>
+    <button type="button" className="panel-close" aria-label="回到店面" onClick={()=>{setCheckout(false);setTab("browse")}}>×</button>
+   </header>
    <div className="panel-body">
     {!checkout&&filters}
     {listBody}
