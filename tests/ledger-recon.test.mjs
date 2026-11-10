@@ -8,7 +8,8 @@ const login=async(u,p)=>(await api("/api/auth/login",{method:"POST",body:{userna
 const admin=await login("boss","boss-pass-123");const su="rclerk"+Date.now()%100000;await api("/api/users",{method:"POST",token:admin,body:{username:su,password:"clerk-pass-9",role:"staff"}});const staff=await login(su,"clerk-pass-9");
 let pid,cid;
 await t("店員、未登入不能用付款、對帳單、照片、代支",async()=>{for(const p of ["/api/ledger/payments?ym=2001-05","/api/ledger/statement?account=蟹老大&ym=2001-05","/api/ledger/cashout?ym=2001-05","/api/ledger/accounts"]){assert.equal((await api(p,{token:staff})).status,403,p);assert.equal((await api(p)).status,401,p)}});
-await t("蟹老大中港店為目前對象；龍龍為舊版封存，不能再拆分進去",async()=>{const rows=(await api("/api/ledger/accounts",{token:admin})).data.rows;assert.equal(rows.find(x=>x.account==="蟹老大").label,"蟹老大中港店");assert.equal(rows.find(x=>x.account==="龍龍").archived,true);
+await t("顯示名稱為安星水產中港店（代號仍是蟹老大）；龍龍為舊版封存，不能再拆分進去",async()=>{const rows=(await api("/api/ledger/accounts",{token:admin})).data.rows;assert.equal(rows.find(x=>x.account==="蟹老大").label,"安星水產中港店");assert.equal(rows.find(x=>x.account==="龍龍").label,"安星水產中港店（舊版，至 2024/8）");assert.equal(rows.find(x=>x.account==="龍龍").archived,true);
+ assert.equal((await api("/api/ledger/prepaid?account=蟹老大",{token:admin})).data.label,"安星水產中港店");
  assert.equal((await api("/api/ledger/payments",{method:"POST",token:admin,body:{date:"2001-05-02",total:10,lines:[{type:"partner",account:"龍龍",amount:10}]}})).status,400)});
 await t("代支匯入：重複上傳不重複",async()=>{const rows=[{date:"2001-05-03",time:"10:20",type:"代支(-)",item:"泰國蝦",staff:"小王",amount:-4600},{date:"2001-05-03",time:"15:00",type:"代支(-)",item:"運費",staff:"小王",amount:200}];
  let r=await api("/api/ledger/import",{method:"POST",token:admin,body:{kind:"cashout",rows}});assert.deepEqual([r.data.inserted,r.data.skipped],[2,0]);
@@ -22,11 +23,12 @@ await t("一筆付款拆成店內＋團購；代支變成已對應",async()=>{co
  const c=(await api("/api/ledger/cashout?ym=2001-05",{token:admin})).data;assert.equal(c.matched,1);
  assert.equal((await api("/api/ledger/payments",{method:"POST",token:admin,body:{date:"2001-05-03",total:10,cashoutId:cid,lines:[{type:"store",category:"進貨支出",amount:10}]}})).status,409,"同一筆代支不能對應兩次")});
 await t("月結對帳單：本月對方欠我們 +1600",async()=>{const before=(await api("/api/ledger/prepaid?account=蟹老大",{token:admin})).data.balance;
- const s=(await api("/api/ledger/statement?account=蟹老大&ym=2001-05",{token:admin})).data;assert.equal(s.label,"蟹老大中港店");assert.equal(s.theyOwe,1600);assert.equal(s.rows[0].direction,"they_owe");assert.equal(s.closing,Math.round((s.opening+1600)*100)/100);assert.equal(Math.round((before)*100)/100,s.closing,"期末＝目前餘額（沒有更晚的資料）")});
-await t("單據照片：只收圖片，管理員可讀，店員不行",async()=>{const png=Uint8Array.from(atob("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="),c=>c.charCodeAt(0));
+ const s=(await api("/api/ledger/statement?account=蟹老大&ym=2001-05",{token:admin})).data;assert.equal(s.label,"安星水產中港店");assert.equal(s.theyOwe,1600);assert.equal(s.rows[0].direction,"they_owe");assert.equal(s.closing,Math.round((s.opening+1600)*100)/100);assert.equal(Math.round((before)*100)/100,s.closing,"期末＝目前餘額（沒有更晚的資料）")});
+await t("單據照片：只收 JPEG/WebP，管理員可讀，店員不行",async()=>{const jpeg=Uint8Array.from(atob("/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA="),c=>c.charCodeAt(0));
  assert.equal((await api(`/api/ledger/payments/${pid}/receipts`,{method:"POST",token:admin,raw:"<svg/>",type:"image/svg+xml"})).status,415);
- const r=await api(`/api/ledger/payments/${pid}/receipts`,{method:"POST",token:admin,raw:png,type:"image/png"});assert.equal(r.status,200,JSON.stringify(r.data));
- const g=await api("/api/ledger/receipts/"+r.data.id,{token:admin});assert.equal(g.status,200);assert.equal(g.ct,"image/png");assert.equal(g.data.length,png.length);
+ assert.equal((await api(`/api/ledger/payments/${pid}/receipts`,{method:"POST",token:admin,raw:jpeg,type:"image/png"})).status,415);
+ const r=await api(`/api/ledger/payments/${pid}/receipts`,{method:"POST",token:admin,raw:jpeg,type:"image/jpeg"});assert.equal(r.status,200,JSON.stringify(r.data));
+ const g=await api("/api/ledger/receipts/"+r.data.id,{token:admin});assert.equal(g.status,200);assert.equal(g.ct,"image/jpeg");assert.equal(g.data.length,jpeg.length);
  assert.equal((await api("/api/ledger/receipts/"+r.data.id,{token:staff})).status,403);assert.equal((await api("/api/ledger/receipts/"+r.data.id)).status,401)});
 await t("刪除付款：拆分的收支、對帳一起刪，代支回到未對應",async()=>{assert.equal((await api(`/api/ledger/payments/${pid}/delete`,{method:"POST",token:admin,body:{}})).status,200);
  assert.equal((await api("/api/ledger/entries?from=2001-05-01&to=2001-05-31",{token:admin})).data.total.count,0);

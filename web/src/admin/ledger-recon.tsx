@@ -10,7 +10,8 @@ const r2=(x:number)=>Math.round(x*100)/100;
 async function api(path:string,body?:unknown){const r=await inventoryFetch("/api/ledger"+path,body===undefined?{}:{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});if(!r.ok)throw new Error(await errorText(r));return r.json()}
 const csvCell=(v:unknown)=>{const t=String(v??"");return /[,\n"]/.test(t)?`"${t.replace(/"/g,'""')}"`:t};
 function downloadCsv(name:string,rows:unknown[][]){const a=document.createElement("a");a.href=URL.createObjectURL(new Blob(["\ufeff"+rows.map(r=>r.map(csvCell).join(",")).join("\r\n")],{type:"text/csv;charset=utf-8"}));a.download=name;a.click();URL.revokeObjectURL(a.href)}
-export const accLabel=(a:{account:string;label?:string})=>a.label?`${a.label}（${a.account}）`:a.account;
+/** 顯示名稱：有名稱就只顯示名稱（內部代號不顯示） */
+export const accLabel=(a:{account:string;label?:string})=>a.label||a.account;
 type Cat={category:string;item:string;kind:string;active:boolean};
 type Line={type:"store"|"partner";category?:string;item?:string;account?:string;amount:string};
 
@@ -92,7 +93,7 @@ export function Cashout({cats}:{cats:Cat[]}){
 export function Statement({account}:{account:string}){
  const [ym,setYm]=useState(today().slice(0,7)),[s,setS]=useState<any>(null);
  useEffect(()=>{api(`/statement?account=${encodeURIComponent(account)}&ym=${ym}`).then(setS).catch(()=>setS(null))},[account,ym]);
- if(!s)return null;const name=s.label?`${s.label}（${s.account}）`:s.account;
+ if(!s)return null;const name=s.label||s.account;
  const exp=()=>downloadCsv(`對帳單_${s.label||s.account}_${ym}.csv`,[["對帳單",name,ym],["說明","正數＝對方欠我們；負數＝我們欠對方（與對方試算表「安星對帳」相同）"],["期初餘額","","","",s.opening],["日期","品項","單價","數量","金額","狀態"],...s.rows.map((r:any)=>[r.date,r.item,r.unitPrice,r.qty,r.amount,r.status]),["本月對方欠我們","","","",s.theyOwe],["本月我們欠對方","","","",s.weOwe],["期末餘額","","","",s.closing,s.meaning]]);
  return <div className="admin-card" data-testid="statement"><h2>月結對帳單：{name}</h2>
   <div className="admin-filter"><label>月份<input type="month" value={ym} onChange={e=>setYm(e.target.value)}/></label><button onClick={exp}>匯出 CSV</button></div>

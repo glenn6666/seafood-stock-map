@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""蟹老大中港店對帳：從對方試算表「安星對帳」（xlsx 匯出，只讀）產生 2026 起的匯入 SQL。
-用法：python3 tools/recon-2026-import.py 蟹老大中港店.xlsx out.sql
+"""安星水產中港店對帳（資料庫代號 account 仍是「蟹老大」，只改畫面顯示名稱，見 worker/ledger-recon.ts DISPLAY_LABEL）：從對方試算表「安星對帳」（xlsx 匯出，只讀）產生 2026 起的匯入 SQL。
+用法：python3 tools/recon-2026-import.py 中港店對帳.xlsx out.sql
 - 日期只偶爾填：往下沿用（forward-fill）。2026 起點＝第一個日期 ≥ 2026-01-01 的列；之前全部列合計成一筆「期初餘額」（日期 2026-01-01）。
 - 起點之後若出現年份 < 2026 的日期（打錯年份），改為 2026 同月同日。
 - 金額取 F 欄試算表計算後的值（與對方 G2 =SUM(F:F) 相同）。
