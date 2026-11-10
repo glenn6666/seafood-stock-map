@@ -30,12 +30,12 @@ await p.click(".sheet .primary");await p.waitForTimeout(400);
 pos=await p.evaluate(()=>window.__shop.projectItem("demo-live-7"));await p.mouse.click(pos.x,pos.y);await p.waitForTimeout(400);
 if(await p.locator(".sheet").count()){ok((await p.textContent(".sheet")).includes("已售完")&&await p.locator(".sheet .primary").count()===0,"售完商品不可加入");await p.click(".sheet-close")}
 // 購物車
-await p.click(".cartbar button");await p.waitForSelector("text=購物車");ok((await p.textContent(".lines")).includes("北海道干貝")&&(await p.textContent(".lines")).includes("活沙公蟹"),"購物車包含冰箱與魚缸商品");
+await p.click(".shop-dock button:has-text('結帳')");await p.waitForSelector("text=購物車");ok((await p.textContent(".lines")).includes("北海道干貝")&&(await p.textContent(".lines")).includes("活沙公蟹"),"購物車包含冰箱與魚缸商品");
 await p.fill("input[autocomplete=name]","測試顧客");await p.fill("input[autocomplete=tel]","0922333444");
 await p.screenshot({path:S+"4-cart.png"});
 await p.click("text=送出訂單");await p.waitForSelector("text=目前狀態",{timeout:8000});ok(true,"送出訂單→查詢頁");
 // FPS（SwiftShader 軟體繪圖，僅供參考）
-await p.goto(B);await p.waitForTimeout(2000);
+await p.goto(B+"?e2e");await p.waitForTimeout(2000);
 const fps=await p.evaluate(()=>new Promise(r=>{let n=0;const t0=performance.now();const f=()=>{n++;if(performance.now()-t0<2000)requestAnimationFrame(f);else r(n/2)};requestAnimationFrame(f)}));out.push("ℹ️ 軟體繪圖 FPS ≈ "+fps);
 // 列表模式（減少動態效果自動切換）
 const ctx2=await b.newContext({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,reducedMotion:"reduce"});
