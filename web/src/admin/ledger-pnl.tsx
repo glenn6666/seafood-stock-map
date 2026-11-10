@@ -1,7 +1,8 @@
-import {useEffect,useState,type ReactNode} from "react";
-import {ArrowDownRight,ArrowUpRight,Banknote,Bike,Building2,CalendarDays,ChartColumn,ChartPie,CircleDollarSign,Coins,Droplets,Fish,Flame,HandCoins,Hammer,Home,Landmark,Minus,Package,Percent,PiggyBank,Printer,Receipt,FileSpreadsheet,Scale,ShoppingCart,Store,StickyNote,TrendingDown,TrendingUp,Truck,Users,Wallet,Wifi,Wrench,Zap} from "lucide-react";
+import {useEffect,useRef,useState,type ReactNode} from "react";
+import {ArrowDownRight,ArrowUpRight,Banknote,Bike,Building2,CalendarDays,ChartColumn,ChartPie,CircleDollarSign,Coins,Droplets,Fish,Flame,HandCoins,Hammer,Home,Landmark,Minus,Package,Percent,PiggyBank,Printer,Receipt,FileSpreadsheet,FileText,Scale,ShoppingCart,Store,StickyNote,TrendingDown,TrendingUp,Truck,Users,Wallet,Wifi,Wrench,Zap} from "lucide-react";
 import {inventoryFetch} from "../lib/pages-api";
 import {errorText} from "../lib/api-config";
+import {HIGH_SALES_DAY} from "../lib/ledger-shared";
 
 async function api(path:string,body?:unknown){const r=await inventoryFetch("/api/ledger"+path,body===undefined?{}:{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});if(!r.ok)throw new Error(await errorText(r));return r.json()}
 const money=(n:number)=>(n<0?"-":"")+Math.abs(Math.round(n)).toLocaleString("en-US");
@@ -49,20 +50,32 @@ function Trend({months,ym}:{months:{ym:string;revenue:number;cogs:number;profit:
   </svg></div>;
 }
 
-/** 下載當月：摘要＋每日營業額（收銀機日結，含付款方式）＋收支紀錄，一個 xlsx 三個工作表 */
-async function exportMonth(ym:string,r:any){
- const X=await import("xlsx");const last=new Date(+ym.slice(0,4),+ym.slice(5),0).getDate();
+/** 讀當月每日日結＋收支紀錄（PDF 與 Excel 共用） */
+async function loadMonth(ym:string){
+ const last=new Date(+ym.slice(0,4),+ym.slice(5),0).getDate();
  const [pos,ent]=await Promise.all([api("/pos?ym="+ym),api("/entries?"+new URLSearchParams({from:`${ym}-01`,to:`${ym}-${String(last).padStart(2,"0")}`,limit:"5000"}))]);
- const W="日一二三四五六",R=(n:number)=>Math.round(n*100)/100;
- const posHead=["日期","星期","原銷售額","結帳折讓","現金","其他付款（刷卡／行動支付等）","消費人次","人均消費","營收金額","UBER","總計（營收＋UBER）","帳差（現金＋其他付款－營收）","資料來源"];
- const byDay=new Map(pos.rows.map((x:any)=>[x.sale_date,x]));const posRows:any[][]=[];const t={gross:0,discount:0,cash:0,other_pay:0,customers:0,revenue:0,uber:0};let days=0;
- for(let d=1;d<=last;d++){const ds=`${ym}-${String(d).padStart(2,"0")}`,w=W[new Date(+ym.slice(0,4),+ym.slice(5)-1,d).getDay()],x:any=byDay.get(ds);
-  if(!x){posRows.push([ds,w,"","","","","","","","","","","無日結資料"]);continue}
-  days++;for(const k of Object.keys(t))(t as any)[k]+=x[k]??0;
-  posRows.push([ds,w,R(x.gross),R(x.discount),R(x.cash),R(x.other_pay),x.customers,x.customers?R(x.revenue/x.customers):"",R(x.revenue),R(x.uber),R(x.revenue+x.uber),R(x.cash+x.other_pay-x.revenue),x.source??""])}
- posRows.push(["合計",`${days} 天`,R(t.gross),R(t.discount),R(t.cash),R(t.other_pay),t.customers,t.customers?R(t.revenue/t.customers):"",R(t.revenue),R(t.uber),R(t.revenue+t.uber),R(t.cash+t.other_pay-t.revenue),""]);
- const entHead=["日期","收支","會計項目","內容","備註","數量","單價","稅金","金額","收入","支出","客戶/廠商","員工","付款方式","銀行","入帳日","記錄人","來源"];
+ const byDay=new Map<string,any>(pos.rows.map((x:any)=>[x.sale_date,x]));const t={gross:0,discount:0,cash:0,other_pay:0,customers:0,revenue:0,uber:0};let days=0;const list:any[]=[];
+ for(let d=1;d<=last;d++){const x=byDay.get(`${ym}-${String(d).padStart(2,"0")}`)??null;list.push(x);if(x){days++;for(const k of Object.keys(t))(t as any)[k]+=x[k]??0}}
  const es=[...ent.entries].sort((a:any,b:any)=>a.date<b.date?-1:a.date>b.date?1:0);
+ return {ym,last,days,pos:list,posTotal:t,entries:es,entTotal:ent.total};
+}
+/** 下載當月 PDF：有圖示的損益表＋每日營業額＋收支紀錄 */
+async function exportMonthPdf(root:HTMLElement,ym:string,onProgress:(s:string)=>void){
+ const [{exportMonthPdf:make},d]=await Promise.all([import("./ledger-pdf"),loadMonth(ym)]);
+ const x=await make(root,d,onProgress);return {...x,days:d.days,entries:d.entries.length};
+}
+/** 下載當月 Excel：摘要＋每日營業額（收銀機日結，含付款方式）＋收支紀錄，一個 xlsx 三個工作表 */
+async function exportMonth(ym:string,r:any){
+ const [X,md]=await Promise.all([import("xlsx"),loadMonth(ym)]);const {last}=md;
+ const W="日一二三四五六",R=(n:number)=>Math.round(n*100)/100;
+ const posHead=["日期","星期","原銷售額","結帳折讓","現金","其他付款（刷卡／行動支付等）","消費人次","人均消費","營收金額","UBER","總計（營收＋UBER）","帳差（現金＋其他付款－營收）","資料來源",`營收達 ${HIGH_SALES_DAY.toLocaleString("en-US")}`];
+ const posRows:any[][]=[];const t=md.posTotal,days=md.days,ent={total:md.entTotal};
+ for(let d=1;d<=last;d++){const ds=`${ym}-${String(d).padStart(2,"0")}`,w=W[new Date(+ym.slice(0,4),+ym.slice(5)-1,d).getDay()],x:any=md.pos[d-1];
+  if(!x){posRows.push([ds,w,"","","","","","","","","","","無日結資料"]);continue}
+  posRows.push([ds,w,R(x.gross),R(x.discount),R(x.cash),R(x.other_pay),x.customers,x.customers?R(x.revenue/x.customers):"",R(x.revenue),R(x.uber),R(x.revenue+x.uber),R(x.cash+x.other_pay-x.revenue),x.source??"",x.revenue>=HIGH_SALES_DAY?"★":""])}
+ posRows.push(["合計",`${days} 天`,R(t.gross),R(t.discount),R(t.cash),R(t.other_pay),t.customers,t.customers?R(t.revenue/t.customers):"",R(t.revenue),R(t.uber),R(t.revenue+t.uber),R(t.cash+t.other_pay-t.revenue),"",`${md.pos.filter((x:any)=>x&&x.revenue>=HIGH_SALES_DAY).length} 天`]);
+ const entHead=["日期","收支","會計項目","內容","備註","數量","單價","稅金","金額","收入","支出","客戶/廠商","員工","付款方式","銀行","入帳日","記錄人","來源"];
+ const es=md.entries;
  const entRows=es.map((e:any)=>[e.date,e.kind,e.category,e.item,e.note,e.qty,e.unitPrice,e.tax||"",R(e.amount),e.signed>0?R(e.signed):"",e.signed<0?R(-e.signed):"",e.party,e.staff,e.payMethod,e.bank,e.postedDate,e.recorder,e.source]);
  entRows.push(["合計",`${es.length} 筆`,"","","","","","","",R(ent.total.income),R(-ent.total.expense),"","","","","","",""]);
  const c=r.current,[y,m]=ym.split("-"),nm=(k:string)=>k==="店面收入"?"銷貨收入":k;
@@ -72,7 +85,7 @@ async function exportMonth(ym:string,r:any){
   ["收支紀錄","金額"],["筆數",ent.total.count],["收入合計",R(ent.total.income)],["支出合計",R(-ent.total.expense)],["淨額",R(ent.total.net)],[],
   ["說明：損益表的營業收入取自收支紀錄（店面收入／UBER收入），每日營業額工作表為收銀機日結，兩者可互相核對。"]];
  const wb=X.utils.book_new(),add=(name:string,aoa:any[][],cols:number[])=>{const ws=X.utils.aoa_to_sheet(aoa);ws["!cols"]=cols.map(w=>({wch:w}));X.utils.book_append_sheet(wb,ws,name)};
- add("摘要",sum,[30,16]);add("每日營業額",[posHead,...posRows],[12,6,11,10,11,16,9,9,11,10,14,16,10]);add("收支紀錄",[entHead,...entRows],[12,6,12,18,24,6,10,8,11,11,11,14,8,10,10,12,8,8]);
+ add("摘要",sum,[30,16]);add("每日營業額",[posHead,...posRows],[12,6,11,10,11,16,9,9,11,10,14,16,10,12]);add("收支紀錄",[entHead,...entRows],[12,6,12,18,24,6,10,8,11,11,11,14,8,10,10,12,8,8]);
  X.writeFile(wb,`安星水產_${ym}_每日營業額與收支紀錄.xlsx`);
  return {days,entries:es.length};
 }
@@ -81,7 +94,7 @@ const BAL_SECTIONS=["流動資產","非流動資產","負債","資本額","損�
 const BAL_ICON:Record<string,any>={流動資產:Wallet,非流動資產:Building2,負債:Scale,資本額:PiggyBank};
 
 export function Pnl(){
- const [ym,setYm]=useState(thisYm()),[r,setR]=useState<any>(null),[trend,setTrend]=useState<any[]>([]),[msg,setMsg]=useState(""),[nb,setNb]=useState({section:"流動資產",label:"",amount:""});
+ const [ym,setYm]=useState(thisYm()),[r,setR]=useState<any>(null),[trend,setTrend]=useState<any[]>([]),[msg,setMsg]=useState(""),[busy,setBusy]=useState(false),rootRef=useRef<HTMLDivElement>(null),[nb,setNb]=useState({section:"流動資產",label:"",amount:""});
  const load=()=>api("/report/pnl?ym="+ym).then(setR).catch(e=>setMsg(e.message));useEffect(()=>{load()},[ym]);
  useEffect(()=>{api("/report/yearly").then(d=>setTrend(d.months??[])).catch(()=>{})},[]);
  async function saveBal(rows:any[]){try{await api("/balance",{rows});setNb({...nb,label:"",amount:""});load()}catch(e:any){setMsg(e.message)}}
@@ -93,9 +106,9 @@ export function Pnl(){
  const line=(l:string,a:number|undefined,b:number|undefined,cls="",goodUp=true,icon=true)=>{const I=iconFor(l);return <tr key={l} className={cls}><th>{icon&&<I size={15} className="pl-ri"/>}{l}</th><td>{money(a??0)}</td><td>{money(b??0)}</td><td><Delta cur={a??0} prev={b??0} goodUp={goodUp}/></td></tr>};
  const sec=(I:any,t:string,tone:string)=><tr className={"pl-sec "+tone}><th colSpan={4}><I size={16}/>{t}</th></tr>;
  const assets=(list:any[])=>list.filter((b:any)=>b.section.includes("資產")).reduce((s:number,b:any)=>s+b.amount,0);
- return <div className="pl">
+ return <div className="pl" ref={rootRef}>
   <div className="pl-top"><div><h2 className="pl-title"><ChartPie size={22}/>安星水產損益表</h2><span className="pl-period"><CalendarDays size={15}/>民國{+y-1911}年{+m}月1日至{+m}月{new Date(+y,+m,0).getDate()}日・與上月 {r.prevYm} 比較</span></div>
-   <div className="pl-actions"><label className="pl-month"><CalendarDays size={16}/><input type="month" value={ym} onChange={e=>setYm(e.target.value)} aria-label="年月"/></label><button className="pl-print pl-dl" onClick={async()=>{setMsg("正在產生檔案…");try{const x=await exportMonth(ym,r);setMsg(`已下載：每日營業額 ${x.days} 天、收支紀錄 ${x.entries} 筆。`)}catch(e:any){setMsg("下載失敗："+e.message)}}}><FileSpreadsheet size={16}/>下載當月明細</button><button className="pl-print" onClick={()=>window.print()}><Printer size={16}/>列印</button></div></div>
+   <div className="pl-actions"><label className="pl-month"><CalendarDays size={16}/><input type="month" value={ym} onChange={e=>setYm(e.target.value)} aria-label="年月"/></label><button className="pl-print pl-dl" disabled={busy} onClick={async()=>{if(!rootRef.current)return;setBusy(true);setMsg("正在產生 PDF…");try{const x=await exportMonthPdf(rootRef.current,ym,setMsg);setMsg(`已下載 PDF（${x.pages} 頁）：損益表、每日營業額 ${x.days} 天、收支紀錄 ${x.entries} 筆。`)}catch(e:any){setMsg("下載失敗："+e.message)}finally{setBusy(false)}}}><FileText size={16}/>下載當月明細</button><button className="pl-print pl-xls" disabled={busy} title="下載 Excel（摘要／每日營業額／收支紀錄）" onClick={async()=>{setBusy(true);setMsg("正在產生 Excel…");try{const x=await exportMonth(ym,r);setMsg(`已下載 Excel：每日營業額 ${x.days} 天、收支紀錄 ${x.entries} 筆。`)}catch(e:any){setMsg("下載失敗："+e.message)}finally{setBusy(false)}}}><FileSpreadsheet size={16}/>Excel</button><button className="pl-print" onClick={()=>window.print()}><Printer size={16}/>列印</button></div></div>
   {msg&&<p className="admin-msg">{msg}</p>}
   <div className="pl-kpis">
    <Kpi icon={CircleDollarSign} tone="inc" label="營業收入" value={money(c.incomeTotal)} sub={<Delta cur={c.incomeTotal} prev={p.incomeTotal}/>}/>
