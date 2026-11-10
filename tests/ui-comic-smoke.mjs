@@ -87,9 +87,9 @@ await p.evaluate(()=>localStorage.setItem("shop-view","list"));await p.goto(B);a
 ok((await p.textContent(".game-banner")).includes("已有優惠券"),"橫幅顯示已有優惠券");
 await p.screenshot({path:S+"7-list-comic.png"});
 const add=async(name,n)=>{const it=p.locator(".menu .item",{hasText:name});for(let i=0;i<n;i++)await it.locator("button[aria-label=增加]").click()};
-await add("北海道干貝",1);await p.click(".cartbar button");
+await add("北海道干貝",1);await p.click(".shop-dock button:has-text('結帳')");
 ok((await p.textContent(".coupon-line")).includes("再買 NT$10"),"未滿 1000 提示差額、不折抵");
-await p.click("text=繼續選購");await add("海瓜子",1);await p.click(".cartbar button");
+await p.click("text=繼續選購");await add("海瓜子",1);await p.click(".shop-dock button:has-text('結帳')");
 ok((await p.textContent(".coupon-line")).includes("已套用"),"滿 1000 自動套用");ok((await p.textContent(".total")).includes("1135"),"合計 990+150−5＝1135");
 await p.fill("input[autocomplete=name]","券測試");await p.fill("input[autocomplete=tel]","0922333555");
 await p.screenshot({path:S+"8-cart-coupon.png"});
