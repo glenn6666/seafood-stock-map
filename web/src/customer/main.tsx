@@ -179,6 +179,7 @@ function Shop({origin}:{origin:string}){
     <button type="button" className="panel-close" aria-label="回到店面" onClick={()=>{setCheckout(false);setTab("browse")}}>×</button>
    </header>
    <div className="panel-body">
+    <a className="dine-entry" href={import.meta.env.BASE_URL+"dine.html"}>🍽️ 線上點餐　店內現做料理・預約自取</a>
     {!checkout&&filters}
     {listBody}
    </div>

@@ -304,5 +304,73 @@ await t("原管理密碼：管理員停用後完全不能使用，且無法自�
  await api("/api/settings/legacy-token",{method:"POST",token:admin,body:{enabled:false}});
  assert.equal((await api("/api/inventory",{token:LEGACY})).status,401);
 });
+
+function nextDinePickup(){
+ const now=new Date();
+ for(let i=1;i<=48;i++){
+  const t=new Date(now.getTime()+i*15*60e3);
+  const tp=new Date(t.getTime()+8*3600e3);
+  const dow=tp.getUTCDay(),h=tp.getUTCHours(),mi=tp.getUTCMinutes();
+  if(dow===1)continue;
+  const open=dow===0||dow===6?12:13;
+  if(h<open||h>21||(h===21&&mi>0))continue;
+  const date=tp.toISOString().slice(0,10);
+  const snapped=mi<15?0:mi<30?15:mi<45?30:45;
+  return `${date}T${String(h).padStart(2,"0")}:${String(snapped).padStart(2,"0")}`;
+ }
+ throw new Error("找不到可用的取餐時段");
+}
+await t("線上點餐菜單：公開列表含固定價與時價，不含已下架",async()=>{
+ const r=await api("/api/public/dine-menu");
+ assert.equal(r.status,200,JSON.stringify(r.data));
+ const crab=r.data.items.find(i=>i.id==="dine-porridge-crab");
+ assert.equal(crab.price,499);assert.equal(crab.market,false);
+ const wine=r.data.items.find(i=>i.id==="dine-soup-wine");
+ assert.equal(wine.price,null);assert.equal(wine.market,true);
+ assert.ok(r.data.items.every(i=>i.active!==false));
+ assert.ok(r.data.items.length>=30);
+});
+await t("線上點餐下單：時價不計入合計，不扣庫存；重複送出不重複成立",async()=>{
+ const before=await qty(admin,A);
+ const pickup=nextDinePickup();
+ const ip=freshIp();
+ const body={channel:"dine",idempotencyKey:key(),customerName:"點餐客",phone:"0911111222",pickupAt:pickup,items:[{id:"dine-porridge-crab",qty:1},{id:"dine-soup-wine",qty:2}]};
+ const r=await api("/api/public/orders",{method:"POST",ip,body});
+ assert.equal(r.status,200,JSON.stringify(r.data));
+ assert.equal(r.data.total,499);assert.equal(r.data.channel,"dine");assert.equal(r.data.pickupAt,pickup);
+ const r2=await api("/api/public/orders",{method:"POST",ip,body});
+ assert.equal(r2.status,200,JSON.stringify(r2.data));
+ assert.equal(r2.data.lookupToken,r.data.lookupToken);
+ const lk=(await api(`/api/public/orders/${r.data.lookupToken}`,{ip:freshIp()})).data.order;
+ assert.equal(lk.total,499);assert.equal(lk.channel,"dine");assert.equal(lk.pickupAt,pickup);
+ assert.ok(lk.items.some(i=>i.name.includes("酒煮蛤蜊")&&(i.market||i.unitPrice===0)));
+ assert.equal(await qty(admin,A),before,"餐點訂單不得扣庫存");
+});
+await t("線上點餐拒絕周一與缺少取餐時間",async()=>{
+ const ip=freshIp();
+ const r1=await api("/api/public/orders",{method:"POST",ip,body:{channel:"dine",idempotencyKey:key(),customerName:"客",phone:"0911111222",items:[{id:"dine-porridge-crab",qty:1}]}});
+ assert.equal(r1.status,400,JSON.stringify(r1.data));
+ const now=new Date();let monday=null;
+ for(let i=1;i<=10;i++){const tp=new Date(now.getTime()+i*86400e3+8*3600e3);if(tp.getUTCDay()===1){monday=`${tp.toISOString().slice(0,10)}T13:00`;break}}
+ const r2=await api("/api/public/orders",{method:"POST",ip,body:{channel:"dine",idempotencyKey:key(),customerName:"客",phone:"0911111222",pickupAt:monday,items:[{id:"dine-porridge-crab",qty:1}]}});
+ assert.equal(r2.status,400);assert.match(r2.data.error,/公休/);
+});
+await t("線上點餐不能混入庫存商品，購物訂單也不能點餐點",async()=>{
+ const ip=freshIp();
+ assert.equal((await api("/api/public/orders",{method:"POST",ip,body:{channel:"dine",idempotencyKey:key(),customerName:"客",phone:"0911111222",pickupAt:nextDinePickup(),items:[{id:A,qty:1}]}})).status,400);
+ assert.equal((await api("/api/public/orders",{method:"POST",ip,body:{idempotencyKey:key(),customerName:"客",phone:"0911111222",items:[{id:"dine-porridge-crab",qty:1}]}})).status,400);
+});
+await t("管理員可更新餐點照片網址，店員不能改",async()=>{
+ const url="/seafood-stock-map/dine/congee-crab.webp";
+ const clerk=(await api("/api/auth/login",{method:"POST",body:{username:"clerk2",password:"clerk2-pass-1"}})).data.token;
+ assert.ok(clerk,"店員應仍可登入");
+ assert.equal((await api("/api/dine-menu/dine-porridge-crab",{method:"PATCH",token:clerk,body:{imageUrl:url}})).status,403);
+ const r=await api("/api/dine-menu/dine-porridge-crab",{method:"PATCH",token:admin,body:{imageUrl:url}});
+ assert.equal(r.status,200,JSON.stringify(r.data));
+ const list=(await api("/api/dine-menu",{token:admin})).data.items.find(i=>i.id==="dine-porridge-crab");
+ assert.equal(list.imageUrl,url);
+ assert.equal((await api("/api/dine-menu/dine-porridge-crab",{method:"PATCH",token:admin,body:{imageUrl:"javascript:alert(1)"}})).status,400);
+});
+
 for(const [s,n] of results)console.log(s,n);
 const failed=results.filter(r=>r[0]==="❌").length;console.log(`\n${results.length-failed}/${results.length} 通過`);process.exit(failed?1:0);
