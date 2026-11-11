@@ -2,33 +2,34 @@ import {useEffect,useMemo,useRef,useState} from "react";
 import {inventoryFetch} from "../lib/pages-api";
 import {errorText,newKey,STATUSES} from "../lib/api-config";
 import type {Me} from "../main";
-type Line={id?:string;name:string;spec:string;unit:string;qty:number;unitPrice:number};
-type O={id:string;orderNo:string;status:string;customerName:string;phone:string;note:string;source:string;createdBy:string;total:number;subtotal?:number;discount?:number;createdAt:string;lookupToken:string;items:Line[]};
+type Line={id?:string;name:string;spec:string;unit:string;qty:number;unitPrice:number;market?:boolean};
+type O={id:string;orderNo:string;status:string;customerName:string;phone:string;note:string;source:string;channel?:string;pickupAt?:string;createdBy:string;total:number;subtotal?:number;discount?:number;createdAt:string;lookupToken:string;items:Line[]};
 type P={id:string;name:string;spec:string;unit:string;price:string;quantity:number};
 const J={"Content-Type":"application/json"};
 const NEXT:Record<string,string>={"待處理":"備貨中","備貨中":"可取貨","可取貨":"已完成"};
+const statusLabel=(s:string,ch?:string)=>ch==="dine"&&s==="待處理"?"已接單":ch==="dine"&&s==="備貨中"?"製作中":ch==="dine"&&s==="可取貨"?"可取餐":s;
 const fmt=(s:string)=>new Date(s).toLocaleString("zh-TW",{timeZone:"Asia/Taipei",month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"});
-export const lookupUrl=(t:string)=>`${location.origin}${import.meta.env.BASE_URL}order.html#/o/${t}`;
+export const lookupUrl=(t:string,channel?:string)=>`${location.origin}${import.meta.env.BASE_URL}${channel==="dine"?"dine.html":"order.html"}#/o/${t}`;
 export default function Orders({me:_me}:{me:Me}){
  const [orders,setOrders]=useState<O[]>([]),[filter,setFilter]=useState("進行中"),[msg,setMsg]=useState(""),[creating,setCreating]=useState(false);
  const load=()=>inventoryFetch("/api/orders").then(async r=>r.ok?setOrders((await r.json()).orders):setMsg(await errorText(r)));
  useEffect(()=>{load()},[]);
- const shown=orders.filter(o=>filter==="全部"||(filter==="進行中"?!["已完成","已取消"].includes(o.status):o.status===filter));
+ const shown=orders.filter(o=>filter==="線上點餐"?o.channel==="dine":filter==="全部"||(filter==="進行中"?!["已完成","已取消"].includes(o.status):o.status===filter));
  async function act(o:O,path:string,body?:object,ok="已更新"){
   const r=await inventoryFetch(`/api/orders/${o.id}/${path}`,{method:"POST",headers:J,body:JSON.stringify(body??{})});setMsg(r.ok?ok:await errorText(r));load();
  }
  return <main className="admin-page"><h1>訂單管理</h1>{msg&&<p className="admin-msg" role="status">{msg}</p>}
-  <div className="admin-filter">{["進行中",...STATUSES,"全部"].map(s=><button key={s} className={filter===s?"active":""} onClick={()=>setFilter(s)}>{s}</button>)}<button className="primary" onClick={()=>setCreating(c=>!c)}>{creating?"收起":"＋ 建立訂單"}</button><button onClick={load}>重新整理</button></div>
+  <div className="admin-filter">{["進行中",...STATUSES,"線上點餐","全部"].map(s=><button key={s} className={filter===s?"active":""} onClick={()=>setFilter(s)}>{s}</button>)}<button className="primary" onClick={()=>setCreating(c=>!c)}>{creating?"收起":"＋ 建立訂單"}</button><button onClick={load}>重新整理</button></div>
   {creating&&<CreateOrder onDone={(m)=>{setMsg(m);setCreating(false);load()}}/>}
   <div className="admin-list">{shown.map(o=><div key={o.id} className="admin-card">
-   <div className="row"><strong>{o.orderNo}</strong><span className={"tag status-"+o.status}>{o.status}</span><small>{o.source==="customer"?"顧客下單":"後台建立"}・{fmt(o.createdAt)}</small></div>
+   <div className="row"><strong>{o.orderNo}</strong><span className={"tag status-"+o.status}>{statusLabel(o.status,o.channel)}</span><small>{o.channel==="dine"?"線上點餐":o.source==="customer"?"顧客下單":"後台建立"}・{fmt(o.createdAt)}{o.pickupAt?`・取餐 ${o.pickupAt.replace("T"," ")}`:""}</small></div>
    <div>{o.customerName}{o.phone&&<> ・ <a href={`tel:${o.phone}`}>{o.phone}</a></>}</div>
-   <ul className="order-lines">{o.items.map((l,i)=><li key={i}>{l.name} {l.spec} × {l.qty} {l.unit}<span>${l.unitPrice*l.qty}</span></li>)}</ul>
+   <ul className="order-lines">{o.items.map((l,i)=><li key={i}>{l.name} {l.spec} × {l.qty} {l.unit}<span>{l.market||(o.channel==="dine"&&!l.unitPrice)?"時價":`$${l.unitPrice*l.qty}`}</span></li>)}</ul>
    {(o.discount??0)>0&&<div className="row"><small>小計 ${o.subtotal}・<span className="tag">🎟 釣蝦優惠券 −${o.discount}</span></small></div>}<div className="row"><strong>合計 ${o.total}</strong>{o.note&&<small>備註：{o.note}</small>}</div>
    <div className="actions">
-    {NEXT[o.status]&&<button className="primary" onClick={()=>act(o,"status",{status:NEXT[o.status]})}>改為「{NEXT[o.status]}」</button>}
-    {!["已完成","已取消"].includes(o.status)&&<button className="danger" onClick={()=>confirm(`取消訂單 ${o.orderNo}？商品數量會補回庫存。`)&&act(o,"cancel",{},"已取消，庫存已補回")}>取消訂單</button>}
-    <button onClick={()=>{navigator.clipboard?.writeText(lookupUrl(o.lookupToken));setMsg("已複製顧客查詢連結")}}>複製查詢連結</button>
+    {NEXT[o.status]&&<button className="primary" onClick={()=>act(o,"status",{status:NEXT[o.status]})}>改為「{statusLabel(NEXT[o.status],o.channel)}」</button>}
+    {!["已完成","已取消"].includes(o.status)&&<button className="danger" onClick={()=>confirm(o.channel==="dine"?`取消點餐訂單 ${o.orderNo}？`:`取消訂單 ${o.orderNo}？商品數量會補回庫存。`)&&act(o,"cancel",{},o.channel==="dine"?"已取消":"已取消，庫存已補回")}>取消訂單</button>}
+    <button onClick={()=>{navigator.clipboard?.writeText(lookupUrl(o.lookupToken,o.channel));setMsg("已複製顧客查詢連結")}}>複製查詢連結</button>
    </div></div>)}{!shown.length&&<p className="admin-hint">目前沒有訂單。</p>}</div></main>;
 }
 function CreateOrder({onDone}:{onDone:(m:string)=>void}){
