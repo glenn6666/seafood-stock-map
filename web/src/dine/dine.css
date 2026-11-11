@@ -4,7 +4,7 @@
 .dine{display:flex;flex-direction:column;min-height:100svh;max-width:920px;margin:0 auto;background:var(--cream)}
 .dine-hero{background:var(--navy);color:#fff8e8;padding:16px 16px 14px;border-bottom:3px solid var(--gold)}
 .dine-hero-top{display:flex;align-items:center;gap:12px}
-.dine-logo{height:44px;width:auto;max-width:min(220px,72vw);object-fit:contain;flex:0 0 auto;filter:drop-shadow(0 1px 2px #0008)}.visually-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.dine-logo{height:52px;width:auto;max-width:min(280px,80vw);object-fit:contain;flex:0 0 auto;filter:drop-shadow(0 1px 2px #0008)}.visually-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 .dine-hero h1{margin:0;font-family:"Noto Serif TC","Songti TC",serif;font-size:22px;letter-spacing:.12em;color:var(--gold2);font-weight:900}
 .dine-hero .branch{margin:2px 0 0;font-size:13px;color:#d4c094}
 .dine-hero .tag{margin:8px 0 0;font-family:"Noto Serif TC",serif;font-size:16px;color:#fff8e8}
