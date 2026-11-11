@@ -40,11 +40,11 @@ export const DINE_SEED:DineSeed[]=[
  {id:"dine-porridge-milkfish",category:"porridge",name:"大片虱目魚肚蛤蜊粥",description:"虱目魚肚、大顆蛤蜊",price:240,priceNote:"",unit:"份",badges:["hot"],image:img("porridge-milkfish.webp"),sort:30},
 
  {id:"dine-fish-sweetfish",category:"fish",name:"鹽烤母蛋蛋大香魚",description:"",price:199,priceNote:"",unit:"份",badges:["best"],image:img("fish-sweetfish.webp"),sort:40},
- {id:"dine-fish-baby",category:"fish",name:"鹽烤大隻午仔魚",description:"",price:230,priceNote:"",unit:"份",badges:[],image:"",sort:50},
+ {id:"dine-fish-baby",category:"fish",name:"鹽烤大隻午仔魚",description:"",price:230,priceNote:"",unit:"份",badges:[],image:img("fish-baby.webp"),sort:50},
  {id:"dine-fish-milkfish",category:"fish",name:"鹽烤大片虱目魚肚",description:"",price:195,priceNote:"",unit:"份",badges:["best"],image:img("fish-milkfish.webp"),sort:60},
- {id:"dine-fish-hairtail",category:"fish",name:"鹽烤白帶魚卷",description:"",price:209,priceNote:"",unit:"份",badges:[],image:"",sort:70},
- {id:"dine-fish-mackerel",category:"fish",name:"鹽烤大片挪威鯖魚",description:"",price:139,priceNote:"",unit:"份",badges:["best"],image:img("fish-plate.webp"),sort:80},
- {id:"dine-fish-kinmedai",category:"fish",name:"火烤喜知次一夜干",description:"",price:189,priceNote:"",unit:"份",badges:[],image:"",sort:90},
+ {id:"dine-fish-hairtail",category:"fish",name:"鹽烤白帶魚卷",description:"",price:209,priceNote:"",unit:"份",badges:[],image:img("fish-hairtail.webp"),sort:70},
+ {id:"dine-fish-mackerel",category:"fish",name:"鹽烤大片挪威鯖魚",description:"",price:139,priceNote:"",unit:"份",badges:["best"],image:img("fish-mackerel.webp"),sort:80},
+ {id:"dine-fish-kinmedai",category:"fish",name:"火烤喜知次一夜干",description:"",price:189,priceNote:"",unit:"份",badges:[],image:img("fish-kinmedai.webp"),sort:90},
 
  {id:"dine-steam-oyster",category:"steam",name:"日本生蠔三顆",description:"附芥末醬油＋檸檬",price:197,priceNote:"",unit:"份",badges:[],image:img("oysters-hi.webp"),sort:100},
  {id:"dine-steam-mala",category:"steam",name:"麻辣小龍蝦",description:"",price:349,priceNote:"",unit:"份",badges:[],image:img("crayfish-mala.webp"),sort:110},
@@ -61,18 +61,18 @@ export const DINE_SEED:DineSeed[]=[
  {id:"dine-stir-snail",category:"stir",name:"胡椒大鳳螺（一斤整）",description:"",price:250,priceNote:"",unit:"份",badges:["hot"],image:img("stir-snail.webp"),sort:190},
  {id:"dine-stir-crableg",category:"stir",name:"胡椒蟹腳（半斤）",description:"",price:250,priceNote:"",unit:"份",badges:["hot"],image:img("stir-crab.webp"),sort:200},
 
- {id:"dine-blanch-white",category:"blanch",name:"川燙大白蝦",description:"泰國大白蝦",price:349,priceNote:"",unit:"份",badges:["hot"],image:img("grill-white.webp"),sort:210},
- {id:"dine-blanch-cuttle",category:"blanch",name:"川燙超大小卷",description:"",price:215,priceNote:"",unit:"份",badges:[],image:img("blanch-hi.webp"),sort:220},
+ {id:"dine-blanch-white",category:"blanch",name:"川燙大白蝦",description:"泰國大白蝦",price:349,priceNote:"",unit:"份",badges:["hot"],image:img("blanch-white.webp"),sort:210},
+ {id:"dine-blanch-cuttle",category:"blanch",name:"川燙超大小卷",description:"",price:215,priceNote:"",unit:"份",badges:[],image:img("blanch-cuttle.webp"),sort:220},
  {id:"dine-blanch-squid",category:"blanch",name:"川燙大透抽",description:"",price:200,priceNote:"",unit:"份",badges:[],image:img("blanch-hi.webp"),sort:230},
- {id:"dine-blanch-soft",category:"blanch",name:"川燙大軟絲",description:"",price:220,priceNote:"",unit:"份",badges:[],image:img("blanch-squid.webp"),sort:240},
+ {id:"dine-blanch-soft",category:"blanch",name:"川燙大軟絲",description:"",price:220,priceNote:"",unit:"份",badges:[],image:img("blanch-soft.webp"),sort:240},
 
  {id:"dine-meat-rib",category:"meat",name:"鹽烤美國帶骨牛小排",description:"",price:329,priceNote:"",unit:"份",badges:["best"],image:img("meat-rib.webp"),sort:250},
- {id:"dine-meat-iberico",category:"meat",name:"鹽烤伊比利松阪豬",description:"",price:238,priceNote:"",unit:"份",badges:[],image:"",sort:260},
+ {id:"dine-meat-iberico",category:"meat",name:"鹽烤伊比利松阪豬",description:"",price:238,priceNote:"",unit:"份",badges:[],image:img("meat-iberico.webp"),sort:260},
 
  {id:"dine-sashimi-nishin",category:"sashimi",name:"尼信切盒",description:"",price:195,priceNote:"",unit:"份",badges:[],image:img("sashimi-nishin.webp"),sort:270},
  {id:"dine-sashimi-salmon",category:"sashimi",name:"挪威鮭魚現切生魚片（不定時）",description:"不定時供應，下單後由店家確認",price:null,priceNote:"時價",unit:"份",badges:[],image:img("sashimi-salmon.webp"),sort:280},
 
- {id:"dine-live-crab",category:"live",name:"紅蟳",description:"活體時價，以當日 LINE 群報價為主",price:null,priceNote:"時價",unit:"份",badges:[],image:"",sort:290},
+ {id:"dine-live-crab",category:"live",name:"紅蟳",description:"活體時價，以當日 LINE 群報價為主",price:null,priceNote:"時價",unit:"份",badges:[],image:img("live-crab.webp"),sort:290},
  {id:"dine-live-wugu",category:"live",name:"水姑娘",description:"活體時價，以當日 LINE 群報價為主",price:null,priceNote:"時價",unit:"份",badges:[],image:"",sort:300},
  {id:"dine-live-shagong",category:"live",name:"沙公",description:"活體時價，以當日 LINE 群報價為主",price:null,priceNote:"時價",unit:"份",badges:[],image:"",sort:310},
  {id:"dine-live-bread",category:"live",name:"麵包蟹",description:"活體時價，以當日 LINE 群報價為主",price:null,priceNote:"時價",unit:"份",badges:[],image:"",sort:320},

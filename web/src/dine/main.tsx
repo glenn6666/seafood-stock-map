@@ -45,8 +45,8 @@ function App(){
  return <main className="dine">
   <header className="dine-hero">
    <div className="dine-hero-top">
-    <img className="dine-logo" src={logo} alt="" width={52} height={52}/>
-    <div><h1>{DINE_STORE.name}</h1><p className="branch">{DINE_STORE.branch}</p></div>
+    <img className="dine-logo" src={logo} alt="安星水產"/>
+    <div><h1 className="visually-hidden">{DINE_STORE.name}</h1><p className="branch">{DINE_STORE.branch}</p></div>
    </div>
    <p className="tag">{token?"訂單查詢":"線上點餐・預約自取"}</p>
    <div className="dine-info">
