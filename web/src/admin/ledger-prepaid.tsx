@@ -3,8 +3,11 @@ import {useEffect,useMemo,useState} from "react";
 import {ArrowDownLeft,ArrowUpRight,CalendarClock,ChevronDown,CircleCheck,History,PackageX,Plus,Scale,Search,Trash2,Truck} from "lucide-react";
 import {inventoryFetch} from "../lib/pages-api";
 import {errorText} from "../lib/api-config";
+import {PENDING,ST_ARRIVED,ST_UNCHECKED,filterPrepaid,isArrived,isFiltering,isPendingUnchecked,type PrepaidDir,type PrepaidFilters} from "../lib/prepaid-filter";
 import {Statement,accLabel} from "./ledger-recon";
 import "./ledger-prepaid.css";
+
+export {PENDING};
 
 async function api(path:string,body?:unknown){const r=await inventoryFetch("/api/ledger"+path,body===undefined?{}:{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});if(!r.ok)throw new Error(await errorText(r));return r.json()}
 const fmt=(n:number,d=0)=>Math.abs(n).toLocaleString("en-US",{maximumFractionDigits:d,minimumFractionDigits:0});
@@ -15,10 +18,8 @@ const dayLabel=(d:string)=>d?`${+d.slice(5,7)}/${+d.slice(8,10)}（${WD[new Date
 const monthLabel=(m:string)=>m?`${m.slice(0,4)} 年 ${+m.slice(5,7)} 月`:"沒有日期（舊資料）";
 /** created_at 是 UTC，換成台北時間 */
 const taipei=(iso:string)=>{const t=new Date(new Date(iso).getTime()+8*3600e3).toISOString();return `${+t.slice(5,7)}/${+t.slice(8,10)} ${t.slice(11,16)}`};
-export const PENDING="未到貨";
 
 type Row={id:string;account:string;seq:number;item:string;unit_price:number;qty:number;amount:number;checked:string;status:string;entry_date:string;created_at:string;direction:string;payment_id:string|null};
-type Dir=""|"plus"|"minus";
 
 /** 誰欠誰（正數＝對方欠我們；負數＝我們欠對方，與對方試算表「安星對帳」相同） */
 export function owes(balance:number,name:string){
@@ -31,7 +32,8 @@ function Meta({x}:{x:Row}){return <small className="pp-meta">{x.qty!==1||x.unit_
 export default function Prepaid(){
  const [acc,setAcc]=useState("蟹老大"),[accs,setAccs]=useState<any[]>([]),[r,setR]=useState<any>(null),[msg,setMsg]=useState("");
  const [f,setF]=useState({item:"",unitPrice:"",qty:"1",status:"",date:""}),[adding,setAdding]=useState(false);
- const [q,setQ]=useState(""),[st,setSt]=useState(""),[dir,setDir]=useState<Dir>(""),[open,setOpen]=useState<Set<string>>(new Set()),[pq,setPq]=useState("");
+ const [q,setQ]=useState(""),[st,setSt]=useState(""),[dir,setDir]=useState<PrepaidDir>(""),[from,setFrom]=useState(""),[to,setTo]=useState("");
+ const [open,setOpen]=useState<Set<string>>(new Set()),[pq,setPq]=useState("");
  const load=()=>api("/prepaid?account="+encodeURIComponent(acc)).then(x=>{setR(x);setMsg("")}).catch(e=>setMsg(e.message));
  useEffect(()=>{load()},[acc]);useEffect(()=>{api("/accounts").then(x=>setAccs(x.rows)).catch(()=>{})},[]);
  const post=async(b:any)=>{try{await api("/prepaid",{account:acc,...b});await load()}catch(e:any){setMsg(e.message)}};
@@ -43,27 +45,31 @@ export default function Prepaid(){
   const pend=rows.filter(x=>x.status===PENDING);const pendAmt=pend.reduce((s,x)=>s+x.amount,0);
   const lastDate=rows.reduce((m,x)=>x.entry_date>m?x.entry_date:m,""),lastSync=rows.reduce((m,x)=>x.created_at>m?x.created_at:m,"");
   const statuses=[...rows.reduce((m,x)=>m.set(x.status||"（無狀態）",(m.get(x.status||"（無狀態）")??0)+1),new Map<string,number>())].sort((a,b)=>b[1]-a[1]);
-  return {pend,pendAmt,pendChecked:pend.filter(x=>x.checked==="○").length,lastDate,lastSync,statuses};
+  return {pend,pendAmt,pendChecked:pend.filter(x=>x.checked==="○").length,lastDate,lastSync,statuses,
+   unchecked:rows.filter(isPendingUnchecked).length,arrived:rows.filter(isArrived).length};
  },[rows]);
  const short=name.replace(/（.*?）/g,""),balance:number=r?.balance??0,ow=owes(balance,short),exPend=balance-sum.pendAmt,owEx=owes(exPend,short);
 
  // 未到貨：依日期分組（新到舊）；已勾「到貨正確」的排在後面
- const pendGroups=useMemo(()=>{const k=pq.trim();const g=new Map<string,Row[]>();
-  for(const x of sum.pend)if(!k||x.item.includes(k)){const a=g.get(x.entry_date)??[];a.push(x);g.set(x.entry_date,a)}
+ const pendGroups=useMemo(()=>{const k=pq.trim().toLowerCase();const g=new Map<string,Row[]>();
+  for(const x of sum.pend)if(!k||x.item.toLowerCase().includes(k)){const a=g.get(x.entry_date)??[];a.push(x);g.set(x.entry_date,a)}
   return [...g].sort((a,b)=>b[0].localeCompare(a[0])).map(([d,xs])=>({d,xs:xs.sort((a,b)=>(a.checked==="○"?1:0)-(b.checked==="○"?1:0)||a.seq-b.seq),amt:xs.reduce((s,x)=>s+x.amount,0)}))},[sum.pend,pq]);
 
- // 歷史：月份→日期；月底餘額以日期順序累計
- const filtering=!!(q.trim()||st||dir);
+ const filters:PrepaidFilters={q,st,dir,from,to};
+ const filtering=isFiltering(filters);
+ const filtered=useMemo(()=>filterPrepaid(rows,filters),[rows,q,st,dir,from,to]);
+
+ // 歷史：月份→日期；月底餘額以日期順序累計（用全部列計算，不受篩選影響）
  const months=useMemo(()=>{
-  const asc=[...rows].sort((a,b)=>(a.entry_date||"").localeCompare(b.entry_date||"")||a.seq-b.seq);let run=0;const end=new Map<string,number>();
-  for(const x of asc){run+=x.amount;end.set(x.entry_date.slice(0,7),run)}
-  const k=q.trim();const hit=(x:Row)=>(!k||x.item.includes(k)||x.status.includes(k)||String(Math.abs(x.amount)).includes(k.replace(/[,−+-]/g,"")))&&(!st||(x.status||"（無狀態）")===st)&&(!dir||(dir==="plus"?x.amount>0:x.amount<0));
-  const g=new Map<string,Row[]>();for(const x of asc)if(hit(x)){const m=x.entry_date.slice(0,7);const a=g.get(m)??[];a.push(x);g.set(m,a)}
+  const ascAll=[...rows].sort((a,b)=>(a.entry_date||"").localeCompare(b.entry_date||"")||a.seq-b.seq);let run=0;const end=new Map<string,number>();
+  for(const x of ascAll){run+=x.amount;end.set(x.entry_date.slice(0,7),run)}
+  const g=new Map<string,Row[]>();
+  for(const x of [...filtered.rows].sort((a,b)=>(a.entry_date||"").localeCompare(b.entry_date||"")||a.seq-b.seq)){const m=x.entry_date.slice(0,7);const a=g.get(m)??[];a.push(x);g.set(m,a)}
   return [...g].sort((a,b)=>b[0].localeCompare(a[0])).map(([m,xs])=>{const days=new Map<string,Row[]>();for(const x of [...xs].reverse()){const a=days.get(x.entry_date)??[];a.push(x);days.set(x.entry_date,a)}
-   return {m,count:xs.length,plus:xs.filter(x=>x.amount>0).reduce((s,x)=>s+x.amount,0),minus:xs.filter(x=>x.amount<0).reduce((s,x)=>s+x.amount,0),pend:xs.filter(x=>x.status===PENDING).length,end:end.get(m)??0,days:[...days]}})},[rows,q,st,dir]);
- const matchCount=months.reduce((s,m)=>s+m.count,0);
+   return {m,count:xs.length,plus:xs.filter(x=>x.amount>0).reduce((s,x)=>s+x.amount,0),minus:xs.filter(x=>x.amount<0).reduce((s,x)=>s+x.amount,0),pend:xs.filter(x=>x.status===PENDING).length,end:end.get(m)??0,days:[...days]}})},[rows,filtered]);
  const isOpen=(m:string)=>filtering||open.has(m);
  const toggle=(m:string)=>setOpen(o=>{const n=new Set(o);n.has(m)?n.delete(m):n.add(m);return n});
+ const clear=()=>{setQ("");setSt("");setDir("");setFrom("");setTo("")};
 
  return <div className="pp">
   <div className="pp-top">
@@ -102,13 +108,23 @@ export default function Prepaid(){
   <Statement account={acc}/>
 
   <section className="pp-card" data-testid="history">
-   <h3 className="pp-h"><History size={18}/>歷史紀錄<span className="pp-count">{filtering?`找到 ${matchCount.toLocaleString()} 筆`:`${months.length} 個月`}</span></h3>
-   <div className="pp-filters">
-    <div className="pp-search"><Search size={16}/><input placeholder="搜尋品項、狀態或金額" value={q} onChange={e=>setQ(e.target.value)} aria-label="搜尋對帳紀錄"/></div>
-    <select value={st} onChange={e=>setSt(e.target.value)} aria-label="狀態篩選"><option value="">全部狀態</option>{sum.statuses.map(([s,c])=><option key={s} value={s}>{s}（{c}）</option>)}</select>
-    <div className="pp-seg" role="group" aria-label="正負篩選">{([["","全部"],["plus","＋ 對方欠我們"],["minus","− 我們欠對方"]] as [Dir,string][]).map(([k,l])=><button key={k} className={dir===k?"on":""} onClick={()=>setDir(k)}>{l}</button>)}</div>
-    {filtering&&<button className="pp-clear" onClick={()=>{setQ("");setSt("");setDir("")}}>清除篩選</button>}
+   <h3 className="pp-h"><History size={18}/>歷史紀錄<span className="pp-count">{filtering?`找到 ${filtered.count.toLocaleString()} 筆`:`${months.length} 個月`}</span></h3>
+   <div className="pp-filters" data-testid="recon-filters">
+    <div className="pp-search"><Search size={16}/><input placeholder="搜尋品名、編號" value={q} onChange={e=>setQ(e.target.value)} aria-label="搜尋品名或編號"/></div>
+    <div className="pp-dates">
+     <label>日期從 <input type="date" lang="zh-TW" value={from} onChange={e=>setFrom(e.target.value)} aria-label="起始日期"/></label>
+     <label>到 <input type="date" lang="zh-TW" value={to} onChange={e=>setTo(e.target.value)} aria-label="結束日期"/></label>
+    </div>
+    <select value={st} onChange={e=>setSt(e.target.value)} aria-label="到貨狀態">
+     <option value="">全部狀態</option>
+     <option value={ST_UNCHECKED}>未到貨未勾（{sum.unchecked}）</option>
+     <option value={ST_ARRIVED}>已到貨（{sum.arrived}）</option>
+     {sum.statuses.map(([s,c])=><option key={s} value={s}>{s}（{c}）</option>)}
+    </select>
+    <div className="pp-seg" role="group" aria-label="正負篩選">{([["","全部"],["plus","＋ 對方欠我們"],["minus","− 我們欠對方"]] as [PrepaidDir,string][]).map(([k,l])=><button key={k} className={dir===k?"on":""} onClick={()=>setDir(k)}>{l}</button>)}</div>
+    {filtering&&<button className="pp-clear" onClick={clear}>清除篩選</button>}
    </div>
+   {filtering&&<p className="pp-result" data-testid="filter-summary">找到 {filtered.count.toLocaleString()} 筆，篩選合計 <Amount n={filtered.amount}/><span className="pp-hint">（目前餘額不受篩選影響）</span></p>}
    {months.map(g=><div key={g.m} className={"pp-month"+(isOpen(g.m)?" open":"")}>
     <button className="pp-mh" onClick={()=>toggle(g.m)} aria-expanded={isOpen(g.m)} disabled={filtering}><ChevronDown size={16} className="pp-chev"/><span className="pp-date">{monthLabel(g.m)}</span><span className="pp-mc">{g.count} 筆{g.pend>0&&<em>未到貨 {g.pend}</em>}</span>
      <span className="pp-mt">{g.plus>0&&<span className="plus">+{fmt(g.plus)}</span>}{g.minus<0&&<span className="minus">−{fmt(g.minus)}</span>}{!filtering&&<span className="pp-end">月底餘額 {signed(g.end)}</span>}</span></button>
