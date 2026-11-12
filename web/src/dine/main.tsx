@@ -6,6 +6,13 @@ import "./dine.css";
 
 type Item={id:string;category:DineCategoryId;name:string;description:string;price:number|null;priceNote:string;unit:string;badges:string[];imageUrl:string;market:boolean};
 type Cat={id:DineCategoryId;label:string;note:string};
+const MENU_GROUPS=[
+ {id:"bowls",label:"粥品・湯品",categories:["porridge","soup"]},
+ {id:"grilled",label:"烤魚・烤肉",categories:["fish","grill","meat"]},
+ {id:"cooked",label:"海鮮料理",categories:["steam","stir","blanch","thai"]},
+ {id:"fresh",label:"生魚片・活鮮",categories:["sashimi","live"]},
+] as const;
+type MenuGroupId=typeof MENU_GROUPS[number]["id"];
 const STEPS=["待處理","備貨中","可取貨","已完成"] as const;
 const STEP_LABEL:Record<string,string>={"待處理":"已接單","備貨中":"製作中","可取貨":"可取餐","已完成":"已完成","已取消":"已取消"};
 const tokenFromHash=()=>location.hash.match(/^#\/o\/([A-Za-z0-9_-]{20,64})$/)?.[1]??null;
@@ -54,12 +61,12 @@ function App(){
     <div><h1 className="visually-hidden">{DINE_STORE.name}</h1><p className="branch">{DINE_STORE.branch}</p></div>
    </div>
    <p className="tag">{token?"訂單查詢":"線上點餐・預約自取"}</p>
-   <div className="dine-info">
+   <details className="store-details"><summary>營業時間與門市資訊</summary><div className="dine-info">
     <div>營業時間　{DINE_STORE.hoursWeekday}</div>
     <div>　　　　　{DINE_STORE.hoursWeekend}，{DINE_STORE.closed}</div>
     <div>地址　{DINE_STORE.address}</div>
     <div>電話　<a href={`tel:${DINE_STORE.phone}`}>{DINE_STORE.phone}</a>（{DINE_STORE.phoneNote}）</div>
-   </div>
+   </div></details>
    <a className="shop-link" href={BASE+"order.html"}>海鮮購物（帶回家）→</a>
   </header>
   {err&&<p className="err" role="alert" style={{padding:"12px 16px"}}>{err}</p>}
@@ -71,7 +78,7 @@ function App(){
 function Menu({origin}:{origin:string}){
  const [items,setItems]=useState<Item[]|null>(null),[cats,setCats]=useState<Cat[]>([...DINE_CATEGORIES]);
  const [cart,setCart]=useState<Record<string,number>>({});
- const [cat,setCat]=useState<DineCategoryId|"all">("all");
+ const [cat,setCat]=useState<MenuGroupId|"all">("all");
  const [q,setQ]=useState("");const [tab,setTab]=useState<"menu"|"cart">("menu");
  const [f,setF]=useState({customerName:"",phone:"",note:"",pickupAt:""});
  const [msg,setMsg]=useState("");const [busy,setBusy]=useState(false);const [toast,setToast]=useState("");
@@ -95,8 +102,10 @@ function Menu({origin}:{origin:string}){
  const priced=lines.reduce((s,i)=>s+(i.price??0)*cart[i.id],0);
  const hasMarket=lines.some(i=>i.market);
  const query=q.trim();
- const shown=(items??[]).filter(i=>(cat==="all"||i.category===cat)&&(!query||`${i.name}${i.description}${i.priceNote}`.includes(query)));
- const byCat=cats.map(c=>({...c,items:shown.filter(i=>i.category===c.id)})).filter(c=>c.items.length);
+ const groupFor=(i:Item)=>MENU_GROUPS.find(g=>(g.categories as readonly string[]).includes(i.category))?.id??"cooked";
+ const shown=(items??[]).filter(i=>(cat==="all"||groupFor(i)===cat)&&(!query||`${i.name}${i.description}${i.priceNote}`.includes(query)));
+ const byCat=MENU_GROUPS.map(c=>({...c,items:shown.filter(i=>groupFor(i)===c.id)})).filter(c=>c.items.length);
+ const itemNote=(it:Item)=>[...new Set([it.description,it.priceNote,cats.find(c=>c.id===it.category)?.note].filter(Boolean))].join("・");
  async function submit(e:React.FormEvent){
   e.preventDefault();setBusy(true);setMsg("");
   const pe=pickupError(f.pickupAt);if(pe){setMsg(pe);setBusy(false);return}
@@ -112,7 +121,7 @@ function Menu({origin}:{origin:string}){
   <div className="item-main">
    {(it.badges.includes("hot")||it.badges.includes("best"))&&<div className="badges">{it.badges.includes("hot")&&<span className="badge hot">🔥 熱門</span>}{it.badges.includes("best")&&<span className="badge best">BEST CHOICE</span>}</div>}
    <strong>{it.name}</strong>
-   {(it.description||it.priceNote)&&<p className="spec">{[it.description,it.priceNote].filter(Boolean).join("・")}</p>}
+   {itemNote(it)&&<p className="spec">{itemNote(it)}</p>}
    <div className="item-foot">
     {it.market?<span className="price market">{MARKET_LABEL}</span>:<span className="price">NT$ {it.price!.toLocaleString("en-US")}</span>}
     {cart[it.id]>0?<div className="stepper"><button type="button" aria-label={`減少${it.name}`} onClick={()=>setQty(it.id,cart[it.id]-1)}>－</button><output>{cart[it.id]}</output><button type="button" aria-label={`增加${it.name}`} disabled={cart[it.id]>=20} onClick={()=>setQty(it.id,cart[it.id]+1)}>＋</button></div>
@@ -125,14 +134,13 @@ function Menu({origin}:{origin:string}){
    {tab==="menu"?<>
     <div className="cats" role="group" aria-label="分類">
      <button type="button" aria-pressed={cat==="all"} className={cat==="all"?"on":""} onClick={()=>setCat("all")}>全部</button>
-     {cats.map(c=><button key={c.id} type="button" aria-pressed={cat===c.id} className={cat===c.id?"on":""} onClick={()=>setCat(c.id)}>{c.label}</button>)}
+     {MENU_GROUPS.map(c=><button key={c.id} type="button" aria-pressed={cat===c.id} className={cat===c.id?"on":""} onClick={()=>setCat(c.id)}>{c.label}</button>)}
     </div>
     <label className="search"><span aria-hidden>🔍</span><input type="search" aria-label="搜尋餐點" value={q} onChange={e=>setQ(e.target.value)} placeholder="搜尋餐點" enterKeyHint="search" autoComplete="off"/></label>
     {!items&&<p className="hint">{msg||"載入中…"}</p>}
     {items&&!byCat.length&&<p className="hint">{query?`找不到「${query}」相關的餐點。`:"這個分類目前沒有餐點。"}</p>}
     {byCat.map(c=><section key={c.id} className="cat-block">
      <h2>{c.label}<small className="category-count">{c.items.length} 道料理</small></h2>
-     {c.note&&<p className="cat-note">{c.note}</p>}
      <div className="menu">{c.items.map(card)}</div>
     </section>)}
     {msg&&items&&<p className="err" role="alert">{msg}</p>}
@@ -162,7 +170,7 @@ function Menu({origin}:{origin:string}){
    <button type="button" className={tab==="cart"?"on":""} onClick={()=>changeTab("cart")}><span>查看餐點・結帳 {count>0&&`（${count}）`}</span><strong>NT$ {priced.toLocaleString("en-US")}{hasMarket&&"＋時價"}</strong></button>
   </nav>
   <dialog ref={dialog} className="food-dialog" onCancel={()=>setDetail(null)} onClose={()=>setDetail(null)} onClick={e=>{if(e.target===e.currentTarget)setDetail(null)}}>
-   {detail&&<><button type="button" className="dialog-close" onClick={()=>setDetail(null)} aria-label="關閉餐點介紹">×</button><FoodImage item={detail}/><div className="dialog-body"><p className="eyebrow">安星水產・現點料理</p><h2>{detail.name}</h2><p className="spec">{[detail.description,detail.priceNote].filter(Boolean).join("・")}</p><p className="price">{detail.market?MARKET_LABEL:`NT$ ${(detail.price??0).toLocaleString("en-US")}`}</p><button type="button" className="primary" disabled={(cart[detail.id]??0)>=20} onClick={()=>add(detail)}>{(cart[detail.id]??0)>=20?"已達單品上限":"＋ 加入餐點"}{(cart[detail.id]??0)>0&&`（已選 ${cart[detail.id]} 份）`}</button></div></>}
+   {detail&&<><button type="button" className="dialog-close" onClick={()=>setDetail(null)} aria-label="關閉餐點介紹">×</button><FoodImage item={detail}/><div className="dialog-body"><p className="eyebrow">安星水產・現點料理</p><h2>{detail.name}</h2><p className="spec">{itemNote(detail)}</p><p className="price">{detail.market?MARKET_LABEL:`NT$ ${(detail.price??0).toLocaleString("en-US")}`}</p><button type="button" className="primary" disabled={(cart[detail.id]??0)>=20} onClick={()=>add(detail)}>{(cart[detail.id]??0)>=20?"已達單品上限":"＋ 加入餐點"}{(cart[detail.id]??0)>0&&`（已選 ${cart[detail.id]} 份）`}</button></div></>}
   </dialog>
   {toast&&<p className="toast" role="status">{toast}</p>}
  </>;
