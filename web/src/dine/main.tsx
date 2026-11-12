@@ -12,6 +12,11 @@ const tokenFromHash=()=>location.hash.match(/^#\/o\/([A-Za-z0-9_-]{20,64})$/)?.[
 const BASE=import.meta.env.BASE_URL;
 const logo=BASE+"dine/logo.webp";
 
+function FoodImage({item}:{item:Item}){
+ const [failed,setFailed]=useState(false);
+ return item.imageUrl&&!failed?<img className="thumb" src={item.imageUrl} alt={item.name} loading="lazy" decoding="async" onError={()=>setFailed(true)}/>:<div className="thumb ph"><span>安星水產</span><small>餐點照片準備中</small></div>;
+}
+
 function useOrigin(){
  const [o,setO]=useState<string|null>(null),[e,setE]=useState("");
  useEffect(()=>{loadApiOrigin().then(setO).catch(x=>setE(x instanceof Error?x.message:"無法連線"))},[]);
@@ -71,7 +76,11 @@ function Menu({origin}:{origin:string}){
  const [f,setF]=useState({customerName:"",phone:"",note:"",pickupAt:""});
  const [msg,setMsg]=useState("");const [busy,setBusy]=useState(false);const [toast,setToast]=useState("");
  const idem=useRef(newKey());
- const slots=useMemo(()=>nextSlots(),[]);
+ const slots=useMemo(()=>nextSlots(),[tab]);
+ const [detail,setDetail]=useState<Item|null>(null);
+ const dialog=useRef<HTMLDialogElement>(null);
+ useEffect(()=>{if(detail){dialog.current?.showModal();const previous=document.body.style.overflow;document.body.style.overflow="hidden";return()=>{document.body.style.overflow=previous}}else dialog.current?.close()},[detail]);
+ const changeTab=(next:"menu"|"cart")=>{setTab(next);window.scrollTo({top:0,behavior:"instant"})};
  useEffect(()=>{
   fetch(origin+"/api/public/dine-menu",{cache:"no-store",credentials:"omit"}).then(async r=>{
    if(!r.ok)throw new Error();
@@ -99,14 +108,14 @@ function Menu({origin}:{origin:string}){
   finally{setBusy(false)}
  }
  const card=(it:Item)=><article key={it.id} className="card">
-  {it.imageUrl?<img className="thumb" src={it.imageUrl} alt="" width={96} height={96}/>:<div className="thumb ph" aria-hidden>{cats.find(c=>c.id===it.category)?.label??"餐點"}</div>}
+  <button type="button" className="photo-button" onClick={()=>setDetail(it)} aria-label={`查看${it.name}大圖與介紹`}><FoodImage item={it}/><span className="photo-hint">查看餐點 ↗</span></button>
   <div className="item-main">
    {(it.badges.includes("hot")||it.badges.includes("best"))&&<div className="badges">{it.badges.includes("hot")&&<span className="badge hot">🔥 熱門</span>}{it.badges.includes("best")&&<span className="badge best">BEST CHOICE</span>}</div>}
    <strong>{it.name}</strong>
    {(it.description||it.priceNote)&&<p className="spec">{[it.description,it.priceNote].filter(Boolean).join("・")}</p>}
    <div className="item-foot">
     {it.market?<span className="price market">{MARKET_LABEL}</span>:<span className="price">NT$ {it.price!.toLocaleString("en-US")}</span>}
-    {cart[it.id]>0?<div className="stepper"><button type="button" aria-label="減少" onClick={()=>setQty(it.id,cart[it.id]-1)}>－</button><output>{cart[it.id]}</output><button type="button" aria-label="增加" disabled={cart[it.id]>=20} onClick={()=>setQty(it.id,cart[it.id]+1)}>＋</button></div>
+    {cart[it.id]>0?<div className="stepper"><button type="button" aria-label={`減少${it.name}`} onClick={()=>setQty(it.id,cart[it.id]-1)}>－</button><output>{cart[it.id]}</output><button type="button" aria-label={`增加${it.name}`} disabled={cart[it.id]>=20} onClick={()=>setQty(it.id,cart[it.id]+1)}>＋</button></div>
      :<button type="button" className="item-add" onClick={()=>add(it)}>＋加入</button>}
    </div>
   </div>
@@ -114,15 +123,15 @@ function Menu({origin}:{origin:string}){
  return <>
   <div className="dine-body">
    {tab==="menu"?<>
-    <div className="cats" role="tablist" aria-label="分類">
-     <button type="button" className={cat==="all"?"on":""} onClick={()=>setCat("all")}>全部</button>
-     {cats.map(c=><button key={c.id} type="button" className={cat===c.id?"on":""} onClick={()=>setCat(c.id)}>{c.label}</button>)}
+    <div className="cats" role="group" aria-label="分類">
+     <button type="button" aria-pressed={cat==="all"} className={cat==="all"?"on":""} onClick={()=>setCat("all")}>全部</button>
+     {cats.map(c=><button key={c.id} type="button" aria-pressed={cat===c.id} className={cat===c.id?"on":""} onClick={()=>setCat(c.id)}>{c.label}</button>)}
     </div>
-    <label className="search"><span aria-hidden>🔍</span><input type="search" value={q} onChange={e=>setQ(e.target.value)} placeholder="搜尋餐點" enterKeyHint="search" autoComplete="off"/></label>
+    <label className="search"><span aria-hidden>🔍</span><input type="search" aria-label="搜尋餐點" value={q} onChange={e=>setQ(e.target.value)} placeholder="搜尋餐點" enterKeyHint="search" autoComplete="off"/></label>
     {!items&&<p className="hint">{msg||"載入中…"}</p>}
     {items&&!byCat.length&&<p className="hint">{query?`找不到「${query}」相關的餐點。`:"這個分類目前沒有餐點。"}</p>}
     {byCat.map(c=><section key={c.id} className="cat-block">
-     <h2>{c.label}</h2>
+     <h2>{c.label}<small className="category-count">{c.items.length} 道料理</small></h2>
      {c.note&&<p className="cat-note">{c.note}</p>}
      <div className="menu">{c.items.map(card)}</div>
     </section>)}
@@ -131,7 +140,7 @@ function Menu({origin}:{origin:string}){
    <form className="cart" onSubmit={submit}>
     <h2>購物車・預約自取</h2>
     {!lines.length&&<p className="hint">還沒有點餐，先回菜單挑喜歡的料理。</p>}
-    <ul className="lines">{lines.map(i=><li key={i.id}><span>{i.name}{i.market&&<small>　時價</small>}</span><span className="cart-qty"><button type="button" aria-label="減少" onClick={()=>setQty(i.id,cart[i.id]-1)}>－</button>{cart[i.id]}<button type="button" aria-label="增加" disabled={cart[i.id]>=20} onClick={()=>setQty(i.id,cart[i.id]+1)}>＋</button></span><span>{i.market?"時價":`$${(i.price??0)*cart[i.id]}`}</span></li>)}</ul>
+    <ul className="lines">{lines.map(i=><li key={i.id}><span className="line-title"><FoodImage item={i}/><span>{i.name}{i.market&&<small>　時價</small>}<button type="button" className="remove-item" onClick={()=>setQty(i.id,0)}>移除</button></span></span><span className="cart-qty"><button type="button" aria-label={`減少${i.name}`} onClick={()=>setQty(i.id,cart[i.id]-1)}>－</button>{cart[i.id]}<button type="button" aria-label={`增加${i.name}`} disabled={cart[i.id]>=20} onClick={()=>setQty(i.id,cart[i.id]+1)}>＋</button></span><span>{i.market?"時價":`$${(i.price??0)*cart[i.id]}`}</span></li>)}</ul>
     {hasMarket&&<p className="market-note">時價品項不計入合計，店家確認後會另外報價。</p>}
     <p className="total">合計 NT$ {priced.toLocaleString("en-US")}{hasMarket&&"＋時價"}</p>
     <label>取餐時間
@@ -145,13 +154,16 @@ function Menu({origin}:{origin:string}){
     <label>聯絡電話<input value={f.phone} onChange={e=>setF({...f,phone:e.target.value})} required inputMode="tel" autoComplete="tel" pattern="[0-9+\-\s]{6,20}"/></label>
     <label>備註（選填，例如辣度、忌口）<textarea value={f.note} onChange={e=>setF({...f,note:e.target.value})} maxLength={300}/></label>
     {msg&&<p className="err" role="alert">{msg}</p>}
-    <div className="actions"><button className="primary" disabled={busy||!lines.length}>{busy?"送出中…":"送出點餐"}</button><button type="button" className="ghost" onClick={()=>setTab("menu")}>繼續點餐</button></div>
+    <div className="actions"><button className="primary" disabled={busy||!lines.length}>{busy?"送出中…":"送出點餐"}</button><button type="button" className="ghost" onClick={()=>changeTab("menu")}>繼續點餐</button></div>
    </form>}
   </div>
   <nav className="dock" aria-label="點餐選單">
-   <button type="button" className={tab==="menu"?"on":""} onClick={()=>setTab("menu")}><span aria-hidden>🍽️</span>菜單</button>
-   <button type="button" className={tab==="cart"?"on":""} onClick={()=>setTab("cart")}><span aria-hidden>🛒</span>結帳{count>0&&<i className="dock-badge">{count}</i>}</button>
+   <button type="button" className={tab==="menu"?"on":""} onClick={()=>changeTab("menu")}><span aria-hidden>🍽️</span>菜單</button>
+   <button type="button" className={tab==="cart"?"on":""} onClick={()=>changeTab("cart")}><span>查看餐點・結帳 {count>0&&`（${count}）`}</span><strong>NT$ {priced.toLocaleString("en-US")}{hasMarket&&"＋時價"}</strong></button>
   </nav>
+  <dialog ref={dialog} className="food-dialog" onCancel={()=>setDetail(null)} onClose={()=>setDetail(null)} onClick={e=>{if(e.target===e.currentTarget)setDetail(null)}}>
+   {detail&&<><button type="button" className="dialog-close" onClick={()=>setDetail(null)} aria-label="關閉餐點介紹">×</button><FoodImage item={detail}/><div className="dialog-body"><p className="eyebrow">安星水產・現點料理</p><h2>{detail.name}</h2><p className="spec">{[detail.description,detail.priceNote].filter(Boolean).join("・")}</p><p className="price">{detail.market?MARKET_LABEL:`NT$ ${(detail.price??0).toLocaleString("en-US")}`}</p><button type="button" className="primary" disabled={(cart[detail.id]??0)>=20} onClick={()=>add(detail)}>{(cart[detail.id]??0)>=20?"已達單品上限":"＋ 加入餐點"}{(cart[detail.id]??0)>0&&`（已選 ${cart[detail.id]} 份）`}</button></div></>}
+  </dialog>
   {toast&&<p className="toast" role="status">{toast}</p>}
  </>;
 }
