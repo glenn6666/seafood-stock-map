@@ -19,9 +19,13 @@ const tokenFromHash=()=>location.hash.match(/^#\/o\/([A-Za-z0-9_-]{20,64})$/)?.[
 const BASE=import.meta.env.BASE_URL;
 const logo=BASE+"dine/logo.webp";
 
+const UPDATED_PHOTOS:Record<string,{previous:string;file:string}>={"dine-sashimi-nishin": {"previous": "/seafood-stock-map/dine/sashimi-nishin.webp", "file": "dine-sashimi-nishin-20261113.webp"}, "dine-stir-snail": {"previous": "/seafood-stock-map/dine/stir-snail.webp", "file": "dine-stir-snail-20261113.webp"}, "dine-fish-hairtail": {"previous": "/seafood-stock-map/dine/fish-hairtail.webp", "file": "dine-fish-hairtail-20261113.webp"}, "dine-stir-crableg": {"previous": "/seafood-stock-map/dine/stir-crab.webp", "file": "dine-stir-crableg-20261113.webp"}, "dine-blanch-white": {"previous": "/seafood-stock-map/dine/blanch-white.webp", "file": "dine-blanch-white-20261113.webp"}, "dine-porridge-crab": {"previous": "/seafood-stock-map/dine/congee-crab.webp", "file": "dine-porridge-crab-20261113.webp"}, "dine-thai-salt": {"previous": "/seafood-stock-map/dine/thai-prawn.webp", "file": "dine-thai-salt-20261113.webp"}, "dine-fish-mackerel": {"previous": "/seafood-stock-map/dine/fish-mackerel.webp", "file": "dine-fish-mackerel-20261113.webp"}, "dine-fish-sweetfish": {"previous": "/seafood-stock-map/dine/fish-sweetfish.webp", "file": "dine-fish-sweetfish-20261113.webp"}, "dine-fish-kinmedai": {"previous": "/seafood-stock-map/dine/fish-kinmedai.webp", "file": "dine-fish-kinmedai-20261113.webp"}, "dine-fish-baby": {"previous": "/seafood-stock-map/dine/fish-baby.webp", "file": "dine-fish-baby-20261113.webp"}, "dine-blanch-cuttle": {"previous": "/seafood-stock-map/dine/blanch-cuttle.webp", "file": "dine-blanch-cuttle-20261113.webp"}};
+
 function FoodImage({item}:{item:Item}){
+ const replacement=UPDATED_PHOTOS[item.id];
+ const src=replacement&&item.imageUrl===replacement.previous?BASE+"dine/"+replacement.file:item.imageUrl;
  const [failed,setFailed]=useState(false);
- return item.imageUrl&&!failed?<img className="thumb" src={item.imageUrl} alt={item.name} loading="lazy" decoding="async" onError={()=>setFailed(true)}/>:<div className="thumb ph"><span>安星水產</span><small>餐點照片準備中</small></div>;
+ return item.imageUrl&&!failed?<img className="thumb" src={src} alt={item.name} loading="lazy" decoding="async" onError={()=>setFailed(true)}/>:<div className="thumb ph"><span>安星水產</span><small>餐點照片準備中</small></div>;
 }
 
 function useOrigin(){
