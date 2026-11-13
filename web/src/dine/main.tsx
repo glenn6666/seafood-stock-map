@@ -19,13 +19,35 @@ const tokenFromHash=()=>location.hash.match(/^#\/o\/([A-Za-z0-9_-]{20,64})$/)?.[
 const BASE=import.meta.env.BASE_URL;
 const logo=BASE+"dine/logo.webp";
 
-const UPDATED_PHOTOS:Record<string,{previous:string;file:string}>={"dine-sashimi-nishin": {"previous": "/seafood-stock-map/dine/sashimi-nishin.webp", "file": "dine-sashimi-nishin-20261113.webp"}, "dine-stir-snail": {"previous": "/seafood-stock-map/dine/stir-snail.webp", "file": "dine-stir-snail-20261113.webp"}, "dine-fish-hairtail": {"previous": "/seafood-stock-map/dine/fish-hairtail.webp", "file": "dine-fish-hairtail-20261113.webp"}, "dine-stir-crableg": {"previous": "/seafood-stock-map/dine/stir-crab.webp", "file": "dine-stir-crableg-20261113.webp"}, "dine-blanch-white": {"previous": "/seafood-stock-map/dine/blanch-white.webp", "file": "dine-blanch-white-20261113.webp"}, "dine-porridge-crab": {"previous": "/seafood-stock-map/dine/congee-crab.webp", "file": "dine-porridge-crab-20261113.webp"}, "dine-thai-salt": {"previous": "/seafood-stock-map/dine/thai-prawn.webp", "file": "dine-thai-salt-20261113.webp"}, "dine-fish-mackerel": {"previous": "/seafood-stock-map/dine/fish-mackerel.webp", "file": "dine-fish-mackerel-20261113.webp"}, "dine-fish-sweetfish": {"previous": "/seafood-stock-map/dine/fish-sweetfish.webp", "file": "dine-fish-sweetfish-20261113.webp"}, "dine-fish-kinmedai": {"previous": "/seafood-stock-map/dine/fish-kinmedai.webp", "file": "dine-fish-kinmedai-20261113.webp"}, "dine-fish-baby": {"previous": "/seafood-stock-map/dine/fish-baby.webp", "file": "dine-fish-baby-20261113.webp"}, "dine-blanch-cuttle": {"previous": "/seafood-stock-map/dine/blanch-cuttle.webp", "file": "dine-blanch-cuttle-20261113.webp"}};
+const UPDATED_PHOTOS:Record<string,{previous:string;file:string}>={
+"dine-live-king":{"previous": "", "file": "dine-live-king-20261113.webp"},
+"dine-sashimi-salmon":{"previous": "/seafood-stock-map/dine/sashimi-salmon.webp", "file": "dine-sashimi-salmon-20261113.webp"},
+"dine-blanch-squid":{"previous": "/seafood-stock-map/dine/blanch-hi.webp", "file": "dine-blanch-squid-20261113.webp"},
+"dine-porridge-scallop":{"previous": "/seafood-stock-map/dine/congee-scallop.webp", "file": "dine-porridge-scallop-20261113.webp"},
+"dine-live-wugu":{"previous": "", "file": "dine-live-wugu-20261113.webp"},
+"dine-steam-garlic":{"previous": "/seafood-stock-map/dine/crayfish-garlic.webp", "file": "dine-steam-garlic-20261113.webp"},
+"dine-live-crab":{"previous": "/seafood-stock-map/dine/live-crab.webp", "file": "dine-live-crab-20261113.webp"},
+"dine-live-bread":{"previous": "", "file": "dine-live-bread-20261113.webp"},
+"dine-grill-giant":{"previous": "/seafood-stock-map/dine/grill-prawn.webp", "file": "dine-grill-giant-20261113.webp"},
+"dine-blanch-soft":{"previous": "/seafood-stock-map/dine/blanch-soft.webp", "file": "dine-blanch-soft-20261113.webp"},
+"dine-meat-rib":{"previous": "/seafood-stock-map/dine/meat-rib.webp", "file": "dine-meat-rib-20261113.webp"},
+"dine-meat-iberico":{"previous": "/seafood-stock-map/dine/meat-iberico.webp", "file": "dine-meat-iberico-20261113.webp"},
+"dine-soup-milkfish":{"previous": "/seafood-stock-map/dine/soup-milkfish.webp", "file": "dine-soup-milkfish-20261113.webp"},
+"dine-steam-oyster":{"previous": "/seafood-stock-map/dine/oysters-hi.webp", "file": "dine-steam-oyster-20261113.webp"},
+"dine-live-lobster":{"previous": "/seafood-stock-map/dine/live-lobster.webp", "file": "dine-live-lobster-20261113.webp"},
+"dine-live-shagong":{"previous": "", "file": "dine-live-shagong-20261113.webp"},
+"dine-soup-ginger":{"previous": "/seafood-stock-map/dine/soup-ginger.webp", "file": "dine-soup-ginger-20261113.webp"},
+"dine-fish-milkfish":{"previous": "/seafood-stock-map/dine/fish-milkfish.webp", "file": "dine-fish-milkfish-20261113.webp"},
+"dine-grill-8p":{"previous": "/seafood-stock-map/dine/grill-8p.webp", "file": "dine-grill-8p-20261113.webp"},
+"dine-soup-wine":{"previous": "/seafood-stock-map/dine/soup-wine.webp", "file": "dine-soup-wine-20261113.webp"},
+"dine-porridge-milkfish":{"previous": "/seafood-stock-map/dine/porridge-milkfish.webp", "file": "dine-porridge-milkfish-20261113.webp"},
+"dine-steam-mala":{"previous": "/seafood-stock-map/dine/crayfish-mala.webp", "file": "dine-steam-mala-20261113.webp"},"dine-sashimi-nishin": {"previous": "/seafood-stock-map/dine/sashimi-nishin.webp", "file": "dine-sashimi-nishin-20261113.webp"}, "dine-stir-snail": {"previous": "/seafood-stock-map/dine/stir-snail.webp", "file": "dine-stir-snail-20261113.webp"}, "dine-fish-hairtail": {"previous": "/seafood-stock-map/dine/fish-hairtail.webp", "file": "dine-fish-hairtail-20261113.webp"}, "dine-stir-crableg": {"previous": "/seafood-stock-map/dine/stir-crab.webp", "file": "dine-stir-crableg-20261113.webp"}, "dine-blanch-white": {"previous": "/seafood-stock-map/dine/blanch-white.webp", "file": "dine-blanch-white-20261113.webp"}, "dine-porridge-crab": {"previous": "/seafood-stock-map/dine/congee-crab.webp", "file": "dine-porridge-crab-20261113.webp"}, "dine-thai-salt": {"previous": "/seafood-stock-map/dine/thai-prawn.webp", "file": "dine-thai-salt-20261113.webp"}, "dine-fish-mackerel": {"previous": "/seafood-stock-map/dine/fish-mackerel.webp", "file": "dine-fish-mackerel-20261113.webp"}, "dine-fish-sweetfish": {"previous": "/seafood-stock-map/dine/fish-sweetfish.webp", "file": "dine-fish-sweetfish-20261113.webp"}, "dine-fish-kinmedai": {"previous": "/seafood-stock-map/dine/fish-kinmedai.webp", "file": "dine-fish-kinmedai-20261113.webp"}, "dine-fish-baby": {"previous": "/seafood-stock-map/dine/fish-baby.webp", "file": "dine-fish-baby-20261113.webp"}, "dine-blanch-cuttle": {"previous": "/seafood-stock-map/dine/blanch-cuttle.webp", "file": "dine-blanch-cuttle-20261113.webp"}};
 
 function FoodImage({item}:{item:Item}){
  const replacement=UPDATED_PHOTOS[item.id];
  const src=replacement&&item.imageUrl===replacement.previous?BASE+"dine/"+replacement.file:item.imageUrl;
  const [failed,setFailed]=useState(false);
- return item.imageUrl&&!failed?<img className="thumb" src={src} alt={item.name} loading="lazy" decoding="async" onError={()=>setFailed(true)}/>:<div className="thumb ph"><span>安星水產</span><small>餐點照片準備中</small></div>;
+ return src&&!failed?<img className="thumb" src={src} alt={item.name} loading="lazy" decoding="async" onError={()=>setFailed(true)}/>:<div className="thumb ph"><span>安星水產</span><small>餐點照片準備中</small></div>;
 }
 
 function useOrigin(){
