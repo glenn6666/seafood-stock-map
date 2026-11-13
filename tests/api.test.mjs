@@ -360,16 +360,89 @@ await t("線上點餐不能混入庫存商品，購物訂單也不能點餐點",
  assert.equal((await api("/api/public/orders",{method:"POST",ip,body:{channel:"dine",idempotencyKey:key(),customerName:"客",phone:"0911111222",pickupAt:nextDinePickup(),items:[{id:A,qty:1}]}})).status,400);
  assert.equal((await api("/api/public/orders",{method:"POST",ip,body:{idempotencyKey:key(),customerName:"客",phone:"0911111222",items:[{id:"dine-porridge-crab",qty:1}]}})).status,400);
 });
-await t("管理員可更新餐點照片網址，店員不能改",async()=>{
- const url="/seafood-stock-map/dine/congee-crab.webp";
- const clerk=(await api("/api/auth/login",{method:"POST",body:{username:"clerk2",password:"clerk2-pass-1"}})).data.token;
- assert.ok(clerk,"店員應仍可登入");
- assert.equal((await api("/api/dine-menu/dine-porridge-crab",{method:"PATCH",token:clerk,body:{imageUrl:url}})).status,403);
- const r=await api("/api/dine-menu/dine-porridge-crab",{method:"PATCH",token:admin,body:{imageUrl:url}});
+const webp=()=>{const b=new Uint8Array(64);b.set([...Buffer.from("RIFF")],0);b.set([...Buffer.from("WEBP")],8);return b};
+async function raw(path,{method="POST",token,type,body}={}){const h={};if(token)h.Authorization=`Bearer ${token}`;if(type)h["Content-Type"]=type;const r=await fetch(BASE+path,{method,headers:h,body});return r}
+let clerkTok;
+await t("餐點菜單：未登入不能讀寫；店員和管理員都能改照片網址",async()=>{
+ const url="/seafood-stock-map/dine/congee-scallop.webp";
+ clerkTok=(await api("/api/auth/login",{method:"POST",body:{username:"clerk2",password:"clerk2-pass-1"}})).data.token;
+ assert.ok(clerkTok,"店員應仍可登入");
+ assert.equal((await api("/api/dine-menu")).status,401);
+ assert.equal((await api("/api/dine-menu",{method:"POST",body:{name:"x",category:"fish",price:1}})).status,401);
+ assert.equal((await api("/api/dine-menu/dine-porridge-crab",{method:"PATCH",body:{price:1}})).status,401);
+ assert.equal((await raw("/api/dine-menu/photos",{type:"image/webp",body:webp()})).status,401);
+ assert.equal((await api("/api/dine-menu/log")).status,401);
+ const r=await api("/api/dine-menu/dine-porridge-crab",{method:"PATCH",token:clerkTok,body:{imageUrl:url}});
  assert.equal(r.status,200,JSON.stringify(r.data));
  const list=(await api("/api/dine-menu",{token:admin})).data.items.find(i=>i.id==="dine-porridge-crab");
- assert.equal(list.imageUrl,url);
+ assert.equal(list.imageUrl,url);assert.equal(list.updatedBy,"clerk2");
  assert.equal((await api("/api/dine-menu/dine-porridge-crab",{method:"PATCH",token:admin,body:{imageUrl:"javascript:alert(1)"}})).status,400);
+ assert.equal((await api("/api/dine-menu/dine-porridge-crab",{method:"PATCH",token:admin,body:{imageUrl:"/api/users"}})).status,400);
+});
+await t("餐點菜單：店員可改品名／分類／價格／時價／排序／上下架，並即時反映到公開菜單",async()=>{
+ const cur=(await api("/api/dine-menu",{token:clerkTok})).data.items.find(i=>i.id==="dine-fish-baby");
+ const r=await api("/api/dine-menu/dine-fish-baby",{method:"PATCH",token:clerkTok,body:{name:"鹽烤午仔魚（大）",category:"grill",price:260,description:"現烤",sort:5,badges:["hot"],expectedUpdatedAt:cur.updatedAt}});
+ assert.equal(r.status,200,JSON.stringify(r.data));
+ let pub=(await api("/api/public/dine-menu")).data.items.find(i=>i.id==="dine-fish-baby");
+ assert.deepEqual([pub.name,pub.category,pub.price,pub.description,pub.sort,pub.badges],["鹽烤午仔魚（大）","grill",260,"現烤",5,["hot"]]);
+ assert.equal((await api("/api/dine-menu/dine-fish-baby",{method:"PATCH",token:clerkTok,body:{price:null,priceNote:"依當日報價"}})).status,200);
+ pub=(await api("/api/public/dine-menu")).data.items.find(i=>i.id==="dine-fish-baby");assert.equal(pub.market,true);assert.equal(pub.priceNote,"依當日報價");
+ assert.equal((await api("/api/dine-menu/dine-fish-baby",{method:"PATCH",token:clerkTok,body:{active:false}})).status,200);
+ assert.ok(!(await api("/api/public/dine-menu")).data.items.some(i=>i.id==="dine-fish-baby"),"下架後公開菜單看不到");
+ assert.equal((await api("/api/dine-menu/dine-fish-baby",{method:"PATCH",token:clerkTok,body:{active:true,price:230,name:"鹽烤大隻午仔魚",category:"fish",sort:50,badges:[]}})).status,200);
+ // 驗證
+ for(const body of [{price:-1},{price:1.5},{price:"100"},{category:"nope"},{name:""},{name:"x".repeat(41)},{sort:-1},{badges:["evil"]},{active:"yes"},{description:"a\u0001b"},{}])
+  assert.equal((await api("/api/dine-menu/dine-fish-baby",{method:"PATCH",token:clerkTok,body})).status,400,JSON.stringify(body));
+ assert.equal((await api("/api/dine-menu/dine-nope",{method:"PATCH",token:clerkTok,body:{price:1}})).status,404);
+});
+await t("餐點菜單：兩人同時編輯時，晚存的會被擋下（409）不覆蓋",async()=>{
+ const cur=(await api("/api/dine-menu",{token:admin})).data.items.find(i=>i.id==="dine-fish-hairtail");
+ assert.equal((await api("/api/dine-menu/dine-fish-hairtail",{method:"PATCH",token:admin,body:{price:210,expectedUpdatedAt:cur.updatedAt}})).status,200);
+ const late=await api("/api/dine-menu/dine-fish-hairtail",{method:"PATCH",token:clerkTok,body:{price:999,expectedUpdatedAt:cur.updatedAt}});
+ assert.equal(late.status,409);assert.equal(late.data.latest.price,210);
+ assert.equal((await api("/api/public/dine-menu")).data.items.find(i=>i.id==="dine-fish-hairtail").price,210);
+ assert.equal((await api("/api/dine-menu/dine-fish-hairtail",{method:"PATCH",token:admin,body:{price:209}})).status,200);
+});
+let newId;
+await t("餐點菜單：店員可新增、刪除（隱藏）與還原；刪除後顧客不能點",async()=>{
+ const r=await api("/api/dine-menu",{method:"POST",token:clerkTok,body:{name:"測試蒜蓉蝦",category:"steam",price:288,description:"測試用"}});
+ assert.equal(r.status,200,JSON.stringify(r.data));newId=r.data.item.id;assert.match(newId,/^dine-steam-[0-9a-f]{8}$/);
+ assert.ok((await api("/api/public/dine-menu")).data.items.some(i=>i.id===newId&&i.price===288));
+ const m=await api("/api/dine-menu",{method:"POST",token:clerkTok,body:{name:"時價測試",category:"live"}});
+ assert.equal(m.status,200);assert.equal(m.data.item.market,true);
+ assert.equal((await api("/api/dine-menu",{method:"POST",token:clerkTok,body:{name:"x",category:"bad",price:1}})).status,400);
+ assert.equal((await api(`/api/dine-menu/${newId}`,{method:"PATCH",token:clerkTok,body:{deleted:true}})).status,200);
+ assert.ok(!(await api("/api/public/dine-menu")).data.items.some(i=>i.id===newId),"刪除後公開菜單看不到");
+ const row=(await api("/api/dine-menu",{token:admin})).data.items.find(i=>i.id===newId);assert.equal(row.deleted,true);assert.equal(row.active,false);
+ const o=await api("/api/public/orders",{method:"POST",ip:freshIp(),body:{channel:"dine",idempotencyKey:key(),customerName:"客",phone:"0911111222",pickupAt:nextDinePickup(),items:[{id:newId,qty:1}]}});
+ assert.equal(o.status,400,"已刪除的餐點不能下單");
+ // 只還原、不自動上架
+ assert.equal((await api(`/api/dine-menu/${newId}`,{method:"PATCH",token:admin,body:{deleted:false}})).status,200);
+ assert.ok(!(await api("/api/public/dine-menu")).data.items.some(i=>i.id===newId));
+ assert.equal((await api(`/api/dine-menu/${newId}`,{method:"PATCH",token:admin,body:{deleted:true}})).status,200);
+ assert.equal((await api(`/api/dine-menu/${m.data.item.id}`,{method:"PATCH",token:admin,body:{deleted:true}})).status,200);
+});
+await t("餐點照片：店員可上傳（WebP/JPEG、≤300KB），公開網址可讀；格式或大小不對會拒絕",async()=>{
+ assert.equal((await raw("/api/dine-menu/photos",{token:clerkTok,type:"image/png",body:new Uint8Array(10)})).status,415);
+ assert.equal((await raw("/api/dine-menu/photos",{token:clerkTok,type:"image/webp",body:new Uint8Array(64)})).status,415,"不是真的 WebP");
+ assert.equal((await raw("/api/dine-menu/photos",{token:clerkTok,type:"image/jpeg",body:new Uint8Array(301*1024).fill(0xff)})).status,413);
+ const up=await raw("/api/dine-menu/photos",{token:clerkTok,type:"image/webp",body:webp()});assert.equal(up.status,200);
+ const {imageUrl}=await up.json();assert.match(imageUrl,/^\/api\/public\/dine-photos\/[0-9a-f-]{36}$/);
+ const g=await fetch(BASE+imageUrl);assert.equal(g.status,200);assert.equal(g.headers.get("content-type"),"image/webp");
+ assert.match(g.headers.get("cache-control"),/immutable/);assert.equal((await g.arrayBuffer()).byteLength,64);
+ assert.equal((await fetch(BASE+"/api/public/dine-photos/00000000-0000-0000-0000-000000000000")).status,404);
+ assert.equal((await api("/api/dine-menu/dine-porridge-crab",{method:"PATCH",token:clerkTok,body:{imageUrl}})).status,200);
+ assert.equal((await api("/api/public/dine-menu")).data.items.find(i=>i.id==="dine-porridge-crab").imageUrl,imageUrl);
+ assert.equal((await api("/api/dine-menu/dine-porridge-crab",{method:"PATCH",token:admin,body:{imageUrl:"/seafood-stock-map/dine/congee-crab.webp"}})).status,200);
+});
+await t("餐點菜單修改紀錄：記下誰、何時、改了什麼",async()=>{
+ const r=await api("/api/dine-menu/log",{token:clerkTok});assert.equal(r.status,200);
+ const rows=r.data.rows;assert.ok(rows.length>=5);
+ const c=rows.find(x=>x.itemId==="dine-fish-baby"&&x.changes.price&&x.changes.price[1]===260);
+ assert.ok(c,"應有改價紀錄");assert.equal(c.actor,"clerk2");assert.equal(c.action,"update");assert.equal(c.changes.price[0],230);
+ assert.ok(rows.some(x=>x.itemId===newId&&x.action==="delete"));assert.ok(rows.some(x=>x.itemId===newId&&x.action==="restore"));
+ assert.ok(rows.some(x=>x.itemId===newId&&x.action==="create"&&x.actor==="clerk2"));
+ const one=await api(`/api/dine-menu/log?item=${newId}`,{token:admin});assert.ok(one.data.rows.every(x=>x.itemId===newId));
 });
 
 for(const [s,n] of results)console.log(s,n);

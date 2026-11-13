@@ -123,6 +123,7 @@ export function pickupError(s:string,now=new Date()):string|null{
 export function isValidImageUrl(s:string){
  if(s==="")return true;
  if(s.length>500)return false;
+ if(s.startsWith("/api/"))return /^\/api\/public\/dine-photos\/[0-9a-f-]{36}$/.test(s);
  if(s.startsWith("/seafood-stock-map/"))return !s.includes("..")&&!/\s/.test(s);
  try{const u=new URL(s);return u.protocol==="https:"||u.protocol==="http:"}catch{return false}
 }

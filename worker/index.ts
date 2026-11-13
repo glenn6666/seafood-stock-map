@@ -1,7 +1,7 @@
 import {storagePhotos,photoSections,normalizePhotoId} from "../web/src/lib/storage-photos";
 import {catalogPrice} from "../web/src/lib/catalog";
 import {ledgerRoute} from "./ledger";
-import {publicDineMenu,createDineOrder,dineAdminRoute} from "./dine";
+import {publicDineMenu,publicDinePhoto,createDineOrder,dineAdminRoute} from "./dine";
 
 export type Env={DB:D1Database;INVENTORY_TOKEN:string;ALLOWED_ORIGIN:string};
 type Role="admin"|"staff";
@@ -428,6 +428,8 @@ async function route(request:Request,env:Env,url:URL):Promise<unknown>{
    units:units.filter(u=>u.active).map(pubUnit),game:{seconds:GAME.seconds,target:GAME.target,targets:TARGETS,tools:TOOLS,discount:COUPON.discount,minTotal:COUPON.minTotal}};
  }
  if(p==="/api/public/dine-menu"&&m==="GET")return publicDineMenu(env);
+ const dp=p.match(/^\/api\/public\/dine-photos\/([0-9a-f-]{36})$/);
+ if(dp&&m==="GET")return publicDinePhoto(env,dp[1]);
  if(p==="/api/public/orders"&&m==="POST"){
   await rateLimit(env,request,"order");
   const body=await readJson(request);
@@ -502,7 +504,7 @@ async function route(request:Request,env:Env,url:URL):Promise<unknown>{
   if(om[2]==="cancel")return cancelOrder(env,om[1]);
   return setStatus(env,om[1],(await readJson(request)).status);
  }
- if(p==="/api/dine-menu"||p.startsWith("/api/dine-menu/"))return dineAdminRoute(request,env,url,actor);
+ if(p==="/api/dine-menu"||p.startsWith("/api/dine-menu/"))return dineAdminRoute(request,env,url,actor,readJson);
  if(p.startsWith("/api/ledger/"))return ledgerRoute(request,env,url,actor);
  if(p==="/api/export/bookkeeping"&&m==="GET")return bookkeepingExport(env,requireRole(actor,"admin"),url);
  if(p==="/api/export/bookkeeping/mark"&&m==="POST"){const a=requireRole(actor,"admin");return markExported(env,a,await readJson(request))}
