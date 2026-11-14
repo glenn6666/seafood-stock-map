@@ -1,3 +1,4 @@
+import {getCatalog,catalogAdmin} from './catalog';
 import {storagePhotos,photoSections,normalizePhotoId} from "../web/src/lib/storage-photos";
 import {catalogPrice} from "../web/src/lib/catalog";
 import {ledgerRoute} from "./ledger";
@@ -427,6 +428,7 @@ async function route(request:Request,env:Env,url:URL):Promise<unknown>{
   return {items:results.map(r=>{let a=Math.max(0,r.quantity);if(r.daily_limit>0)a=Math.min(a,Math.max(0,r.daily_limit-r.sold));if(r.per_order_max>0)a=Math.min(a,r.per_order_max);const u=autoUnit(units,r);return {id:r.id,name:r.name,spec:r.spec,unit:r.unit,category:r.category,price:r.price,available:a,displayUnit:u?pubUnit(u):null}}),
    units:units.filter(u=>u.active).map(pubUnit),game:{seconds:GAME.seconds,target:GAME.target,targets:TARGETS,tools:TOOLS,discount:COUPON.discount,minTotal:COUPON.minTotal}};
  }
+ if(p==="/api/public/dine-catalog"&&m==="GET")return getCatalog(env);
  if(p==="/api/public/dine-menu"&&m==="GET")return publicDineMenu(env);
  const dp=p.match(/^\/api\/public\/dine-photos\/([0-9a-f-]{36})$/);
  if(dp&&m==="GET")return publicDinePhoto(env,dp[1]);
@@ -504,6 +506,7 @@ async function route(request:Request,env:Env,url:URL):Promise<unknown>{
   if(om[2]==="cancel")return cancelOrder(env,om[1]);
   return setStatus(env,om[1],(await readJson(request)).status);
  }
+ if(p==="/api/dine-catalog")return catalogAdmin(request,env,actor);
  if(p==="/api/dine-menu"||p.startsWith("/api/dine-menu/"))return dineAdminRoute(request,env,url,actor,readJson);
  if(p.startsWith("/api/ledger/"))return ledgerRoute(request,env,url,actor);
  if(p==="/api/export/bookkeeping"&&m==="GET")return bookkeepingExport(env,requireRole(actor,"admin"),url);

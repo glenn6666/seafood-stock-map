@@ -1,3 +1,4 @@
+import {CatalogViewer} from '../catalog/catalog';
 import {createContext,useContext,useEffect,useMemo,useRef,useState} from "react";
 import {createRoot} from "react-dom/client";
 import {loadApiOrigin,errorText,newKey} from "../lib/api-config";
@@ -73,6 +74,7 @@ function App(){
     <div>地址　{DINE_STORE.address}</div>
     <div>電話　<a href={`tel:${DINE_STORE.phone}`}>{DINE_STORE.phone}</a>（{DINE_STORE.phoneNote}）</div>
    </div></details>
+   {origin&&<CatalogViewer origin={origin}/>}
    <a className="shop-link" href={BASE+"order.html"}>海鮮購物（帶回家）→</a>
   </header>
   {err&&<p className="err" role="alert" style={{padding:"12px 16px"}}>{err}</p>}

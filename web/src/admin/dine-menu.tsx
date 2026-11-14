@@ -1,3 +1,4 @@
+import CatalogEditor from '../catalog/catalog';
 import {useEffect,useMemo,useRef,useState} from "react";
 import {inventoryFetch,getApiOrigin} from "../lib/pages-api";
 import {errorText} from "../lib/api-config";
@@ -46,6 +47,7 @@ function Thumb({id,url,name}:{id:string;url:string;name:string}){
 }
 
 export default function DineMenu(_props:{me:Me}){
+ const [catalogOpen,setCatalogOpen]=useState(false);
  const [items,setItems]=useState<Item[]>([]),[cats,setCats]=useState<Cat[]>([]),[err,setErr]=useState(""),[toast,setToast]=useState("");
  const [q,setQ]=useState(""),[fcat,setFcat]=useState("");
  const [editing,setEditing]=useState<Item|"new"|null>(null);
@@ -65,8 +67,9 @@ export default function DineMenu(_props:{me:Me}){
   if(!r.ok){const t=await errorText(r);setErr(t);if(r.status===409)load();return false}
   setErr("");flash(done);await load();if(logs)loadLogs();return true;
  }
+ if(catalogOpen)return <CatalogEditor onClose={()=>setCatalogOpen(false)}/>;
  return <main className="admin-page dm">
-  <h1>餐點菜單</h1>
+  <h1>餐點菜單</h1><button className="primary" onClick={()=>setCatalogOpen(true)}>完整菜單照片／版面編輯</button>
   <p className="admin-hint">這裡改的內容會直接出現在「線上點餐」頁（不用重新發布）。店員和管理員都可以修改；每次修改都會留下紀錄。</p>
   <div className="dm-top">
    <button className="primary dm-add" onClick={()=>setEditing("new")}>＋ 新增餐點</button>
