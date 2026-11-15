@@ -184,6 +184,27 @@ function Menu({origin}:{origin:string}){
  </>;
 }
 
+function LineOrderConfirmation({orderNo}:{orderNo:string}){
+ const [feedback,setFeedback]=useState('');
+ async function copy(){
+  try{
+   await navigator.clipboard.writeText(`您好，我的訂單編號是 ${orderNo}，請幫我確認餐點和取餐時間，謝謝！`);
+   setFeedback('已複製。請在 LINE 聊天中貼上並送出。');
+  }catch{
+   setFeedback(`請在 LINE 聊天中輸入訂單編號 ${orderNo}。`);
+  }
+ }
+ return <section aria-label="LINE 訂單確認">
+  <h3>和店家確認餐點</h3>
+  <p>請複製訂單編號，開啟安星水產官方 LINE，貼上訊息並送出。店家會依單號確認餐點與取餐時間。</p>
+  <div className="actions">
+   <button type="button" className="ghost" onClick={copy}>複製確認訊息</button>
+   <a href="https://page.line.me/348vbpnv" target="_blank" rel="noopener noreferrer">開啟官方 LINE</a>
+  </div>
+  {feedback&&<p className="hint" role="status">{feedback}</p>}
+ </section>;
+}
+
 function Lookup({origin,token}:{origin:string;token:string}){
  const [o,setO]=useState<any>(null),[msg,setMsg]=useState("");
  const load=()=>fetch(`${origin}/api/public/orders/${token}`,{cache:"no-store",credentials:"omit"}).then(async r=>{
@@ -203,6 +224,7 @@ function Lookup({origin,token}:{origin:string;token:string}){
   <ul className="lines">{o.items.map((l:any,i:number)=><li key={i}><span>{l.name}{l.spec?`　${l.spec}`:""} × {l.qty} {l.unit}</span><span/><span>{l.market||l.unitPrice===0?"時價":`$${l.unitPrice*l.qty}`}</span></li>)}</ul>
   {hasMarket&&<p className="market-note">{MARKET_LABEL}，時價品項不計入合計。</p>}
   <p className="total">合計 ${o.total}{hasMarket?"＋時價":""}</p>
+  {o.channel==="dine"&&o.status!=="已取消"&&o.status!=="已完成"&&<LineOrderConfirmation key={o.orderNo} orderNo={o.orderNo}/>}
   <p className="hint">請收藏或複製此頁網址，之後可隨時查詢訂單狀態。此連結僅供本人使用，請勿分享。</p>
   <div className="actions">
    <button type="button" className="ghost" onClick={()=>navigator.clipboard?.writeText(location.href)}>複製查詢連結</button>
