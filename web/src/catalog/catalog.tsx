@@ -19,19 +19,29 @@ export function PageArt({page,origin,selected,onSelect,onDrag}:{page:CatalogPage
 }
 function MenuStoreInfo(){
  const codes=[
-  {label:'LINE 入群',file:'line-group.png',x:626,url:'https://line.me/ti/g2/Mqdxett8EoFm13lvc2gUlTqiIVn1mF8Tc-BLAA?utm_source=invitation&utm_medium=QR_code&utm_campaign=default'},
-  {label:'LINE 官方帳號',file:'line-official.png',x:882,url:'https://page.line.me/348vbpnv'},
+  {label:'LINE 入群',file:'line-group.png',x:623,url:'https://line.me/ti/g2/Mqdxett8EoFm13lvc2gUlTqiIVn1mF8Tc-BLAA?utm_source=invitation&utm_medium=QR_code&utm_campaign=default'},
+  {label:'LINE 官方帳號',file:'line-official.png',x:881,url:'https://page.line.me/348vbpnv'},
  ];
- return <g transform="translate(0 1491)" fontFamily="Noto Sans TC, sans-serif" fill="#fff">
+ const hours=[DINE_STORE.hoursWeekday,DINE_STORE.hoursWeekend].map(line=>{
+  const split=line.lastIndexOf(' ');
+  return {days:line.slice(0,split),time:line.slice(split+1)};
+ });
+ return <g transform="translate(0 1491)" fontFamily="Noto Sans TC, sans-serif" fill="#fff8ed">
   <rect width="1055" height="230" fill="#082d47"/>
-  <rect width="1055" height="4" fill="#b89549"/>
-  <text x="48" y="54" fontSize="37" fontWeight="700" fill="#f2d498">營業時間</text>
-  <text x="48" y="101" fontSize="33">{DINE_STORE.hoursWeekday}</text>
-  <text x="48" y="147" fontSize="33">{DINE_STORE.hoursWeekend}</text>
-  <text x="48" y="193" fontSize="33">{DINE_STORE.closed}</text>
+  <rect width="1055" height="4" fill="#c7a264"/>
+  <path d="M44 67H446M477 24V206" fill="none" stroke="#b89561" strokeOpacity=".52"/>
+  <text x="44" y="52" fontSize="34" fontWeight="700" letterSpacing="3" fill="#f2d498">營業時間</text>
+  {hours.map(({days,time},i)=><text key={days} y={108+i*40} fontSize="31">
+   <tspan x="44">{days}</tspan>
+   <tspan x="225" style={{fontVariantNumeric:"tabular-nums"}}>{time}</tspan>
+  </text>)}
+  <rect x="44" y="166" width="184" height="42" rx="21" fill="#f3d7a3"/>
+  <text x="136" y="196" fontSize="25" fontWeight="700" textAnchor="middle" fill="#082d47">{DINE_STORE.closed}</text>
   {codes.map(({label,file,x,url})=><a key={file} href={url} target="_blank" rel="noopener noreferrer" aria-label={label}>
-   <image x={x-77} y="18" width="154" height="154" href={import.meta.env.BASE_URL+'catalog/'+file}/>
-   <text x={x} y="209" textAnchor="middle" fontSize="33" fill="#fff" textDecoration="underline">{label}</text>
+   <rect x={x-109} y="17" width="218" height="198" rx="14" fill="#103a54" stroke="#ad8f5b"/>
+   <rect x={x-72} y="26" width="144" height="144" rx="7" fill="#fff"/>
+   <image x={x-69} y="29" width="138" height="138" href={import.meta.env.BASE_URL+'catalog/'+file}/>
+   <text x={x} y="200" textAnchor="middle" fontSize="25" fontWeight="600" fill="#fff8ed" textDecoration="underline">{label}</text>
   </a>)}
  </g>;
 }
