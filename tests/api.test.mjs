@@ -34,6 +34,31 @@ await t("新增店員帳號並登入",async()=>{
  assert.equal(r.status,200,JSON.stringify(r.data));staffId=r.data.user.id;
  staff=(await api("/api/auth/login",{method:"POST",body:{username:"clerk",password:"clerk-pass-1"}})).data.token;assert.ok(staff);
 });
+await t("雙頁菜單：權限、草稿隔離、正式發布與版本衝突",async()=>{
+ const path="/api/dine-catalog",publicPath="/api/public/dine-catalog";
+ const before=(await api(publicPath)).data.catalog;
+ assert.equal(before.pages.length,2);
+ assert.deepEqual(before.pages.map(p=>p.original.split("/").at(-1)),["menu-1.webp","menu-2.webp"]);
+ assert.equal((await api(path)).status,401);
+ const loaded=await api(path,{token:staff});
+ assert.equal(loaded.status,200);
+ const {draft,revision}=loaded.data;
+ draft.pages[0].mode="layers";
+ const layer=draft.pages[0].layers.find(l=>l.type==="text");
+ Object.assign(layer,{text:"測試發布",x:120,y:110,width:300,height:60,color:"#123abc",fontSize:30});
+ draft.pages[0].layers.push(draft.pages[0].layers.shift());
+ const invalid=structuredClone(draft);
+ invalid.pages[1].layers.push(null);
+ const put=(catalog,rev,action)=>api(path,{method:"PUT",token:staff,body:{catalog,revision:rev,action}});
+ assert.equal((await put(invalid,revision,"draft")).status,400);
+ const saved=await put(draft,revision,"draft");
+ assert.equal(saved.status,200,JSON.stringify(saved.data));
+ assert.deepEqual((await api(path,{token:staff})).data.draft,draft);
+ assert.deepEqual((await api(publicPath)).data,{catalog:before});
+ assert.equal((await put(draft,revision,"publish")).status,409);
+ assert.equal((await put(draft,saved.data.revision,"publish")).status,200);
+ assert.deepEqual((await api(publicPath)).data,{catalog:draft});
+});
 await t("後端限制店員：看不到成本、不能管帳號、不能改價",async()=>{
  assert.equal((await api(`/api/products/${encodeURIComponent(A)}`,{method:"PATCH",token:admin,body:{cost:"180",onSale:true,dailyLimit:0,perOrderMax:5}})).status,200);
  const sp=(await api("/api/products",{token:staff})).data.items;assert.ok(sp.every(p=>!("cost" in p)),"店員回應不可含成本");
@@ -217,7 +242,7 @@ await t("優惠券：驗證、未滿 1000 拒絕（不消耗）、滿 1000 折 5
 await t("優惠券：過期拒絕",async()=>{
  const {execFileSync}=await import("node:child_process");const {createHash}=await import("node:crypto");
  const code="SHRIMP-expiredexpiredexpired01",h=createHash("sha256").update(code).digest("base64url");
- execFileSync("npx",["wrangler","d1","execute","DB","--local","--persist-to",process.env.PERSIST??".wrangler/state","--command",`INSERT OR REPLACE INTO coupons (code_hash,kind,discount,min_total,ip_hash,created_at,expires_at) VALUES ('${h}','shrimp5',5,1000,'t','2026-01-01T00:00:00.000Z','2026-01-02T00:00:00.000Z')`],{stdio:"ignore"});
+ execFileSync(process.execPath,["node_modules/wrangler/bin/wrangler.js","d1","execute","DB","--local","--persist-to",process.env.PERSIST??".wrangler/state","--command",`INSERT OR REPLACE INTO coupons (code_hash,kind,discount,min_total,ip_hash,created_at,expires_at) VALUES ('${h}','shrimp5',5,1000,'t','2026-01-01T00:00:00.000Z','2026-01-02T00:00:00.000Z')`],{stdio:"ignore"});
  assert.equal((await api("/api/public/coupons/check",{method:"POST",body:{code}})).status,409);
  const r=await api("/api/public/orders",{method:"POST",ip:freshIp(),body:{idempotencyKey:key(),customerName:"券",phone:"0911000111",couponCode:code,items:[{id:COUPON_ID,qty:2}]}});
  assert.equal(r.status,409);assert.match(r.data.error,/過期/);
@@ -307,7 +332,7 @@ await t("原管理密碼：管理員停用後完全不能使用，且無法自�
 
 function nextDinePickup(){
  const now=new Date();
- for(let i=1;i<=48;i++){
+ for(let i=1;i<=3*24*4;i++){
   const t=new Date(now.getTime()+i*15*60e3);
   const tp=new Date(t.getTime()+8*3600e3);
   const dow=tp.getUTCDay(),h=tp.getUTCHours(),mi=tp.getUTCMinutes();

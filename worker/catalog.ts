@@ -1,4 +1,4 @@
-import {HttpError,requireRole,nowIso,type Env,type Actor} from './index';
+import {HttpError,requireRole,type Env,type Actor} from './index';
 import {defaultCatalog,type Catalog} from '../web/src/lib/dine-catalog';
 const KEY='dine_catalog_v1';
 export async function getCatalog(env:Env,admin=false){
@@ -12,10 +12,10 @@ function validate(v:any):asserts v is Catalog{
  const color=(s:any)=>typeof s==='string'&&/^#[0-9a-f]{6}$/i.test(s);
  const url=(s:any)=>str(s,1000)&&(/^\/seafood-stock-map\/[a-zA-Z0-9/_%.\-]+$/.test(s)||/^\/api\/public\/dine-photos\/[0-9a-f-]{36}$/.test(s)||/^https:\/\/[^\s]+$/.test(s));
  for(const p of v.pages){
-  if(!str(p.id,60)||!str(p.title,100)||!url(p.original)||!['original','layers'].includes(p.mode)||!color(p.background)||!Array.isArray(p.layers)||p.layers.length>200)throw new HttpError(400,'菜單頁格式不正確');
+  if(!p||!str(p.id,60)||!str(p.title,100)||!url(p.original)||!['original','layers'].includes(p.mode)||!color(p.background)||!Array.isArray(p.layers)||p.layers.length>200)throw new HttpError(400,'菜單頁格式不正確');
   const ids=new Set();
   for(const l of p.layers){
-   if(!str(l.id,80)||ids.has(l.id)||!['text','image','rect'].includes(l.type))throw new HttpError(400,'圖層格式不正確');ids.add(l.id);
+   if(!l||!str(l.id,80)||ids.has(l.id)||!['text','image','rect'].includes(l.type))throw new HttpError(400,'圖層格式不正確');ids.add(l.id);
    for(const k of ['x','y','width','height','rotation','opacity'])if(typeof l[k]!=='number'||!Number.isFinite(l[k])||Math.abs(l[k])>10000)throw new HttpError(400,'圖層尺寸不正確');
    if(l.width<=0||l.height<=0||l.opacity<0||l.opacity>1||typeof l.hidden!=='boolean')throw new HttpError(400,'圖層尺寸不正確');
    if(l.type==='text'&&(!str(l.text,1000)||!color(l.color)||!['serif','sans-serif'].includes(l.fontFamily)||!Number.isFinite(l.fontSize)||l.fontSize<6||l.fontSize>180||typeof l.bold!=='boolean'))throw new HttpError(400,'文字格式不正確');
