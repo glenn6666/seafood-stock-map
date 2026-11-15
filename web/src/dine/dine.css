@@ -96,3 +96,12 @@ body{background:#eee8dc}button,input,select,textarea{font-family:inherit}button{
 
 /* Preserve the complete artwork and lettering in supplied menu posters. */
 .photo-button .thumb{aspect-ratio:1;object-fit:contain}.food-dialog .thumb{aspect-ratio:1;object-fit:contain}
+
+/* Official LINE confirmation after a dine order is placed. */
+.line-confirm{margin:18px 0 0;padding:16px;border:2px solid var(--gold);border-radius:16px;background:#fff8eb}
+.line-confirm h3{margin:0 0 8px;font-family:"Noto Serif TC",serif;font-size:18px;color:var(--navy2)}
+.line-confirm>p{margin:0 0 10px;font-size:14px;line-height:1.65}
+.line-preview{margin:0;padding:12px;background:#fff;border:1px solid var(--line);border-radius:10px;font-size:13px;line-height:1.65;white-space:pre-wrap;word-break:break-word;color:var(--ink)}
+.line-confirm .actions{margin-top:12px}
+.line-confirm a.primary{flex:1 1 100%;display:flex;align-items:center;justify-content:center;text-decoration:none;min-height:50px}
+.line-confirm a.ghost{display:inline-flex;align-items:center;justify-content:center;text-decoration:none}

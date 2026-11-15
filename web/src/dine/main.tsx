@@ -4,6 +4,7 @@ import {createRoot} from "react-dom/client";
 import {loadApiOrigin,errorText,newKey} from "../lib/api-config";
 import {DINE_CATEGORIES,DINE_STORE,MARKET_LABEL,formatPickup,pickupError,taipeiParts,type DineCategoryId} from "../lib/dine-menu";
 import {dineImageSrc} from "../lib/dine-photos";
+import {buildLineOrderShare,closeLineWindow,fillLineWindow,isMobileLineClient,mergeLineOrderInput,saveDineLineExtras,LINE_OA_PAGE,type LineOrderInput} from "./line-order";
 import "./dine.css";
 const OriginCtx=createContext("");
 
@@ -117,11 +118,20 @@ function Menu({origin}:{origin:string}){
  async function submit(e:React.FormEvent){
   e.preventDefault();setBusy(true);setMsg("");
   const pe=pickupError(f.pickupAt);if(pe){setMsg(pe);setBusy(false);return}
+  const lineWin=isMobileLineClient()?window.open("about:blank","_blank"):null;
   try{
    const r=await fetch(origin+"/api/public/orders",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"omit",body:JSON.stringify({channel:"dine",idempotencyKey:idem.current,customerName:f.customerName,phone:f.phone,note:f.note,pickupAt:f.pickupAt,items:lines.map(i=>({id:i.id,qty:cart[i.id]}))})});
-   if(!r.ok){setMsg(await errorText(r,"送出失敗，請再試一次。"));if(r.status===409||r.status===400)idem.current=newKey();return}
-   const d=await r.json();location.hash=`#/o/${d.lookupToken}`;
-  }catch{setMsg("連線中斷，請再按一次送出（不會重複下單）。")}
+   if(!r.ok){closeLineWindow(lineWin);setMsg(await errorText(r,"送出失敗，請再試一次。"));if(r.status===409||r.status===400)idem.current=newKey();return}
+   const d=await r.json();
+   const lookupUrl=`${location.origin}${location.pathname}${location.search}#/o/${d.lookupToken}`;
+   saveDineLineExtras(d.lookupToken,{phone:f.phone,note:f.note});
+   const share=buildLineOrderShare({
+    orderNo:d.orderNo,customerName:f.customerName,phone:f.phone,pickupAt:f.pickupAt,note:f.note,total:priced,
+    items:lines.map(i=>({name:i.name,spec:[i.description,i.market?MARKET_LABEL:i.priceNote].filter(Boolean).join("・"),qty:cart[i.id],unit:i.unit,unitPrice:i.price,market:i.market})),
+   },lookupUrl);
+   fillLineWindow(lineWin,share.url);
+   location.hash=`#/o/${d.lookupToken}`;
+  }catch{closeLineWindow(lineWin);setMsg("連線中斷，請再按一次送出（不會重複下單）。")}
   finally{setBusy(false)}
  }
  const card=(it:Item)=><article key={it.id} className="card">
@@ -184,22 +194,25 @@ function Menu({origin}:{origin:string}){
  </>;
 }
 
-function LineOrderConfirmation({orderNo}:{orderNo:string}){
- const [feedback,setFeedback]=useState('');
+function LineOrderConfirmation({order,lookupUrl}:{order:LineOrderInput;lookupUrl:string}){
+ const share=buildLineOrderShare(order,lookupUrl);
+ const [feedback,setFeedback]=useState("");
  async function copy(){
   try{
-   await navigator.clipboard.writeText(`您好，我的訂單編號是 ${orderNo}，請幫我確認餐點和取餐時間，謝謝！`);
-   setFeedback('已複製。請在 LINE 聊天中貼上並送出。');
+   await navigator.clipboard.writeText(share.text);
+   setFeedback("已複製完整訂單。若 LINE 沒有打開，請貼上並送出。");
   }catch{
-   setFeedback(`請在 LINE 聊天中輸入訂單編號 ${orderNo}。`);
+   setFeedback(`請在 LINE 聊天中貼上訂單編號 ${order.orderNo}。`);
   }
  }
- return <section aria-label="LINE 訂單確認">
+ return <section className="line-confirm" aria-label="LINE 訂單確認">
   <h3>和店家確認餐點</h3>
-  <p>請複製訂單編號，開啟安星水產官方 LINE，貼上訊息並送出。店家會依單號確認餐點與取餐時間。</p>
+  <p>請按下方按鈕，用 LINE 把完整訂單傳給安星水產官方帳號。店家收到後會再跟您確認。若 LINE 沒有打開（例如用電腦），請先複製訊息，再開啟官方 LINE 貼上送出。</p>
+  <pre className="line-preview">{share.text}</pre>
   <div className="actions">
+   <a className="primary" href={share.url} target="_blank" rel="noopener noreferrer">用 LINE 傳送訂單給店家</a>
    <button type="button" className="ghost" onClick={copy}>複製確認訊息</button>
-   <a href="https://page.line.me/348vbpnv" target="_blank" rel="noopener noreferrer">開啟官方 LINE</a>
+   <a className="ghost" href={LINE_OA_PAGE} target="_blank" rel="noopener noreferrer">開啟官方 LINE</a>
   </div>
   {feedback&&<p className="hint" role="status">{feedback}</p>}
  </section>;
@@ -224,7 +237,7 @@ function Lookup({origin,token}:{origin:string;token:string}){
   <ul className="lines">{o.items.map((l:any,i:number)=><li key={i}><span>{l.name}{l.spec?`　${l.spec}`:""} × {l.qty} {l.unit}</span><span/><span>{l.market||l.unitPrice===0?"時價":`$${l.unitPrice*l.qty}`}</span></li>)}</ul>
   {hasMarket&&<p className="market-note">{MARKET_LABEL}，時價品項不計入合計。</p>}
   <p className="total">合計 ${o.total}{hasMarket?"＋時價":""}</p>
-  {o.channel==="dine"&&o.status!=="已取消"&&o.status!=="已完成"&&<LineOrderConfirmation key={o.orderNo} orderNo={o.orderNo}/>}
+  {o.channel==="dine"&&o.status!=="已取消"&&o.status!=="已完成"&&<LineOrderConfirmation key={o.orderNo} order={mergeLineOrderInput(o,token)} lookupUrl={typeof location!=="undefined"?location.href:""}/>}
   <p className="hint">請收藏或複製此頁網址，之後可隨時查詢訂單狀態。此連結僅供本人使用，請勿分享。</p>
   <div className="actions">
    <button type="button" className="ghost" onClick={()=>navigator.clipboard?.writeText(location.href)}>複製查詢連結</button>
