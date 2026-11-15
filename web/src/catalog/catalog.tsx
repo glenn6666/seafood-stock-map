@@ -2,6 +2,7 @@ import {useEffect,useRef,useState} from 'react';
 import {defaultCatalog,imageUrl,type Catalog,type CatalogPage,type Layer} from '../lib/dine-catalog';
 import {inventoryFetch,getApiOrigin} from '../lib/pages-api';
 import {errorText} from '../lib/api-config';
+import {DINE_STORE} from '../lib/dine-menu';
 import './catalog.css';
 export function PageArt({page,origin,selected,onSelect,onDrag}:{page:CatalogPage;origin:string;selected?:string;onSelect?:(id:string)=>void;onDrag?:(e:React.PointerEvent<SVGGElement>,id:string)=>void}){
  return <svg viewBox="0 0 1055 1491" className="catalog-art" aria-label={page.title} style={{background:page.background}}>
@@ -11,13 +12,27 @@ export function PageArt({page,origin,selected,onSelect,onDrag}:{page:CatalogPage
  </g>)}
  </svg>;
 }
+function MenuStoreInfo(){
+ return <section className="catalog-store" aria-label="營業時間與 LINE">
+  <div>
+   <strong>營業時間</strong>
+   <div>{DINE_STORE.hoursWeekday}</div>
+   <div>{DINE_STORE.hoursWeekend}</div>
+   <div>{DINE_STORE.closed}</div>
+  </div>
+  <div className="catalog-line-codes">
+   <figure><figcaption><a href="https://line.me/ti/g2/Mqdxett8EoFm13lvc2gUlTqiIVn1mF8Tc-BLAA?utm_source=invitation&amp;utm_medium=QR_code&amp;utm_campaign=default" target="_blank" rel="noopener noreferrer">LINE 入群</a></figcaption><img src={import.meta.env.BASE_URL+'catalog/line-group.png'} width="124" height="124" alt="LINE 入群 QR Code"/></figure>
+   <figure><figcaption><a href="https://page.line.me/348vbpnv" target="_blank" rel="noopener noreferrer">LINE 官方帳號</a></figcaption><img src={import.meta.env.BASE_URL+'catalog/line-official.png'} width="128" height="128" alt="LINE 官方帳號 QR Code"/></figure>
+  </div>
+ </section>;
+}
 export function CatalogViewer({origin}:{origin:string}){
  const [open,setOpen]=useState(false),[data,setData]=useState(defaultCatalog),[page,setPage]=useState(0),[zoom,setZoom]=useState(1);
  const dlg=useRef<HTMLDialogElement>(null);
  useEffect(()=>{if(!open)return;dlg.current?.showModal();const old=document.body.style.overflow;document.body.style.overflow='hidden';
  fetch(origin+'/api/public/dine-catalog',{cache:'no-store'}).then(async r=>{if(r.ok){const d=await r.json();if(d.catalog?.pages?.length===2)setData(d.catalog)}}).catch(()=>{});
  return()=>{document.body.style.overflow=old};},[open,origin]);
- return <><button className="catalog-open" onClick={()=>setOpen(true)}>▤ 查看完整菜單照片</button>{open&&<dialog className="catalog-viewer" ref={dlg} onCancel={()=>setOpen(false)} aria-label="完整菜單照片"><header><strong>完整菜單</strong><button aria-label="關閉菜單" onClick={()=>setOpen(false)}>✕</button></header><nav>{data.pages.map((p,i)=><button key={p.id} aria-pressed={page===i} onClick={()=>{setPage(i);setZoom(1)}}>第 {i+1} 張</button>)}<button onClick={()=>setZoom(z=>z===1?1.5:z===1.5?2:1)}>放大 {Math.round(zoom*100)}%</button></nav><div className="catalog-scroll"><div style={{width:`${zoom*100}%`}}><PageArt page={data.pages[page]} origin={origin}/></div></div><p>可放大查看；實際售價與供應狀況以點餐品項為準。</p></dialog>}</>;
+ return <><button className="catalog-open" onClick={()=>setOpen(true)}>▤ 查看完整菜單照片</button>{open&&<dialog className="catalog-viewer" ref={dlg} onCancel={()=>setOpen(false)} aria-label="完整菜單照片"><header><strong>完整菜單</strong><button aria-label="關閉菜單" onClick={()=>setOpen(false)}>✕</button></header><nav>{data.pages.map((p,i)=><button key={p.id} aria-pressed={page===i} onClick={()=>{setPage(i);setZoom(1)}}>第 {i+1} 張</button>)}<button onClick={()=>setZoom(z=>z===1?1.5:z===1.5?2:1)}>放大 {Math.round(zoom*100)}%</button></nav><div className="catalog-scroll"><MenuStoreInfo/><div style={{width:`${zoom*100}%`}}><PageArt page={data.pages[page]} origin={origin}/></div></div><p>可放大查看；實際售價與供應狀況以點餐品項為準。</p></dialog>}</>;
 }
 export default function CatalogEditor({onClose}:{onClose:()=>void}){
  const [data,setData]=useState<Catalog>(defaultCatalog),[revision,setRevision]=useState(''),[ready,setReady]=useState(false),[page,setPage]=useState(0),[selected,setSelected]=useState(''),[error,setError]=useState(''),[message,setMessage]=useState(''),[busy,setBusy]=useState(false),[dirty,setDirty]=useState(false),[preview,setPreview]=useState(false);
