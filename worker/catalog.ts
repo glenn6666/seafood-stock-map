@@ -1,13 +1,20 @@
 import {HttpError,requireRole,type Env,type Actor} from './index';
-import {defaultCatalog,type Catalog} from '../web/src/lib/dine-catalog';
+import {defaultCatalog,TV_MENU_ID,type Catalog} from '../web/src/lib/dine-catalog';
 const KEY='dine_catalog_v1';
 export async function getCatalog(env:Env,admin=false){
  const row=await env.DB.prepare('SELECT value,updated_at FROM settings WHERE key=?').bind(KEY).first<{value:string;updated_at:string}>();
  const data=row?JSON.parse(row.value):{draft:defaultCatalog(),published:defaultCatalog()};
- return admin?{...data,revision:row?.updated_at??''}:{catalog:data.published};
+ if(!admin)return {catalog:{...data.published,pages:data.published.pages.filter((page:Catalog['pages'][number])=>page.id!==TV_MENU_ID)}};
+ const television=defaultCatalog().pages.find(page=>page.id===TV_MENU_ID)!;
+ for(const catalog of [data.draft,data.published]){
+  if(!catalog.pages.some((page:Catalog['pages'][number])=>page.id===TV_MENU_ID))catalog.pages.push(television);
+ }
+ return {...data,revision:row?.updated_at??''};
 }
 function validate(v:any):asserts v is Catalog{
- if(!v||v.version!==1||!Array.isArray(v.pages)||v.pages.length!==2)throw new HttpError(400,'需要兩頁菜單');
+ if(!v||v.version!==1||!Array.isArray(v.pages)||![2,3].includes(v.pages.length))throw new HttpError(400,'菜單頁數不正確');
+ const pageIds=v.pages.map((page:any)=>page?.id);
+ if(pageIds[0]!=='page-1'||pageIds[1]!=='page-2'||(pageIds.length===3&&pageIds[2]!==TV_MENU_ID))throw new HttpError(400,'菜單頁面不正確');
  const str=(s:any,n:number)=>typeof s==='string'&&s.length<=n;
  const color=(s:any)=>typeof s==='string'&&/^#[0-9a-f]{6}$/i.test(s);
  const url=(s:any)=>str(s,1000)&&(/^\/seafood-stock-map\/[a-zA-Z0-9/_%.\-]+$/.test(s)||/^\/api\/public\/dine-photos\/[0-9a-f-]{36}$/.test(s)||/^https:\/\/[^\s]+$/.test(s));
@@ -38,7 +45,11 @@ export async function catalogAdmin(request:Request,env:Env,actor:Actor|null){
  validate(b.catalog);if(typeof b.revision!=='string'||!['draft','publish'].includes(b.action))throw new HttpError(400,'缺少版本資訊');
  const current=await getCatalog(env,true);
  if(current.revision!==b.revision)throw new HttpError(409,'其他人已修改菜單，請重新載入後再編輯');
- const value=JSON.stringify({draft:b.catalog,published:b.action==='publish'?b.catalog:current.published});
+ const withTelevision=(catalog:Catalog,existing:Catalog):Catalog=>catalog.pages.length===3
+  ?catalog:{...catalog,pages:[...catalog.pages,existing.pages[2]]};
+ const draft=withTelevision(b.catalog,current.draft);
+ const published=b.action==='publish'?withTelevision(b.catalog,current.published):current.published;
+ const value=JSON.stringify({draft,published});
  const ts=new Date(Math.max(Date.now(),Date.parse(current.revision||'1970-01-01')+1)).toISOString(),who=a.kind==='user'?a.username:'管理密碼';
  const r=b.revision
   ?await env.DB.prepare('UPDATE settings SET value=?,updated_at=?,updated_by=? WHERE key=? AND updated_at=?').bind(value,ts,who,KEY,b.revision).run()

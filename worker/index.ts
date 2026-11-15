@@ -531,7 +531,7 @@ export default {
  const url=new URL(request.url);
  if(!url.pathname.startsWith("/api/"))return reply({error:"Not found"},404);
  if(request.method==="OPTIONS"){
-  headers.set("Access-Control-Allow-Methods","GET, POST, PATCH, OPTIONS");
+  headers.set("Access-Control-Allow-Methods","GET, POST, PUT, PATCH, OPTIONS");
   headers.set("Access-Control-Allow-Headers","Authorization, Content-Type");
   headers.set("Access-Control-Max-Age","600");
   return new Response(null,{status:204,headers});

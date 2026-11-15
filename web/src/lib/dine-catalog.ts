@@ -16,7 +16,7 @@ function page(n:number,title:string,groups:{title:string;y:number;items:[string,
  layers.push(text('address','新北市泰山區文程路23號1樓（全聯隔壁）',50,1440,610,22),text('phone','預約取餐 02-29097057',660,1440,370,22));
  return {id:`page-${n}`,title,original,mode:'original',background:'#f1dbc0',layers};
 }
-export function defaultCatalog():Catalog{return {version:1,pages:[
+export function defaultCatalog():Catalog{const pages=[
 page(1,'海味日常・暖心上桌',[
 {title:'海鮮粥',y:180,items:[['紅蟳海鮮粥','$499',185,90,250,170],['日本大干貝海鮮粥','$499',470,90,250,170],['大片虱目魚肚蛤蜊粥','$240',750,90,260,170]]},
 {title:'鮮味湯品',y:385,items:[['大片虱目魚肚蛤蜊湯','$220',185,325,260,140],['酒煮蛤蜊','當日蛤蜊價＋80元',470,325,255,140],['薑絲蛤蜊湯','當日蛤蜊價＋50元',750,325,270,140]]},
@@ -30,5 +30,47 @@ page(2,'鮮活嚴選・現點料理',[
 {title:'熱炒類',y:708,items:[['胡椒大鳳螺（一斤整）','$250',230,670,300,125],['胡椒蟹腳（半斤）','$250',625,670,300,125]]},
 {title:'鮮活料理',y:968,items:[['紅蟳','時價',195,845,235,132],['水姑娘','時價',465,845,270,132],['沙公','時價',755,845,270,132],['麵包蟹','時價',195,1024,235,120],['帝王蟹','時價',465,1024,270,120],['波士頓龍蝦','時價',755,1024,270,120]]},
 {title:'泰國蝦',y:1240,items:[['泰國蝦（鹽烤）','料理費$50',180,1200,260,130],['泰國蝦（清蒸）','料理費$80',470,1200,260,130],['泰國蝦（胡椒）','料理費$150',765,1200,265,130]]}])
-]};}
+];
+ return {version:1,pages:[...pages,televisionMenu(pages)]};
+}
+
+export const TV_MENU_ID='tv-menu';
+
+export function menuSize(page:CatalogPage){
+ return page.id===TV_MENU_ID?{width:1672,height:941}:{width:1055,height:1491};
+}
+
+function televisionMenu(pages:CatalogPage[]):CatalogPage{
+ const original=root+'tv-menu.png';
+ const layers:Layer[]=[
+  text('brand','安星水產｜泰山旗艦店',541,4,750,52),
+  text('slogan','新鮮現做・真材實料',670,70,450,28),
+ ];
+ const dishes=pages.flatMap(page=>page.layers.filter(layer=>layer.id.endsWith('-name')).map(name=>({
+  name:name.text??'',
+  price:page.layers.find(layer=>layer.id===name.id.replace(/-name$/,'-price'))?.text??'',
+ })));
+ const rows=[
+  {labelY:110,photoY:183,photoHeight:132},
+  {labelY:322,photoY:402,photoHeight:121},
+  {labelY:531,photoY:598,photoHeight:105},
+  {labelY:709,photoY:778,photoHeight:96},
+ ];
+ dishes.forEach(({name,price},index)=>{
+  const row=rows[Math.floor(index/9)];
+  const x=20+Math.round((index%9)*182);
+  const id=`tv-dish-${index+1}`;
+  layers.push({
+   id:id+'-image',type:'image',x,y:row.photoY,width:174,height:row.photoHeight,rotation:0,opacity:1,hidden:false,
+   src:original,crop:[x,row.photoY,174,row.photoHeight],imageWidth:1672,imageHeight:941,
+  });
+  layers.push(rect(id+'-label',x,row.labelY,174,row.photoY-row.labelY,'#fff0d4'));
+  layers.push(text(id+'-name',name,x+6,row.labelY+3,162,Math.min(20,156/name.length)));
+  layers.push(text(id+'-price',price,x+6,row.photoY-28,162,Math.min(22,156/price.length)));
+ });
+ layers.push(text('note','活體依當日 LINE 群報價｜泰國蝦標示為料理費，蝦本身另計。',222,888,700,22));
+ layers.push(text('address','新北市泰山區文程路23號1樓',935,888,315,22));
+ layers.push(text('phone','預約取餐 02-29097057',1250,888,395,22));
+ return {id:TV_MENU_ID,title:'電視菜單',original,mode:'original',background:'#efd5ad',layers};
+}
 export function imageUrl(src:string,origin:string){return src.startsWith('/api/')?origin+src:src;}

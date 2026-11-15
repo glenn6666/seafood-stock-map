@@ -43,6 +43,11 @@ await t("雙頁菜單：權限、草稿隔離、正式發布與版本衝突",asy
  const loaded=await api(path,{token:staff});
  assert.equal(loaded.status,200);
  const {draft,revision}=loaded.data;
+ const television=draft.pages[2];
+ assert.equal(television.title,"電視菜單");
+ assert.equal(television.layers.filter(l=>l.id.endsWith("-image")).length,36);
+ television.mode="layers";
+ television.layers.find(l=>l.id==="tv-dish-1-price").text="$510";
  draft.pages[0].mode="layers";
  const layer=draft.pages[0].layers.find(l=>l.type==="text");
  Object.assign(layer,{text:"測試發布",x:120,y:110,width:300,height:60,color:"#123abc",fontSize:30});
@@ -57,7 +62,12 @@ await t("雙頁菜單：權限、草稿隔離、正式發布與版本衝突",asy
  assert.deepEqual((await api(publicPath)).data,{catalog:before});
  assert.equal((await put(draft,revision,"publish")).status,409);
  assert.equal((await put(draft,saved.data.revision,"publish")).status,200);
- assert.deepEqual((await api(publicPath)).data,{catalog:draft});
+ assert.deepEqual((await api(publicPath)).data,{catalog:{...draft,pages:draft.pages.slice(0,2)}});
+ const published=await api(path,{token:staff});
+ assert.deepEqual(published.data.published.pages[2],television);
+ const legacy=await put({...draft,pages:draft.pages.slice(0,2)},published.data.revision,"draft");
+ assert.equal(legacy.status,200);
+ assert.deepEqual((await api(path,{token:staff})).data.draft.pages[2],television);
 });
 await t("後端限制店員：看不到成本、不能管帳號、不能改價",async()=>{
  assert.equal((await api(`/api/products/${encodeURIComponent(A)}`,{method:"PATCH",token:admin,body:{cost:"180",onSale:true,dailyLimit:0,perOrderMax:5}})).status,200);
