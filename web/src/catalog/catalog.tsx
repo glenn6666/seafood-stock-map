@@ -5,26 +5,33 @@ import {errorText} from '../lib/api-config';
 import {DINE_STORE} from '../lib/dine-menu';
 import './catalog.css';
 export function PageArt({page,origin,selected,onSelect,onDrag}:{page:CatalogPage;origin:string;selected?:string;onSelect?:(id:string)=>void;onDrag?:(e:React.PointerEvent<SVGGElement>,id:string)=>void}){
- return <svg viewBox="0 0 1055 1491" className="catalog-art" aria-label={page.title} style={{background:page.background}}>
+ return <svg viewBox="0 0 1055 1721" className="catalog-art" aria-label={page.title} style={{background:page.background}}>
+ <svg width="1055" height="1491" overflow="hidden">
  {page.mode==='original'?<image href={imageUrl(page.original,origin)} width="1055" height="1491"/>:page.layers.filter(l=>!l.hidden).map(l=><g key={l.id} onClick={()=>onSelect?.(l.id)} onPointerDown={e=>onDrag?.(e,l.id)} opacity={l.opacity} transform={`rotate(${l.rotation} ${l.x+l.width/2} ${l.y+l.height/2})`} style={{cursor:onSelect?'move':undefined}}>
  {l.type==='rect'?<rect x={l.x} y={l.y} width={l.width} height={l.height} fill={l.color}/>:l.type==='image'?<svg x={l.x} y={l.y} width={l.width} height={l.height} viewBox={l.crop?.join(' ')} preserveAspectRatio="xMidYMid meet" overflow="hidden"><image href={imageUrl(l.src??'',origin)} width={l.crop?l.imageWidth:l.width} height={l.crop?l.imageHeight:l.height} preserveAspectRatio="xMidYMid meet"/></svg>:<text x={l.x} y={l.y+(l.fontSize??20)} fill={l.color} fontFamily={l.fontFamily==='serif'?'Noto Serif TC,serif':'Noto Sans TC,sans-serif'} fontSize={l.fontSize} fontWeight={l.bold?700:400}>{(l.text??'').split('\n').map((t,j)=><tspan key={j} x={l.x} dy={j?(l.fontSize??20)*1.3:0}>{t}</tspan>)}</text>}
  {selected===l.id&&<rect x={l.x} y={l.y} width={l.width} height={l.height} fill="none" stroke="#1785ff" strokeWidth="3" pointerEvents="none"/>}
  </g>)}
+ </svg>
+ <MenuStoreInfo/>
  </svg>;
 }
 function MenuStoreInfo(){
- return <section className="catalog-store" aria-label="營業時間與 LINE">
-  <div>
-   <strong>營業時間</strong>
-   <div>{DINE_STORE.hoursWeekday}</div>
-   <div>{DINE_STORE.hoursWeekend}</div>
-   <div>{DINE_STORE.closed}</div>
-  </div>
-  <div className="catalog-line-codes">
-   <figure><figcaption><a href="https://line.me/ti/g2/Mqdxett8EoFm13lvc2gUlTqiIVn1mF8Tc-BLAA?utm_source=invitation&amp;utm_medium=QR_code&amp;utm_campaign=default" target="_blank" rel="noopener noreferrer">LINE 入群</a></figcaption><img src={import.meta.env.BASE_URL+'catalog/line-group.png'} width="124" height="124" alt="LINE 入群 QR Code"/></figure>
-   <figure><figcaption><a href="https://page.line.me/348vbpnv" target="_blank" rel="noopener noreferrer">LINE 官方帳號</a></figcaption><img src={import.meta.env.BASE_URL+'catalog/line-official.png'} width="128" height="128" alt="LINE 官方帳號 QR Code"/></figure>
-  </div>
- </section>;
+ const codes=[
+  {label:'LINE 入群',file:'line-group.png',x:626,url:'https://line.me/ti/g2/Mqdxett8EoFm13lvc2gUlTqiIVn1mF8Tc-BLAA?utm_source=invitation&utm_medium=QR_code&utm_campaign=default'},
+  {label:'LINE 官方帳號',file:'line-official.png',x:882,url:'https://page.line.me/348vbpnv'},
+ ];
+ return <g transform="translate(0 1491)" fontFamily="Noto Sans TC, sans-serif" fill="#fff">
+  <rect width="1055" height="230" fill="#082d47"/>
+  <rect width="1055" height="4" fill="#b89549"/>
+  <text x="48" y="54" fontSize="37" fontWeight="700" fill="#f2d498">營業時間</text>
+  <text x="48" y="101" fontSize="33">{DINE_STORE.hoursWeekday}</text>
+  <text x="48" y="147" fontSize="33">{DINE_STORE.hoursWeekend}</text>
+  <text x="48" y="193" fontSize="33">{DINE_STORE.closed}</text>
+  {codes.map(({label,file,x,url})=><a key={file} href={url} target="_blank" rel="noopener noreferrer" aria-label={label}>
+   <image x={x-77} y="18" width="154" height="154" href={import.meta.env.BASE_URL+'catalog/'+file}/>
+   <text x={x} y="209" textAnchor="middle" fontSize="33" fill="#fff" textDecoration="underline">{label}</text>
+  </a>)}
+ </g>;
 }
 export function CatalogViewer({origin}:{origin:string}){
  const [open,setOpen]=useState(false),[data,setData]=useState(defaultCatalog),[page,setPage]=useState(0),[zoom,setZoom]=useState(1);
@@ -32,7 +39,7 @@ export function CatalogViewer({origin}:{origin:string}){
  useEffect(()=>{if(!open)return;dlg.current?.showModal();const old=document.body.style.overflow;document.body.style.overflow='hidden';
  fetch(origin+'/api/public/dine-catalog',{cache:'no-store'}).then(async r=>{if(r.ok){const d=await r.json();if(d.catalog?.pages?.length===2)setData(d.catalog)}}).catch(()=>{});
  return()=>{document.body.style.overflow=old};},[open,origin]);
- return <><button className="catalog-open" onClick={()=>setOpen(true)}>▤ 查看完整菜單照片</button>{open&&<dialog className="catalog-viewer" ref={dlg} onCancel={()=>setOpen(false)} aria-label="完整菜單照片"><header><strong>完整菜單</strong><button aria-label="關閉菜單" onClick={()=>setOpen(false)}>✕</button></header><nav>{data.pages.map((p,i)=><button key={p.id} aria-pressed={page===i} onClick={()=>{setPage(i);setZoom(1)}}>第 {i+1} 張</button>)}<button onClick={()=>setZoom(z=>z===1?1.5:z===1.5?2:1)}>放大 {Math.round(zoom*100)}%</button></nav><div className="catalog-scroll"><MenuStoreInfo/><div style={{width:`${zoom*100}%`}}><PageArt page={data.pages[page]} origin={origin}/></div></div><p>可放大查看；實際售價與供應狀況以點餐品項為準。</p></dialog>}</>;
+ return <><button className="catalog-open" onClick={()=>setOpen(true)}>▤ 查看完整菜單照片</button>{open&&<dialog className="catalog-viewer" ref={dlg} onCancel={()=>setOpen(false)} aria-label="完整菜單照片"><header><strong>完整菜單</strong><button aria-label="關閉菜單" onClick={()=>setOpen(false)}>✕</button></header><nav>{data.pages.map((p,i)=><button key={p.id} aria-pressed={page===i} onClick={()=>{setPage(i);setZoom(1)}}>第 {i+1} 張</button>)}<button onClick={()=>setZoom(z=>z===1?1.5:z===1.5?2:1)}>放大 {Math.round(zoom*100)}%</button></nav><div className="catalog-scroll"><div style={{width:`${zoom*100}%`}}><PageArt page={data.pages[page]} origin={origin}/></div></div><p>可放大查看；實際售價與供應狀況以點餐品項為準。</p></dialog>}</>;
 }
 export default function CatalogEditor({onClose}:{onClose:()=>void}){
  const [data,setData]=useState<Catalog>(defaultCatalog),[revision,setRevision]=useState(''),[ready,setReady]=useState(false),[page,setPage]=useState(0),[selected,setSelected]=useState(''),[error,setError]=useState(''),[message,setMessage]=useState(''),[busy,setBusy]=useState(false),[dirty,setDirty]=useState(false),[preview,setPreview]=useState(false);
