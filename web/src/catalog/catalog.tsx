@@ -3,6 +3,7 @@ import {defaultCatalog,menuSize,TV_MENU_ID,imageUrl,type Catalog,type CatalogPag
 import {inventoryFetch,getApiOrigin} from '../lib/pages-api';
 import {errorText} from '../lib/api-config';
 import {DINE_STORE} from '../lib/dine-menu';
+import {downloadCatalogJpg} from './export-jpg';
 import './catalog.css';
 export function PageArt({page,origin,selected,onSelect,onDrag}:{page:CatalogPage;origin:string;selected?:string;onSelect?:(id:string)=>void;onDrag?:(e:React.PointerEvent<SVGGElement>,id:string)=>void}){
  const {width,height}=menuSize(page);
@@ -11,7 +12,7 @@ export function PageArt({page,origin,selected,onSelect,onDrag}:{page:CatalogPage
  <svg width={width} height={height} overflow="hidden">
  {page.mode==='original'?<image href={imageUrl(page.original,origin)} width={width} height={height}/>:page.layers.filter(l=>!l.hidden).map(l=><g key={l.id} onClick={()=>onSelect?.(l.id)} onPointerDown={e=>onDrag?.(e,l.id)} opacity={l.opacity} transform={`rotate(${l.rotation} ${l.x+l.width/2} ${l.y+l.height/2})`} style={{cursor:onSelect?'move':undefined}}>
  {l.type==='rect'?<rect x={l.x} y={l.y} width={l.width} height={l.height} fill={l.color}/>:l.type==='image'?<svg x={l.x} y={l.y} width={l.width} height={l.height} viewBox={l.crop?.join(' ')} preserveAspectRatio="xMidYMid meet" overflow="hidden"><image href={imageUrl(l.src??'',origin)} width={l.crop?l.imageWidth:l.width} height={l.crop?l.imageHeight:l.height} preserveAspectRatio="xMidYMid meet"/></svg>:<text x={l.x} y={l.y+(l.fontSize??20)} fill={l.color} fontFamily={l.fontFamily==='serif'?'Noto Serif TC,serif':'Noto Sans TC,sans-serif'} fontSize={l.fontSize} fontWeight={l.bold?700:400}>{(l.text??'').split('\n').map((t,j)=><tspan key={j} x={l.x} dy={j?(l.fontSize??20)*1.3:0}>{t}</tspan>)}</text>}
- {selected===l.id&&<rect x={l.x} y={l.y} width={l.width} height={l.height} fill="none" stroke="#1785ff" strokeWidth="3" pointerEvents="none"/>}
+ {selected===l.id&&<rect data-editor-outline="" x={l.x} y={l.y} width={l.width} height={l.height} fill="none" stroke="#1785ff" strokeWidth="3" pointerEvents="none"/>}
  </g>)}
  </svg>
  {!television&&<MenuStoreInfo/>}
@@ -64,6 +65,19 @@ export default function CatalogEditor({onClose}:{onClose:()=>void}){
  const updatePage=(v:Partial<CatalogPage>)=>change(d=>Object.assign(d.pages[page],v));
  const update=(v:Partial<Layer>)=>change(d=>{const l=d.pages[page].layers.find(x=>x.id===selected);if(l)Object.assign(l,v);d.pages[page].mode='layers'});
  async function save(action:'draft'|'publish'){setBusy(true);setError('');try{const r=await inventoryFetch('/api/dine-catalog',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({catalog:data,revision,action})});if(!r.ok)throw new Error(await errorText(r));const d=await r.json();setRevision(d.revision);setDirty(false);setMessage(action==='publish'?'菜單已發布':'草稿已儲存，顧客端尚未變更')}catch(e){setError((e as Error).message)}finally{setBusy(false)}}
+ async function download(){
+  const art=board.current?.querySelector('svg');
+  if(!art)return;
+  setBusy(true);setError('');setMessage('');
+  try{
+   await downloadCatalogJpg(art,p.title);
+   setMessage('已開始下載 JPG');
+  }catch(error){
+   setError(error instanceof Error?error.message:'無法下載 JPG');
+  }finally{
+   setBusy(false);
+  }
+ }
  function add(type:Layer['type']){const id=crypto.randomUUID();change(d=>{d.pages[page].mode='layers';d.pages[page].layers.push({id,type,x:100,y:150,width:300,height:70,rotation:0,opacity:1,hidden:false,...(type==='text'?{text:'新增文字',fontSize:28,color:'#082d47',fontFamily:'serif',bold:true}:type==='rect'?{color:'#ffffff'}:{src:p.original})})});setSelected(id)}
  async function upload(file:File,target:'layer'|'original'){
  setBusy(true);setError('');try{const bitmap=await createImageBitmap(file);let blob:Blob|null=null;
@@ -74,7 +88,7 @@ export default function CatalogEditor({onClose}:{onClose:()=>void}){
  return <section className="catalog-editor"><header><h2>完整菜單編輯</h2><button onClick={()=>{if(!dirty||confirm('尚有未儲存修改，確定離開？'))onClose()}}>返回餐點管理</button></header>
  <p>原圖模式保留各頁的完整圖片。切換「分層編輯」後，文字與餐點圖片可分別修改；重建版的字型與排版會與原圖略有不同。此處修改不會變更點餐品項的售價。</p>
  {error&&<p role="alert" className="catalog-error">{error} <button onClick={()=>{if(!dirty||confirm('重新載入會放棄未儲存修改，繼續？'))load()}}>重新載入</button></p>}{message&&<p role="status">{message}</p>}
- <div className="catalog-tools">{data.pages.map((p,i)=><button key={p.id} aria-pressed={i===page} onClick={()=>{setPage(i);setSelected('')}}>{p.id===TV_MENU_ID?p.title:`第 ${i+1} 張`}</button>)}<button onClick={()=>setPreview(!preview)}>{preview?'繼續編輯':'預覽'}</button><button disabled={busy||!ready||!undo.length} onClick={()=>{setData(undo[undo.length-1]);setUndo(u=>u.slice(0,-1));setDirty(true);setMessage('')}}>復原</button><button disabled={busy||!ready} onClick={()=>save('draft')}>儲存草稿</button><button disabled={busy||!ready} onClick={()=>save('publish')}>發布菜單</button>{dirty&&<b>尚未儲存</b>}</div>
+ <div className="catalog-tools">{data.pages.map((p,i)=><button key={p.id} aria-pressed={i===page} onClick={()=>{setPage(i);setSelected('')}}>{p.id===TV_MENU_ID?p.title:`第 ${i+1} 張`}</button>)}<button onClick={()=>setPreview(!preview)}>{preview?'繼續編輯':'預覽'}</button><button disabled={busy||!ready||!undo.length} onClick={()=>{setData(undo[undo.length-1]);setUndo(u=>u.slice(0,-1));setDirty(true);setMessage('')}}>復原</button><button disabled={busy||!ready} onClick={()=>save('draft')}>儲存草稿</button><button disabled={busy||!ready} onClick={()=>save('publish')}>發布菜單</button><button type="button" disabled={busy||!ready} onClick={download}>下載 JPG</button>{dirty&&<b>尚未儲存</b>}</div>
  <div className="catalog-work" inert={busy||!ready}><aside hidden={preview}>
  <label>顯示模式<select value={p.mode} onChange={e=>updatePage({mode:e.target.value as CatalogPage['mode']})}><option value="original">原圖</option><option value="layers">分層編輯</option></select></label>
  <label>頁面名稱<input value={p.title} onChange={e=>updatePage({title:e.target.value})}/></label><label>背景色<input type="color" value={p.background} onChange={e=>updatePage({background:e.target.value})}/></label>
