@@ -47,12 +47,12 @@ function MenuStoreInfo(){
  </g>;
 }
 export function CatalogViewer({origin}:{origin:string}){
- const [open,setOpen]=useState(false),[data,setData]=useState(()=>{const catalog=defaultCatalog();return {...catalog,pages:catalog.pages.slice(0,2)}}),[page,setPage]=useState(0),[zoom,setZoom]=useState(1);
+ const [open,setOpen]=useState(false),[data,setData]=useState(()=>{const catalog=defaultCatalog();return {...catalog,pages:catalog.pages.slice(0,2)}}),[page,setPage]=useState(0);
  const dlg=useRef<HTMLDialogElement>(null);
  useEffect(()=>{if(!open)return;dlg.current?.showModal();const old=document.body.style.overflow;document.body.style.overflow='hidden';
  fetch(origin+'/api/public/dine-catalog',{cache:'no-store'}).then(async r=>{if(r.ok){const d=await r.json();if(d.catalog?.pages?.length===2)setData(d.catalog)}}).catch(()=>{});
  return()=>{document.body.style.overflow=old};},[open,origin]);
- return <><button className="catalog-open" onClick={()=>setOpen(true)}>▤ 查看完整菜單照片</button>{open&&<dialog className="catalog-viewer" ref={dlg} onCancel={()=>setOpen(false)} aria-label="完整菜單照片"><header><strong>完整菜單</strong><button aria-label="關閉菜單" onClick={()=>setOpen(false)}>✕</button></header><nav>{data.pages.map((p,i)=><button key={p.id} aria-pressed={page===i} onClick={()=>{setPage(i);setZoom(1)}}>第 {i+1} 張</button>)}<button onClick={()=>setZoom(z=>z===1?1.5:z===1.5?2:1)}>放大 {Math.round(zoom*100)}%</button></nav><div className="catalog-scroll"><div style={{width:`${zoom*100}%`}}><PageArt page={data.pages[page]} origin={origin}/></div></div><p>可放大查看；實際售價與供應狀況以點餐品項為準。</p></dialog>}</>;
+ return <><button className="catalog-open" onClick={()=>setOpen(true)}>▤ 查看完整菜單照片</button>{open&&<dialog className="catalog-viewer" ref={dlg} onCancel={()=>setOpen(false)} aria-label="完整菜單照片"><header><strong>完整菜單</strong><button aria-label="關閉菜單" onClick={()=>setOpen(false)}>✕</button></header><nav>{data.pages.map((p,i)=><button key={p.id} aria-pressed={page===i} onClick={()=>setPage(i)}>第 {i+1} 張</button>)}</nav><div className="catalog-scroll"><PageArt page={{...data.pages[page],mode:'original'}} origin={origin}/></div><p>完整呈現原始菜單照片，避免重建圖層裁切錯位；實際售價與供應狀況以點餐品項為準。</p></dialog>}</>;
 }
 export default function CatalogEditor({onClose}:{onClose:()=>void}){
  const [data,setData]=useState<Catalog>(defaultCatalog),[revision,setRevision]=useState(''),[ready,setReady]=useState(false),[page,setPage]=useState(0),[selected,setSelected]=useState(''),[error,setError]=useState(''),[message,setMessage]=useState(''),[busy,setBusy]=useState(false),[dirty,setDirty]=useState(false),[preview,setPreview]=useState(false);
