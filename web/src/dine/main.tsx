@@ -47,8 +47,8 @@ function nextSlots(){
   const midnight=new Date(Date.UTC(y,mo-1,d0+d,-8,0));
   const p=taipeiParts(midnight);
   if(p.dow===1)continue;
-  const open=p.dow===0||p.dow===6?12:13;
-  for(let m=open*60;m<=21*60;m+=15){
+  const open=(p.dow===0||p.dow===6?12:13)*60+30;
+  for(let m=open;m<=20*60+30;m+=15){
    const value=`${p.date}T${String(Math.floor(m/60)).padStart(2,"0")}:${String(m%60).padStart(2,"0")}`;
    if(pickupError(value,now))continue;
    out.push({value,label:`${+p.date.slice(5,7)}/${+p.date.slice(8,10)} ${value.slice(11)}`});
@@ -171,11 +171,11 @@ function Menu({origin}:{origin:string}){
     <p className="total">合計 NT$ {priced.toLocaleString("en-US")}{hasMarket&&"＋時價"}</p>
     <label>取餐時間
      <select required value={f.pickupAt} onChange={e=>setF({...f,pickupAt:e.target.value})}>
-      <option value="">請選擇（營業時間內）</option>
+      <option value="">請選擇取餐時間</option>
       {slots.map(s=><option key={s.value} value={s.value}>{s.label}</option>)}
      </select>
     </label>
-    <p className="hint">{DINE_STORE.hoursText}</p>
+    <p className="hint">{DINE_STORE.pickupHoursText}</p>
     <label>姓名<input value={f.customerName} onChange={e=>setF({...f,customerName:e.target.value})} required maxLength={40} autoComplete="name"/></label>
     <label>聯絡電話<input value={f.phone} onChange={e=>setF({...f,phone:e.target.value})} required inputMode="tel" autoComplete="tel" pattern="[0-9+\-\s]{6,20}"/></label>
     <label>備註（選填，例如辣度、忌口）<textarea value={f.note} onChange={e=>setF({...f,note:e.target.value})} maxLength={300}/></label>

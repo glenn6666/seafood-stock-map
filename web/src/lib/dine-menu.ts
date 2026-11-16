@@ -6,6 +6,7 @@ export const DINE_STORE={
  hoursWeekend:"週六、日 12:00–21:00",
  closed:"每週一公休",
  hoursText:"週二至五 13:00–21:00、週六日 12:00–21:00，每週一公休",
+ pickupHoursText:"取餐時間：週二至五 13:30–20:30、週六日 12:30–20:30，每週一公休",
  address:"新北市泰山區文程路23號1樓（全聯隔壁）",
  phone:"02-29097057",
  phoneNote:"預約取餐專線",
@@ -116,8 +117,8 @@ export function pickupError(s:string,now=new Date()):string|null{
  const p=taipeiParts(dt);
  if(p.dow===1)return "每週一公休，請改選其他日期";
  const mins=p.hour*60+p.minute;
- const open=(p.dow===0||p.dow===6)?12*60:13*60;
- if(mins<open||mins>21*60)return `當天營業時間為 ${pad(Math.floor(open/60))}:00–21:00`;
+ const open=((p.dow===0||p.dow===6)?12*60:13*60)+30;
+ if(mins<open||mins>20*60+30)return `當天取餐時間為 ${pad(Math.floor(open/60))}:30–20:30`;
  return null;
 }
 export function isValidImageUrl(s:string){
