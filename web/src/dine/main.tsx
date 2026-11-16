@@ -17,6 +17,61 @@ const MENU_GROUPS=[
  {id:"fresh",label:"生魚片・活鮮",categories:["sashimi","live"]},
 ] as const;
 type MenuGroupId=typeof MENU_GROUPS[number]["id"];
+const ORDER_GUIDES=[
+  {
+    "title": "⚠️ 下單說明",
+    "items": [
+      "下單後須再次與客服確認取貨／取餐時間，客服回覆確認後才算下單完成。",
+      "各式活體如需料理，記得另外點選料理費用；代客料理不提供宅配。",
+      "商品如需外送或宅配，記得另外選擇取貨方式。"
+    ]
+  },
+  {
+    "title": "🔴 黑貓宅配",
+    "items": [
+      "店內架上現貨冷凍商品滿 NT$5,000 免運；未滿依黑貓實際運費收取，視商品體積約 NT$160～290。",
+      "團購商品不計入 NT$5,000 免運門檻；僅限店內架上現貨商品。團購商品如需宅配，運費須自行負擔。",
+      "不同溫層不可合併宅配（冷凍、常溫不可一起計算）。"
+    ]
+  },
+  {
+    "title": "🔴 7-11 店到店",
+    "items": [
+      "須另外購買 7-11 專用寄貨箱，寄貨箱費用由顧客自行負擔；箱價依實際購買為準。",
+      "店到店商品滿 NT$3,500 免運，寄貨箱費用仍須自行負擔。",
+      "團購商品不計入 NT$3,500 免運門檻；僅限店內架上現貨商品。團購商品如需店到店，運費須自行負擔。",
+      "不同溫層不可合併寄送（冷凍、常溫不可一起計算）。"
+    ]
+  },
+  {
+    "title": "🔴 Lalamove 短程外送",
+    "items": [
+      "可短程運送地區：新莊、三重、板橋、五股、樹林、中和。",
+      "熟食、冷凍、常溫等商品可一起運送，並可快速抵達。",
+      "運費依 Lalamove App 當下顯示之實際金額收取，依時段及路程計價。",
+      "運費由顧客自行負擔，直接交給外送員現金即可。",
+      "歡迎自行使用 Lalamove App 叫外送員來取貨。"
+    ]
+  },
+  {
+    "title": "🔴 活體運送",
+    "items": [
+      "活體可代殺後冷凍寄送。",
+      "活體可使用短程 Lalamove 運送，交貨前會錄影證明出貨時為活體。",
+      "運送途中無法保證活體存活；Lalamove 短程約 10 分鐘至 1 小時，店家說明即使途中死亡，商品仍屬新鮮，請自行評估運送風險。"
+    ]
+  },
+  {
+    "title": "✳️ 付款、配送與風險提醒",
+    "items": [
+      "所有配送方案皆須先匯款才出貨，不提供貨到付款。",
+      "運送問題請私訊官方 LINE：@348vbpnv。",
+      "所有配送皆為附加服務；若無法媒合外送員，顧客須自行安排取貨。",
+      "如因 Lalamove 運送問題造成商品損壞，店家會盡力向貨運方協助處理，但無法無條件承擔 Lalamove 造成的所有損失；若無法接受，建議自行取貨。",
+      "店家代叫外送僅使用 Lalamove；顧客也可依個人習慣自行叫外送員取貨。"
+    ]
+  }
+] as const;
 const STEPS=["待處理","備貨中","可取貨","已完成"] as const;
 const STEP_LABEL:Record<string,string>={"待處理":"已接單","備貨中":"製作中","可取貨":"可取餐","已完成":"已完成","已取消":"已取消"};
 const tokenFromHash=()=>location.hash.match(/^#\/o\/([A-Za-z0-9_-]{20,64})$/)?.[1]??null;
@@ -47,7 +102,7 @@ function nextSlots(){
   const midnight=new Date(Date.UTC(y,mo-1,d0+d,-8,0));
   const p=taipeiParts(midnight);
   if(p.dow===1)continue;
-  const open=(p.dow===0||p.dow===6?12:13)*60+30;
+  const open=(p.dow===0||p.dow===6?12:13)*60+60;
   for(let m=open;m<=20*60+30;m+=15){
    const value=`${p.date}T${String(Math.floor(m/60)).padStart(2,"0")}:${String(m%60).padStart(2,"0")}`;
    if(pickupError(value,now))continue;
@@ -56,6 +111,18 @@ function nextSlots(){
   }
  }
  return out;
+}
+
+function OrderNotices(){
+ return <details className="order-notices">
+  <summary>下單與運送說明 <span>點此展開</span></summary>
+  <p className="notice-intro">本頁為現做餐點「預約自取」；若需商品外送／宅配，請先向官方 LINE 確認配送方式與費用，本頁無法直接選擇配送。</p>
+  {ORDER_GUIDES.map(group=><details className="notice-group" key={group.title}>
+   <summary>{group.title}</summary>
+   <ul>{group.items.map(item=><li key={item}>{item}</li>)}</ul>
+  </details>)}
+  <p className="notice-contact">配送請洽 <a href={LINE_OA_PAGE} target="_blank" rel="noopener noreferrer">官方 LINE @348vbpnv</a></p>
+ </details>;
 }
 
 function App(){
@@ -150,6 +217,7 @@ function Menu({origin}:{origin:string}){
  return <>
   <div className="dine-body">
    {tab==="menu"?<>
+    <OrderNotices/>
     <div className="cats" role="group" aria-label="分類">
      <button type="button" aria-pressed={cat==="all"} className={cat==="all"?"on":""} onClick={()=>setCat("all")}>全部</button>
      {MENU_GROUPS.map(c=><button key={c.id} type="button" aria-pressed={cat===c.id} className={cat===c.id?"on":""} onClick={()=>setCat(c.id)}>{c.label}</button>)}
@@ -165,6 +233,7 @@ function Menu({origin}:{origin:string}){
    </>:
    <form className="cart" onSubmit={submit}>
     <h2>購物車・預約自取</h2>
+    <p className="checkout-warning">⚠️ 送出後須透過 LINE 與客服再次確認取餐時間，客服回覆確認後訂單才成立。</p>
     {!lines.length&&<p className="hint">還沒有點餐，先回菜單挑喜歡的料理。</p>}
     <ul className="lines">{lines.map(i=><li key={i.id}><span className="line-title"><FoodImage item={i}/><span>{i.name}{i.market&&<small>　時價</small>}<button type="button" className="remove-item" onClick={()=>setQty(i.id,0)}>移除</button></span></span><span className="cart-qty"><button type="button" aria-label={`減少${i.name}`} onClick={()=>setQty(i.id,cart[i.id]-1)}>－</button>{cart[i.id]}<button type="button" aria-label={`增加${i.name}`} disabled={cart[i.id]>=20} onClick={()=>setQty(i.id,cart[i.id]+1)}>＋</button></span><span>{i.market?"時價":`$${(i.price??0)*cart[i.id]}`}</span></li>)}</ul>
     {hasMarket&&<p className="market-note">時價品項不計入合計，店家確認後會另外報價。</p>}
@@ -179,8 +248,9 @@ function Menu({origin}:{origin:string}){
     <label>姓名<input value={f.customerName} onChange={e=>setF({...f,customerName:e.target.value})} required maxLength={40} autoComplete="name"/></label>
     <label>聯絡電話<input value={f.phone} onChange={e=>setF({...f,phone:e.target.value})} required inputMode="tel" autoComplete="tel" pattern="[0-9+\-\s]{6,20}"/></label>
     <label>備註（選填，例如辣度、忌口）<textarea value={f.note} onChange={e=>setF({...f,note:e.target.value})} maxLength={300}/></label>
+    <OrderNotices/>
     {msg&&<p className="err" role="alert">{msg}</p>}
-    <div className="actions"><button className="primary" disabled={busy||!lines.length}>{busy?"送出中…":"送出點餐"}</button><button type="button" className="ghost" onClick={()=>changeTab("menu")}>繼續點餐</button></div>
+    <div className="actions"><button className="primary" disabled={busy||!lines.length}>{busy?"送出中…":"送出預約・待客服確認"}</button><button type="button" className="ghost" onClick={()=>changeTab("menu")}>繼續點餐</button></div>
    </form>}
   </div>
   <nav className="dock" aria-label="點餐選單">
@@ -207,6 +277,7 @@ function LineOrderConfirmation({order,lookupUrl}:{order:LineOrderInput;lookupUrl
  }
  return <section className="line-confirm" aria-label="LINE 訂單確認">
   <h3>和店家確認餐點</h3>
+  <p className="checkout-warning">⚠️ 客服回覆確認取餐時間後，訂單才正式成立。</p>
   <p>請按下方按鈕，用 LINE 把完整訂單傳給安星水產官方帳號。店家收到後會再跟您確認。若 LINE 沒有打開（例如用電腦），請先複製訊息，再開啟官方 LINE 貼上送出。</p>
   <pre className="line-preview">{share.text}</pre>
   <div className="actions">
