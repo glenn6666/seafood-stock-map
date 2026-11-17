@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<base href="https://glenn6666.github.io/order-check/">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>安星水產泰山店訂單查詢系統</title>
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-blue: #0d47a1;
+            --success-green: #2e7d32;
+            --released-orange: #f57c00;
+            --bg-success: #34a853;
+            --bg-pending: #70757a;
+            --bg-color: #f0f4f8;
+            --gold-color: #ffab00;
+        }
+        
+        * { box-sizing: border-box; }
+        
+        body { 
+            font-family: "Microsoft JhengHei", -apple-system, sans-serif; 
+            padding: 15px; 
+            max-width: 800px; 
+            margin: auto; 
+            background-color: var(--bg-color); 
+            color: #333; 
+            padding-bottom: 60px; 
+        }
+        
+        h2 { color: var(--primary-blue); text-align: center; margin-bottom: 15px; font-weight: bold; }
+        
+        .search-container { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 15px; }
+        .search-box { display: flex; gap: 10px; }
+        input { flex: 1; padding: 12px 15px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; outline: none; transition: border-color 0.2s; }
+        input:focus { border-color: var(--primary-blue); }
+        
+        button.search-btn { padding: 12px 25px; background-color: var(--primary-blue); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 16px; }
+        button.search-btn:active { opacity: 0.9; }
+        
+        /* 原本的警示文字樣式 */
+        .warning-text { color: #e67e22; font-size: 0.85em; text-align: center; margin-bottom: 20px; padding: 10px; background-color: #fff3e0; border-radius: 8px; font-weight: bold; }
+        
+        /* 📣 獨立公告外層容器 */
+        #announcementGroup {
+            margin-top: 15px;
+            margin-bottom: 25px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px; 
+        }
+
+        /* 📣 單一公告跑馬燈樣式區 */
+        .marquee-container {
+            background-color: #ffebee; 
+            border: 1px solid #ffcdd2;
+            border-radius: 10px;
+            padding: 12px 15px;
+            overflow: hidden;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            box-shadow: 0 3px 8px rgba(211, 47, 47, 0.06);
+        }
+        .marquee-title {
+            background: #d32f2f; 
+            color: white;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.9em;
+            font-weight: bold;
+            margin-right: 12px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            gap: 3px;
+        }
+        .marquee-content {
+            flex: 1;
+            overflow: hidden;
+        }
+        .marquee-text {
+            display: inline-block;
+            padding-left: 100%;
+            /* ⚡ 速度優化：由 25s 縮短至 15s，速度稍微變快更流暢 */
+            animation: marquee 15s linear infinite;
+            font-weight: 900;       
+            color: #d32f2f;          
+            font-size: 1.15em;       
+        }
+        /* 跑馬燈動畫 */
+        @keyframes marquee {
+            0% { transform: translate3d(0, 0, 0); }
+            100% { transform: translate3d(-100%, 0, 0); }
+        }
+        
+        /* 彩色卡片樣式 */
+        .card { background: white; padding: 18px; margin-bottom: 15px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); position: relative; border-left: 6px solid transparent; }
+        .item-with-img { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+        .item-text-part { flex: 1; }
+        
+        /* 商品縮圖規格 80x80px */
+        .product-img { width: 80px; height: 80px; object-fit: cover; border-radius: 8px; border: 1px solid #eee; background: #f9f9f9; }
+        
+        /* 品項放大 1.4em, 數量放大 1.15em */
+        .item-name { font-size: 1.4em; font-weight: bold; color: #111; margin-bottom: 5px; word-break: break-all; }
+        .item-info-large { font-size: 1.15em; color: #444; font-weight: bold; }
+        
+        /* 金額大字置右 1.8em */
+        .price-right { font-size: 1.8em; font-weight: 900; color: var(--primary-blue); min-width: 110px; text-align: right; white-space: nowrap; }
+        
+        .status-badge { font-size: 0.8em; padding: 3px 10px; border-radius: 6px; display: inline-block; margin-bottom: 10px; font-weight: bold; color: white; }
+        .badge-released { background-color: var(--released-orange); }
+        .badge-arrived { background-color: var(--bg-success); }
+        .badge-not-arrived { background-color: var(--bg-pending); }
+        
+        .section-header { padding: 12px 15px; border-radius: 8px; font-weight: bold; margin: 25px 0 12px 0; font-size: 1.1em; display: flex; align-items: center; }
+        .header-released { background-color: #fff3e0; color: var(--released-orange); border-left: 5px solid var(--released-orange); }
+        .header-arrived { background-color: #e6f4ea; color: var(--success-green); border-left: 5px solid var(--success-green); }
+        .header-not-arrived { background-color: #f1f3f4; color: #5f6368; border-left: 5px solid #5f6368; }
+        .header-picked { background-color: #eeeeee; color: #757575; border-left: 5px solid #9e9e9e; }
+        .card-picked { background: #f5f5f5; border-left-color: #bdbdbd; opacity: 0.85; }
+        .card-picked .item-name, .card-picked .item-info-large, .card-picked .price-right { color: #757575; }
+        .badge-picked { background-color: #9e9e9e; }
+        .picked-time { font-size: 0.95em; color: #757575; margin-top: 4px; }
+        
+        /* 總金額計算區塊 */
+        .total-container { margin-top: 25px; background: #263238; color: white; border-radius: 15px; padding: 22px; }
+        .total-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 12px; border-bottom: 1px solid #455a64; }
+        .total-row:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
+        .arrived-total-val { font-size: 1.7em; color: var(--gold-color); font-weight: 900; }
+        .total-val { font-size: 1.4em; font-weight: bold; }
+        
+        .print-btn { width: 100%; margin: 20px 0; padding: 15px; background-color: #37474f; color: white; border: none; border-radius: 10px; font-size: 1.1em; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .print-btn:active { background-color: #263238; }
+        
+        /* 多重人名選擇鈕 */
+        .name-selector { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; padding: 15px; background: #e8f0fe; border-radius: 10px; }
+        .name-btn { padding: 12px 22px; background: white; border: 2px solid var(--primary-blue); border-radius: 30px; color: var(--primary-blue); cursor: pointer; font-weight: bold; transition: all 0.2s; }
+        .name-btn:hover, .name-btn:active { background: var(--primary-blue); color: white; }
+        
+        /* 🖼️ 24px-32px 純白底黑字 Noto Sans TC 熱感應紙長圖生成區 */
+        #captureArea { 
+            position: absolute; 
+            top: 0;
+            left: 0;
+            margin-top: -99999px; 
+            width: 500px; 
+            background: #ffffff; 
+            color: #000000; 
+            padding: 30px 25px; 
+            font-family: "Noto Sans TC", "Microsoft JhengHei", sans-serif; 
+        }
+        .img-item-row { border-bottom: 3px dashed #000000; padding: 20px 0; }
+        .img-item-row:last-of-type { border-bottom: 4px solid #000000; }
+        
+        #imageOutput { text-align: center; margin-top: 20px; border: 2px dashed #b0bec5; padding: 15px; background: #fff; display: none; border-radius: 12px; }
+        #imageOutput img { width: 100%; max-width: 500px; border: 1px solid #000; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        
+        .search-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+        .data-status { margin-top: 12px; font-size: 0.9em; color: #607d8b; display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+        .data-status.is-error { color: #c62828; font-weight: bold; }
+        .refresh-btn { padding: 6px 12px; background: #fff; border: 1px solid #b0bec5; border-radius: 6px; color: #455a64; font-size: 0.95em; cursor: pointer; }
+        .refresh-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+        .released-warning { text-align: center; color: #d35400; font-size: 1em; margin-top: 15px; font-weight: bold; padding: 12px; border: 1px dashed #e67e22; border-radius: 10px; background: #fff; line-height: 1.5; }
+    </style>
+<style>
+:root{--primary-blue:#163e46;--released-orange:#aa8951}
+body{background:transparent!important;max-width:none!important;margin:0!important;padding:12px!important;color:#163e46}
+body>h2,.warning-text{display:none!important}.search-container{box-shadow:none!important;background:transparent!important;padding:0!important}
+.search-btn{background:#163e46!important}input{border-radius:10px!important}
+.card{border:1px solid #e2e5df!important;border-radius:14px!important;box-shadow:none!important}
+html[data-mode=lookup] #releasedArea{display:none}
+html[data-mode=stock] .search-box,html[data-mode=stock] #selectionArea,html[data-mode=stock] #results,html[data-mode=stock] #imageOutput{display:none!important}
+</style><script>document.documentElement.dataset.mode=new URLSearchParams(location.search).get('mode')==='stock'?'stock':'lookup';</script></head>
+<body>
+
+<h2>安星水產泰山店訂單查詢系統</h2>
+
+<div class="search-container">
+    <div class="search-box">
+        <input type="text" id="nameInput" aria-label="團購暱稱" placeholder="請輸入您的名字關鍵字 (例如: 小明)" enterkeyhint="search">
+        <button class="search-btn" id="searchBtn" disabled>搜尋</button>
+    </div>
+    <div class="data-status" id="dataStatus">
+        <span id="dataStatusText">⏳ 資料載入中…</span>
+        <button type="button" class="refresh-btn" id="refreshBtn" disabled>🔄 重新整理資料</button>
+    </div>
+</div>
+
+<div class="warning-text">⚠️ 系統偶有出錯的可能，若有問題請直接詢問版面小編</div>
+
+<div id="announcementGroup"></div>
+
+<div id="selectionArea"></div>
+<div id="results"></div>
+
+<div id="imageOutput">
+    <div style="color:#d32f2f; font-weight:bold; margin-bottom:12px; font-size: 1.05em;">▼ 下方圖片已生成，請長按儲存或分享 ▼</div>
+    <div id="imageContainer"></div>
+</div>
+
+<div id="captureArea"></div>
+<div id="releasedArea"></div>
+
+<script>
+    const sheetId = '1pjTOojFm4-_rGpGGN9Nv31GCdYMPtSDQkfn8vbyBFLQ';
+    const gidArrived = '1505777704';   
+    const gidNotArrived = '1460314999'; 
+    
+    let arrivedRows = [];
+    let notArrivedRows = [];
+
+    // 📦 已取貨保留顯示
+    const KEEP_DAYS = 3;          // 取貨後保留顯示天數
+    const PICKUP_TIME_COL = 15;   // 「團購登記表」P 欄：取貨時間（由試算表 Apps Script 自動寫入）
+
+    function escapeHtml(str) {
+        return String(str == null ? '' : str)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    // 解析取貨時間（以台北時間 UTC+8 解讀），失敗回傳 null
+    // 支援：2026/10/17 20:31、2026/10/17 20:31:00、2026-10-17 20:31、2026/10/17、10/17/2026 20:31:00、下午 8:31 等
+    function parsePickupTime(raw) {
+        if (!raw) return null;
+        let s = String(raw).trim();
+        if (!s) return null;
+        let pm = /下午|PM/i.test(s), am = /上午|AM/i.test(s);
+        s = s.replace(/上午|下午|AM|PM/ig, ' ').replace(/[年月]/g, '/').replace(/日/g, ' ').replace(/\s+/g, ' ').trim();
+        let y, mo, d, h = 0, mi = 0, sec = 0, m;
+        if ((m = s.match(/^(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?/))) {
+            y = +m[1]; mo = +m[2]; d = +m[3]; h = +(m[4] || 0); mi = +(m[5] || 0); sec = +(m[6] || 0);
+        } else if ((m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?: (\d{1,2}):(\d{2})(?::(\d{2}))?)?/))) {
+            y = +m[3]; mo = +m[1]; d = +m[2]; h = +(m[4] || 0); mi = +(m[5] || 0); sec = +(m[6] || 0);
+        } else return null;
+        if (pm && h < 12) h += 12;
+        if (am && h === 12) h = 0;
+        if (mo < 1 || mo > 12 || d < 1 || d > 31 || h > 23 || mi > 59 || sec > 59) return null;
+        const t = Date.UTC(y, mo - 1, d, h - 8, mi, sec);
+        return isNaN(t) ? null : new Date(t);
+    }
+
+    // 已勾選取貨、且取貨時間在 KEEP_DAYS 天內 → 回傳取貨時間，否則 null
+    function getRecentPickup(row) {
+        if (!row || (row[0] || '').toUpperCase() !== 'TRUE') return null;
+        const t = parsePickupTime(row[PICKUP_TIME_COL]);
+        if (!t) return null;
+        const diff = Date.now() - t.getTime();
+        if (diff < -10 * 60 * 1000 || diff > KEEP_DAYS * 24 * 60 * 60 * 1000) return null;
+        return t;
+    }
+
+    // 只接受 http(s) 開頭的圖片網址，並轉成可安全放進屬性的字串
+    function safeImgUrl(url) {
+        const u = String(url || '').trim();
+        return /^https?:\/\//i.test(u) ? escapeHtml(u) : '';
+    }
+
+    // 目前台北時間 yyyy/MM/dd HH:mm
+    function nowTaipeiText() { return formatPickupTime(new Date()); }
+
+    function formatPickupTime(t) {
+        const p = new Date(t.getTime() + 8 * 60 * 60 * 1000); // 轉台北時間顯示
+        const z = n => String(n).padStart(2, '0');
+        return `${p.getUTCFullYear()}/${z(p.getUTCMonth() + 1)}/${z(p.getUTCDate())} ${z(p.getUTCHours())}:${z(p.getUTCMinutes())}`;
+    }
+
+    function parseCSV(text) {
+        const rows = []; let currentRow = []; let currentField = ''; let inQuotes = false;
+        for (let i = 0; i < text.length; i++) {
+            const char = text[i]; const nextChar = text[i+1];
+            if (inQuotes) {
+                if (char === '"' && nextChar === '"') { currentField += '"'; i++; }
+                else if (char === '"') inQuotes = false;
+                else currentField += char;
+            } else {
+                if (char === '"') inQuotes = true;
+                else if (char === ',') { currentRow.push(currentField); currentField = ''; }
+                else if (char === '\n' || char === '\r') {
+                    currentRow.push(currentField);
+                    if (currentRow.length > 1 || currentRow[0] !== '') rows.push(currentRow);
+                    currentRow = []; currentField = '';
+                    if (char === '\r' && nextChar === '\n') i++;
+                } else currentField += char;
+            }
+        }
+        if (currentField || currentRow.length > 0) { currentRow.push(currentField); rows.push(currentRow); }
+        return rows;
+    }
+
+    // ===== 資料載入 =====
+    const STALE_MS = 10 * 60 * 1000;   // 頁面開超過 10 分鐘，搜尋前自動重新抓資料
+    let dataLoadedAt = 0;              // 上次成功讀取的時間 (ms)
+    let loadPromise = null;            // 載入中的 Promise（避免重複抓）
+    let currentName = null;            // 目前顯示中的顧客
+
+    function setStatus(state, text) {
+        const box = document.getElementById('dataStatus');
+        box.classList.toggle('is-error', state === 'error');
+        document.getElementById('dataStatusText').textContent = text;
+        const busy = state === 'loading';
+        document.getElementById('refreshBtn').disabled = busy;
+        // 有任何一份成功資料就可以搜尋；首次載入中或首次失敗時停用
+        document.getElementById('searchBtn').disabled = busy && !dataLoadedAt || (state === 'error' && !dataLoadedAt);
+    }
+
+    function csvUrl(gid) {
+        return `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${gid}&_=${Date.now()}`;
+    }
+
+    function loadData() {
+        if (loadPromise) return loadPromise;
+        setStatus('loading', dataLoadedAt ? '⏳ 資料更新中…' : '⏳ 資料載入中…');
+        loadPromise = (async () => {
+            try {
+                const [res1, res2] = await Promise.all([
+                    fetch(csvUrl(gidArrived), { cache: 'no-store' }),
+                    fetch(csvUrl(gidNotArrived), { cache: 'no-store' })
+                ]);
+                if (!res1.ok || !res2.ok) throw new Error(`HTTP ${res1.status}/${res2.status}`);
+                const a = parseCSV(await res1.text());
+                const n = parseCSV(await res2.text());
+                if (!a.length || !n.length) throw new Error('empty CSV');
+                arrivedRows = a; notArrivedRows = n;
+                dataLoadedAt = Date.now();
+                setStatus('ready', `資料讀取時間：${nowTaipeiText()}`);
+                checkAnnouncements();
+                return true;
+            } catch (e) {
+                console.error(e);
+                if (dataLoadedAt) {
+                    setStatus('error', `⚠️ 資料更新失敗，目前顯示 ${formatPickupTime(new Date(dataLoadedAt))} 讀取的資料，請稍後按「重新整理資料」`);
+                } else {
+                    setStatus('error', '⚠️ 資料載入失敗，請檢查網路連線後按「重新整理資料」，或通知店員！');
+                }
+                return false;
+            } finally {
+                loadPromise = null;
+            }
+        })();
+        return loadPromise;
+    }
+
+    async function refreshData() {
+        const ok = await loadData();
+        if (!ok) return;
+        if (currentName) showDetails(currentName);
+        else if (!document.getElementById('selectionArea').innerHTML) showReleasedItems();
+    }
+
+    // DOM 就緒就開始抓資料（不用等字型、html2canvas 等外部檔案載完）
+    document.addEventListener('DOMContentLoaded', async function() {
+        document.getElementById('searchBtn').addEventListener('click', () => searchNames());
+        document.getElementById('nameInput').addEventListener('keydown', e => {
+            if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); searchNames(); }
+        });
+        document.getElementById('refreshBtn').addEventListener('click', () => refreshData());
+        document.getElementById('selectionArea').addEventListener('click', e => {
+            const btn = e.target.closest('.name-btn');
+            if (btn) showDetails(btn.dataset.name);
+        });
+        document.getElementById('results').addEventListener('click', e => {
+            if (e.target.closest('.print-btn')) generateImage();
+        });
+        if (await loadData()) showReleasedItems();
+    });
+
+    function checkAnnouncements() {
+        const groupContainer = document.getElementById('announcementGroup');
+        groupContainer.innerHTML = ''; 
+        
+        let marqueeHtml = '';
+
+        for (let i = 1; i < arrivedRows.length; i++) {
+            const row = arrivedRows[i];
+            if (!row || row.length < 4) continue;
+            
+            const note = (row[1] || "").trim();      
+            const content = (row[3] || "").trim();   
+            
+            if (note === "公告" && content !== "") {
+                marqueeHtml += `
+                    <div class="marquee-container">
+                        <div class="marquee-title">📢 店家公告</div>
+                        <div class="marquee-content">
+                            <div class="marquee-text">${escapeHtml(content)}</div>
+                        </div>
+                    </div>`;
+            }
+        }
+        
+        groupContainer.innerHTML = marqueeHtml;
+    }
+
+    function showReleasedItems() {
+        const releasedArea = document.getElementById('releasedArea');
+        let releasedHtml = `<div class="section-header header-released">🎁 團購好康現貨專區 (現貨免等待)</div>`;
+        let hasReleased = false;
+
+        for (let i = 1; i < arrivedRows.length; i++) {
+            const row = arrivedRows[i];
+            if (!row || row.length < 6) continue;
+
+            const status = (row[0] || "").trim().toUpperCase();
+            const note = (row[1] || "").trim();
+            const itemName = (row[3] || "").trim();
+            const qty = (row[4] || "").trim();
+            let price = (row[5] || "0").replace(/[$,\s]/g, '').trim();
+            const imgUrl = row[13] ? row[13].trim() : ""; 
+
+            if (note === "公告") continue;
+
+            if ((note.includes("釋出") || note.includes("多")) && status !== "TRUE" && itemName !== "") {
+                const formattedPrice = parseInt(price) ? parseInt(price).toLocaleString() : price;
+
+                releasedHtml += `
+                    <div class="card" style="border-left-color: var(--released-orange);">
+                        <div class="status-badge badge-released">好康現貨</div>
+                        <div class="item-with-img">
+                            <div class="item-text-part">
+                                <div class="item-name">${escapeHtml(itemName)}</div>
+                                <div class="item-info-large">釋出數量: ${escapeHtml(qty)}</div>
+                            </div>
+                            ${safeImgUrl(imgUrl) ? `<img src="${safeImgUrl(imgUrl)}" class="product-img" crossorigin="anonymous" onerror="this.style.display='none'">` : ''}
+                            <div class="price-right">${escapeHtml(formattedPrice)}元</div>
+                        </div>
+                    </div>`;
+                hasReleased = true;
+            }
+        }
+        const warning = `<div class="released-warning">📌 商品數量隨時變動，需要請 @版面小編<br>確認後會幫您登記再來取貨，請勿棄單！</div>`;
+        releasedArea.innerHTML = hasReleased ? (releasedHtml + warning) : '<p>目前沒有團購釋出現貨，歡迎稍後再來看看。</p>';
+    }
+
+    async function searchNames() {
+        const query = document.getElementById('nameInput').value.trim().toLowerCase();
+        if (!query) return alert('請輸入顧客名字關鍵字！');
+
+        // 還在載入就等它；頁面開太久就先重新抓資料
+        if (loadPromise) await loadPromise;
+        else if (!dataLoadedAt || Date.now() - dataLoadedAt > STALE_MS) await loadData();
+        if (!dataLoadedAt) return;   // 從未成功載入，錯誤訊息已顯示
+        currentName = null;
+
+        document.getElementById('selectionArea').innerHTML = ''; 
+        document.getElementById('results').innerHTML = '';
+        document.getElementById('imageOutput').style.display = 'none';
+
+        const matchedNames = new Set();
+
+        arrivedRows.slice(1).forEach(row => { 
+            if (row[1] && row[1].trim() === "公告") return;
+            if (row[2] && row[2].toLowerCase().includes(query) && (row[0].toUpperCase() !== "TRUE" || getRecentPickup(row))) matchedNames.add(row[2].trim()); 
+        });
+        notArrivedRows.slice(1).forEach(row => { 
+            if (row[2] && row[2].toLowerCase().includes(query) && row[0].toUpperCase() !== "TRUE") matchedNames.add(row[2].trim()); 
+        });
+
+        if (matchedNames.size === 0) {
+            document.getElementById('results').innerHTML = `<div style="text-align:center; padding:40px; color:#777; font-weight:bold;">查無您的待取貨紀錄。</div>`;
+            showReleasedItems();
+        } else if (matchedNames.size === 1) {
+            showDetails(Array.from(matchedNames)[0]);
+        } else {
+            let btnHtml = `<p style="color:#e67e22; font-weight:bold; margin-bottom:12px; font-size:1.05em;">📍 系統找到多個相符名字，請點選正確的名稱：</p><div class="name-selector">`;
+            matchedNames.forEach(name => {
+                btnHtml += `<button type="button" class="name-btn" data-name="${escapeHtml(name)}">${escapeHtml(name)}</button>`;
+            });
+            document.getElementById('selectionArea').innerHTML = btnHtml + `</div>`;
+            document.getElementById('releasedArea').innerHTML = ''; 
+        }
+    }
+
+    function showDetails(targetName) {
+        currentName = targetName;
+        const eName = escapeHtml(targetName);
+        document.getElementById('selectionArea').innerHTML = ''; 
+        
+        let stats = { arr: { t: 0 }, not: { t: 0 } };
+        let arrHtml = `<div class="section-header header-arrived">✅ 已到貨商品 (請儘速至門市取貨)</div>`;
+        let notHtml = `<div class="section-header header-not-arrived">⏳ 未到貨商品 (到貨後另行通知)</div>`;
+        
+        let imgContent = `
+            <div style="font-size:32px; font-weight:bold; border-bottom:4px solid #000000; padding-bottom:10px; font-family:'Noto Sans TC', sans-serif;">ID: ${eName}</div>
+            <div style="font-size:26px; font-weight:bold; margin:15px 0 5px 0; font-family:'Noto Sans TC', sans-serif;">【已到貨現場對帳單】</div>
+        `;
+        
+        let hasArr = false;
+        let hasNot = false;
+
+        arrivedRows.forEach((row, i) => {
+            if (i === 0 || !row[2] || row[2].trim() !== targetName || row[0].toUpperCase() === "TRUE") return;
+            if (row[1] && row[1].trim() === "公告") return; 
+
+            const itemName = row[3].trim();
+            if(!itemName) return;
+            
+            const qty = parseInt(row[4]) || 0;
+            const price = parseInt((row[5] || "0").replace(/[$,\s]/g, '')) || 0;
+            const subtotal = parseInt((row[12] || "0").replace(/[$,\s]/g, '')) || 0;
+            const imgUrl = row[13] ? row[13].trim() : "";
+
+            arrHtml += `
+                <div class="card" style="border-left-color: var(--bg-success);">
+                    <div class="status-badge badge-arrived">已到貨</div>
+                    <div class="item-with-img">
+                        <div class="item-text-part">
+                            <div class="item-name">${escapeHtml(itemName)}</div>
+                            <div class="item-info-large">數量: ${qty}  (單價: ${price.toLocaleString()}元)</div>
+                        </div>
+                        ${safeImgUrl(imgUrl) ? `<img src="${safeImgUrl(imgUrl)}" class="product-img" onerror="this.style.display='none'">` : ''}
+                        <div class="price-right">${subtotal.toLocaleString()}元</div>
+                    </div>
+                </div>`;
+            
+            stats.arr.t += subtotal;
+            hasArr = true;
+
+            imgContent += `
+                <div class="img-item-row" style="font-family:'Noto Sans TC', sans-serif;">
+                    <div style="font-size:30px; font-weight:bold; line-height:1.3; color:#000000;">${escapeHtml(itemName)}</div>
+                    <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-top:8px;">
+                        <div style="font-size:26px; color:#000000;">${price.toLocaleString()}元 x ${qty}</div>
+                        <div style="font-size:34px; font-weight:bold; color:#000000;">${subtotal.toLocaleString()}元</div>
+                    </div>
+                </div>`;
+        });
+
+        if(!hasArr) arrHtml += `<div style="padding:20px; background:white; border-radius:10px; color:#999; text-align:center;">目前無已到貨商品</div>`;
+
+        notArrivedRows.forEach((row, i) => {
+            if (i === 0 || !row[2] || row[2].trim() !== targetName || row[0].toUpperCase() === "TRUE") return;
+            const itemName = row[3].trim();
+            if(!itemName) return;
+
+            const qty = parseInt(row[4]) || 0;
+            const subtotal = parseInt((row[12] || "0").replace(/[$,\s]/g, '')) || 0;
+            const imgUrl = row[13] ? row[13].trim() : "";
+
+            notHtml += `
+                <div class="card" style="border-left-color: var(--bg-pending);">
+                    <div class="status-badge badge-not-arrived">預購中</div>
+                    <div class="item-with-img">
+                        <div class="item-text-part">
+                            <div class="item-name">${escapeHtml(itemName)}</div>
+                            <div class="item-info-large">預購數量: ${qty}</div>
+                        </div>
+                        ${safeImgUrl(imgUrl) ? `<img src="${safeImgUrl(imgUrl)}" class="product-img" onerror="this.style.display='none'">` : ''}
+                        <div class="price-right">${subtotal.toLocaleString()}元</div>
+                    </div>
+                </div>`;
+            
+            stats.not.t += subtotal;
+            hasNot = true;
+        });
+
+        if(!hasNot) notHtml += `<div style="padding:20px; background:white; border-radius:10px; color:#999; text-align:center;">目前無未到貨預購品項</div>`;
+
+        // 📦 最近已取貨（僅供查看，不計入金額，也不放進對帳圖）
+        let pickedHtml = '';
+        arrivedRows.forEach((row, i) => {
+            if (i === 0 || !row[2] || row[2].trim() !== targetName) return;
+            if (row[1] && row[1].trim() === "公告") return;
+            const pickedAt = getRecentPickup(row);
+            if (!pickedAt) return;
+            const itemName = (row[3] || "").trim();
+            if (!itemName) return;
+            const qty = parseInt(row[4]) || 0;
+            const subtotal = parseInt((row[12] || "0").replace(/[$,\s]/g, '')) || 0;
+            pickedHtml += `
+                <div class="card card-picked">
+                    <div class="status-badge badge-picked">已取貨</div>
+                    <div class="item-with-img">
+                        <div class="item-text-part">
+                            <div class="item-name">${escapeHtml(itemName)}</div>
+                            <div class="item-info-large">數量: ${qty}</div>
+                            <div class="picked-time">取貨時間: ${escapeHtml(formatPickupTime(pickedAt))}</div>
+                        </div>
+                        <div class="price-right">${subtotal.toLocaleString()}元</div>
+                    </div>
+                </div>`;
+        });
+        if (pickedHtml) pickedHtml = `<div class="section-header header-picked">📦 最近已取貨 (保留 ${KEEP_DAYS} 天)</div>` + pickedHtml;
+
+        imgContent += `
+            <div style="margin-top:25px; padding-top:15px; font-size:36px; font-weight:bold; text-align:right; font-family:'Noto Sans TC', sans-serif; color:#000000;">
+                應付總金額：${stats.arr.t.toLocaleString()} 元
+            </div>
+            <div id="receiptTime" style="text-align:right; margin-top:12px; font-size:22px; color:#000000; font-family:'Noto Sans TC', sans-serif;"></div>
+            <div style="text-align:center; margin-top:35px; font-size:22px; color:#555; font-family:'Noto Sans TC', sans-serif;">謝謝惠顧，歡迎再次光臨！</div>
+        `;
+        
+        document.getElementById('captureArea').innerHTML = imgContent;
+
+        const header = `<div class="query-id-header" style="font-size:1.4em; font-weight:bold; color:var(--primary-blue); background:white; padding:15px; border-radius:10px; margin-bottom:15px; border-left:6px solid var(--primary-blue);">📍 查詢顧客 ID : ${eName}</div>`;
+        const actionBtn = `<button type="button" class="print-btn">🖼️ 生成大字明細圖片 (現場取貨對帳用)</button>`;
+        
+        const totalSection = `
+            <div class="total-container">
+                <div class="total-row"><div>已到貨合計 (本日需付)</div><div class="arrived-total-val">${stats.arr.t.toLocaleString()}元</div></div>
+                <div class="total-row"><div>未到貨合計 (預購商品)</div><div class="total-val">${stats.not.t.toLocaleString()}元</div></div>
+                <div class="total-row" style="border-top:2px dashed #546e7a; padding-top:15px; margin-top:5px;">
+                    <div>訂單應付總計</div>
+                    <div class="total-val" style="font-size:1.6em; color:#fff;">${(stats.arr.t + stats.not.t).toLocaleString()}元</div>
+                </div>
+            </div>`;
+            
+        document.getElementById('results').innerHTML = header + arrHtml + notHtml + pickedHtml + actionBtn + totalSection;
+        document.getElementById('releasedArea').innerHTML = ''; 
+    }
+
+    async function generateImage() {
+        const area = document.getElementById('captureArea');
+        const output = document.getElementById('imageOutput');
+        const container = document.getElementById('imageContainer');
+        
+        container.innerHTML = "<div style='padding:20px; font-weight:bold; color:#555;'>⏳ 大字明細製圖中，請稍候...</div>";
+        output.style.display = 'block';
+        output.scrollIntoView({ behavior: 'smooth' });
+
+        try {
+            // 寫上產生時間（台北時間）
+            const timeEl = document.getElementById('receiptTime');
+            if (timeEl) timeEl.textContent = `產生時間：${nowTaipeiText()}`;
+
+            // 等 Noto Sans TC 載入完成再截圖（最多等 8 秒，逾時就用備用字型）
+            if (document.fonts) {
+                const text = area.textContent || '';
+                await Promise.race([
+                    Promise.all([
+                        document.fonts.load(`400 26px "Noto Sans TC"`, text),
+                        document.fonts.load(`700 30px "Noto Sans TC"`, text)
+                    ]).then(() => document.fonts.ready),
+                    new Promise(r => setTimeout(r, 8000))
+                ]).catch(() => {});
+            }
+
+            const canvas = await html2canvas(area, { 
+                backgroundColor: "#ffffff", 
+                scale: 2, 
+                logging: false,
+                useCORS: true 
+            });
+            
+            const imgUrl = canvas.toDataURL("image/png");
+            container.innerHTML = `<img src="${imgUrl}" alt="安星水產已到貨明細">`;
+            output.scrollIntoView({ behavior: 'smooth' });
+        } catch (e) { 
+            console.error(e);
+            container.innerHTML = "<div style='color:red; padding:10px;'>圖片產生失敗，請再試一次。</div>"; 
+        }
+    }
+</script>
+</body>
+</html>
+

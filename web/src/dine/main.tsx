@@ -1,6 +1,5 @@
 import {CatalogViewer} from '../catalog/catalog';
 import {createContext,useContext,useEffect,useMemo,useRef,useState} from "react";
-import {createRoot} from "react-dom/client";
 import {loadApiOrigin,errorText,newKey} from "../lib/api-config";
 import {DINE_CATEGORIES,DINE_STORE,MARKET_LABEL,formatPickup,pickupError,taipeiParts,type DineCategoryId} from "../lib/dine-menu";
 import {dineImageSrc} from "../lib/dine-photos";
@@ -125,7 +124,7 @@ function OrderNotices(){
  </details>;
 }
 
-function App(){
+export default function App(){
  const [token,setToken]=useState(tokenFromHash());
  useEffect(()=>{const f=()=>setToken(tokenFromHash());addEventListener("hashchange",f);return()=>removeEventListener("hashchange",f)},[]);
  const [origin,err]=useOrigin();
@@ -141,6 +140,7 @@ function App(){
     <div>　　　　　{DINE_STORE.hoursWeekend}，{DINE_STORE.closed}</div>
     <div>地址　{DINE_STORE.address}</div>
     <div>電話　<a href={`tel:${DINE_STORE.phone}`}>{DINE_STORE.phone}</a>（{DINE_STORE.phoneNote}）</div>
+    <div><a href={BASE+"index.html"}>員工登入（點餐後台）</a></div>
    </div></details>
    {origin&&<CatalogViewer origin={origin}/>}
    <a className="shop-link" href={BASE+"order.html"}>海鮮購物（帶回家）→</a>
@@ -313,9 +313,8 @@ function Lookup({origin,token}:{origin:string;token:string}){
   <div className="actions">
    <button type="button" className="ghost" onClick={()=>navigator.clipboard?.writeText(location.href)}>複製查詢連結</button>
    <button type="button" className="ghost" onClick={load}>重新整理狀態</button>
-   <button type="button" className="primary" onClick={()=>{location.hash=""}}>繼續點餐</button>
+   <button type="button" className="primary" onClick={()=>{location.hash="#menu"}}>繼續點餐</button>
   </div>
  </section></div>;
 }
 
-createRoot(document.getElementById("root")!).render(<App/>);
