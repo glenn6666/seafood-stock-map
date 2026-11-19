@@ -113,6 +113,21 @@
         /* 金額大字置右 1.8em */
         .price-right { font-size: 1.8em; font-weight: 900; color: var(--primary-blue); min-width: 110px; text-align: right; white-space: nowrap; }
         
+        /* 團購現貨卡：記事本第一張圖＋文字介紹 */
+        .stock-main { display: flex; gap: 14px; align-items: flex-start; }
+        .stock-photo-link { flex: 0 0 auto; display: block; }
+        .stock-photo { width: 116px; height: 116px; object-fit: cover; border-radius: 12px; border: 1px solid #f1e3d3; background: #fff8ef; display: block; box-shadow: 0 2px 8px rgba(230,126,34,0.15); }
+        .stock-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+        .stock-card .item-name { margin-bottom: 0; word-break: normal; overflow-wrap: anywhere; line-height: 1.3; }
+        .stock-meta { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 10px; }
+        .stock-price { min-width: 0; font-size: 1.6em; }
+        .stock-desc { margin-top: 12px; background: #fff8ef; border-radius: 10px; padding: 10px 12px; color: #6d4c41; font-size: 0.98em; line-height: 1.6; }
+        .stock-desc-line { position: relative; padding-left: 1.1em; }
+        .stock-desc-line::before { content: '✦'; position: absolute; left: 0; color: var(--released-orange); font-size: 0.85em; top: 0.15em; }
+        @media (min-width: 700px) {
+            .stock-photo { width: 150px; height: 150px; }
+            .stock-desc { font-size: 1.02em; }
+        }
         .status-badge { font-size: 0.8em; padding: 3px 10px; border-radius: 6px; display: inline-block; margin-bottom: 10px; font-weight: bold; color: white; }
         .badge-released { background-color: var(--released-orange); }
         .badge-arrived { background-color: var(--bg-success); }
@@ -398,12 +413,69 @@ html[data-mode=stock] .search-box,html[data-mode=stock] #selectionArea,html[data
         groupContainer.innerHTML = marqueeHtml;
     }
 
-    // First product photos saved from the store's LINE notes.
-    const stockProductPhotos = new Map([
-        ['足球造型冰球製冰盒', 'https://glenn6666.github.io/seafood-stock-map/group-buy/football-ice-tray-first.jpg']
-    ]);
+    // First product photos and short descriptions taken from the store's LINE 社群記事本.
+    function normStockName(name) {
+        return String(name || '').normalize('NFKC').replace(/\s+/g, '');
+    }
+    function stockAsset(file) {
+        try { return new URL('group-buy/' + file, location.href).href; }
+        catch (e) { return 'https://glenn6666.github.io/seafood-stock-map/group-buy/' + file; }
+    }
+    const stockNoteInfo = [
+        { names: ['足球造型冰球製冰盒'], photo: 'football-ice-tray-first.jpg', desc: [
+            '九格立體足球造型，一次做出直徑約 33mm 的大顆冰球',
+            '冰球大、融化慢，威士忌、咖啡、果汁都不易稀釋',
+            '食品級柔軟矽膠好脫模，附防塵上蓋可堆疊（顏色隨機）'] },
+        { names: ['蘋果派'], photo: 'apple-pie-first.jpg', desc: [
+            '手工千層派皮，包著滿滿蘋果甜味與濃郁肉桂香',
+            '內餡甜而不膩、外皮酥脆爽口，一盒 10 入',
+            '在家約十分鐘炸到金黃酥脆就上桌（奶素可食）'] },
+        { names: ['炙燒魚條（煙仔虎）'], photo: 'seared-fish-stick-first.jpg', desc: [
+            '退冰即食！開封就能直接吃，不用再煎再烤',
+            '台灣魚貨先炙燒完成，外層焦香、魚肉鮮嫩多汁',
+            '一包 300g，配啤酒、配飯、配粥都好搭'] },
+        { names: ['霸味響鈴卷'], photo: 'bawei-bean-curd-roll-first.jpg', desc: [
+            '霸味嚴選「火鍋神物」，薑母鴨、羊肉爐必備良伴',
+            '非基改黃豆製作，涮燙一秒就能享用',
+            '每盒 70g，冷藏 7°C 以下或冷凍保存'] },
+        { names: ['人氣醬醃蛤蜊-A(原味)', '人氣醬醃蛤蜊-B(辣味)'], photo: 'marinated-clams-first.jpg', desc: [
+            '大顆蛤蜊鮮嫩Q彈，每顆都飽吸祕製湯汁',
+            'A 原味清香甘甜、B 辣味香麻過癮',
+            '下酒、配飯都超對味，每包約 350g'] },
+        { names: ['麻辣小龍蝦系列促銷價-A(麻辣)', '麻辣小龍蝦系列促銷價-C(十三香)'], photo: 'spicy-crayfish-first.jpg', desc: [
+            '肉質Q彈結實，香辣醬汁濃郁有層次',
+            '已調味好，解凍加熱約五分鐘就能上桌',
+            '每盒約 20–30 隻（約 750g），限時促銷'] },
+        { names: ['店小二蔥仔餅'], photo: 'scallion-pancake-first.jpg', desc: [
+            '皮薄餡多、滿滿青蔥內餡，煎好外層一圈圈酥脆',
+            '不用退冰，煎、炸、烤都可以，十分鐘就上桌',
+            '一包 18 入（360g），五辛素、不添加防腐劑'] },
+        { names: ['花好月圓'], photo: 'red-white-tangyuan-first.jpg', desc: [
+            '紅白小湯圓內包豆沙，一大包 600g',
+            '氣炸、油炸都粒粒分明，外酥脆、裡軟糯',
+            '撒上糖粉或沾煉乳超好吃，也能煮甜湯、鹹湯'] },
+        { names: ['杏仁肉紙'], photo: 'almond-pork-jerky-first.jpg', desc: [
+            '嚴選台灣溫體豬後腿肉＋加州杏仁片高溫烘烤',
+            '薄脆香酥、鹹中帶甜，越嚼越涮嘴',
+            '一盒 45g，大人小孩都愛的過節零嘴'] },
+        { names: ['鵝米血'], photo: 'goose-blood-cake-first.jpg', desc: [
+            '100% 純鵝米血，成分只有鵝血＋糯米',
+            '雲林在地鵝農純手工製作，軟嫩Q彈、冷凍也不變硬',
+            '每包 500g，煮火鍋、薑母鴨、炸烤都好吃（效期 2027/01）'] }
+    ];
+    const stockProductPhotos = new Map();
+    const stockProductDescs = new Map();
+    stockNoteInfo.forEach(info => info.names.forEach(n => {
+        stockProductPhotos.set(normStockName(n), stockAsset(info.photo));
+        stockProductDescs.set(normStockName(n), info.desc);
+    }));
     function stockPhotoUrl(itemName, sheetUrl) {
-        return stockProductPhotos.get(String(itemName || '').normalize('NFKC').replace(/\s+/g, '')) || String(sheetUrl || '').trim();
+        return stockProductPhotos.get(normStockName(itemName)) || String(sheetUrl || '').trim();
+    }
+    function stockDescHtml(itemName) {
+        const lines = stockProductDescs.get(normStockName(itemName));
+        if (!lines || !lines.length) return '';
+        return `<div class="stock-desc">${lines.map(l => `<div class="stock-desc-line">${escapeHtml(l)}</div>`).join('')}</div>`;
     }
 
     function showReleasedItems() {
@@ -427,17 +499,21 @@ html[data-mode=stock] .search-box,html[data-mode=stock] #selectionArea,html[data
             if ((note.includes("釋出") || note.includes("多")) && status !== "TRUE" && itemName !== "") {
                 const formattedPrice = parseInt(price) ? parseInt(price).toLocaleString() : price;
 
+                const safeImg = safeImgUrl(imgUrl);
                 releasedHtml += `
-                    <div class="card" style="border-left-color: var(--released-orange);">
+                    <div class="card stock-card" style="border-left-color: var(--released-orange);">
                         <div class="status-badge badge-released">好康現貨</div>
-                        <div class="item-with-img">
-                            <div class="item-text-part">
+                        <div class="stock-main">
+                            ${safeImg ? `<a class="stock-photo-link" href="${safeImg}" target="_blank" rel="noopener"><img src="${safeImg}" class="stock-photo" alt="${escapeHtml(itemName)}" loading="lazy" decoding="async" crossorigin="anonymous" onerror="this.closest('a').style.display='none'"></a>` : ''}
+                            <div class="stock-text">
                                 <div class="item-name">${escapeHtml(itemName)}</div>
-                                <div class="item-info-large">釋出數量: ${escapeHtml(qty)}</div>
+                                <div class="stock-meta">
+                                    <span class="item-info-large">釋出數量: ${escapeHtml(qty)}</span>
+                                    <span class="price-right stock-price">${escapeHtml(formattedPrice)}元</span>
+                                </div>
                             </div>
-                            ${safeImgUrl(imgUrl) ? `<img src="${safeImgUrl(imgUrl)}" class="product-img" crossorigin="anonymous" onerror="this.style.display='none'">` : ''}
-                            <div class="price-right">${escapeHtml(formattedPrice)}元</div>
                         </div>
+                        ${stockDescHtml(itemName)}
                     </div>`;
                 hasReleased = true;
             }
