@@ -398,6 +398,14 @@ html[data-mode=stock] .search-box,html[data-mode=stock] #selectionArea,html[data
         groupContainer.innerHTML = marqueeHtml;
     }
 
+    // First product photos saved from the store's LINE notes.
+    const stockProductPhotos = new Map([
+        ['足球造型冰球製冰盒', 'https://glenn6666.github.io/seafood-stock-map/group-buy/football-ice-tray-first.jpg']
+    ]);
+    function stockPhotoUrl(itemName, sheetUrl) {
+        return stockProductPhotos.get(String(itemName || '').normalize('NFKC').replace(/\s+/g, '')) || String(sheetUrl || '').trim();
+    }
+
     function showReleasedItems() {
         const releasedArea = document.getElementById('releasedArea');
         let releasedHtml = `<div class="section-header header-released">🎁 團購好康現貨專區 (現貨免等待)</div>`;
@@ -412,7 +420,7 @@ html[data-mode=stock] .search-box,html[data-mode=stock] #selectionArea,html[data
             const itemName = (row[3] || "").trim();
             const qty = (row[4] || "").trim();
             let price = (row[5] || "0").replace(/[$,\s]/g, '').trim();
-            const imgUrl = row[13] ? row[13].trim() : ""; 
+            const imgUrl = stockPhotoUrl(itemName, row[13]); 
 
             if (note === "公告") continue;
 
