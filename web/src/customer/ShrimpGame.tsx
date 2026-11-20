@@ -3,6 +3,8 @@
 // 達標 → 伺服器發「滿 NT$1,000 折 NT$5」優惠券。開局與結算都經過 Worker；前端不產生優惠碼。
 import {useEffect,useRef,useState} from "react";
 import {errorText} from "../lib/api-config";
+import {CuteArt} from "./cute-art";
+import "./game-cute.css";
 export type Coupon={code:string;discount:number;minTotal:number;expiresAt:string};
 type TargetId="shrimp"|"crab"|"lobster";type ToolId="rod"|"net"|"tongs"|"cage";
 type Obj={id:number;x:number;y:number;vx:number;vy:number;boot:boolean;hide:number;turn:number;a:number;rock:number};
@@ -18,21 +20,16 @@ export const TOOLS:Record<ToolId,{name:string;icon:string;r:number;catchMs:numbe
  tongs:{name:"夾子",icon:"🥢",r:4,catchMs:150,carry:70,lag:.06,fit:{shrimp:.6,crab:1.5,lobster:1.2},desc:"一夾就住，要夾準；蝦子太滑，螃蟹最合適"},
  cage:{name:"蝦籠",icon:"🧺",r:9,catchMs:1500,carry:32,lag:.20,fit:{shrimp:.8,crab:1.0,lobster:1.6},desc:"會吸引附近獵物鑽進來，要耐心等；抓龍蝦最好用"},
 };
-// 圖片可替換：放 web/public/comic/game/<name>.webp 就會自動使用，找不到就用表情符號
+// 可愛版圖案：自繪 SVG（cute-art.tsx），不再載入寫實 webp；emoji 參數保留作為備註
 /** 手指到工作端的距離（px）：手機約 90–120 */
 export const gripPx=(h:number)=>Math.round(Math.max(90,Math.min(120,h*.3)));
 export const SPRITES=["shrimp","crab","lobster","rod","net","tongs","cage","bucket","boot"] as const;
 type SpriteName=typeof SPRITES[number];
-const spriteOk:Partial<Record<SpriteName,boolean>>={};
-const spriteSrc=(n:SpriteName)=>`${import.meta.env.BASE_URL}comic/game/${n}.webp`;
-function useSprites(){
- const [,bump]=useState(0);
- useEffect(()=>{let live=true;for(const n of SPRITES){if(n in spriteOk)continue;const im=new Image();im.onload=()=>{spriteOk[n]=true;live&&bump(x=>x+1)};im.onerror=()=>{spriteOk[n]=false};im.src=spriteSrc(n)}return()=>{live=false}},[]);
-}
-function Sprite({name,emoji,className=""}:{name:SpriteName;emoji:string;className?:string}){
- return spriteOk[name]?<img className={"spr "+className} src={spriteSrc(name)} alt="" draggable={false} data-sprite={name}/>:<span className={className} data-sprite={name}>{emoji}</span>;
+function Sprite({name,className=""}:{name:SpriteName;emoji?:string;className?:string}){
+ return <CuteArt className={"spr cute "+className} name={name}/>;
 }
 const LIVES=3;
+const GAME_FONT="https://fonts.googleapis.com/css2?family=Chiron+GoRound+TC:wght@500;700;900&family=Fredoka:wght@600;700&display=swap";
 const stars=(f:number)=>f>=1.4?"★★★":f>=1?"★★☆":f>=.7?"★☆☆":"☆☆☆";
 // 俯視：水桶放在池中央的木台上；龍蝦躲在四塊石頭下
 const BUCKET={x:50,y:50,r:10};
@@ -47,7 +44,6 @@ const clampXY=(o:{x:number;y:number})=>{
 export default function ShrimpGame({origin,onClose,onCoupon}:{origin:string;onClose:()=>void;onCoupon:(c:Coupon)=>void}){
  const [phase,setPhase]=useState<"intro"|"play"|"sending"|"done">("intro"),[msg,setMsg]=useState(""),[target,setTarget]=useState<TargetId>("shrimp"),[tool,setTool]=useState<ToolId>("rod");
  const [,force]=useState(0),[won,setWon]=useState<Coupon|null>(null),[flash,setFlash]=useState("");
- useSprites();
  const reduce=typeof matchMedia==="function"&&matchMedia("(prefers-reduced-motion: reduce)").matches;
  const st=useRef({gameId:"",goal:4,end:0,caught:0,objs:[] as Obj[],last:0,raf:0,over:false,
   ptr:{x:50,y:50},grip:null as null|{x:number;y:number},tx:50,ty:50,down:false,hold:null as null|{id:number;since:number},carry:null as null|Obj,risk:0,speed:0,left:40,lives:LIVES,ripples:[] as {x:number;y:number;t:number}[]});
@@ -121,6 +117,8 @@ export default function ShrimpGame({origin,onClose,onCoupon}:{origin:string;onCl
   }catch{setMsg("連線中斷，這局無法結算");setPhase("done")}
  }
  useEffect(()=>{const s=st.current;return()=>{s.over=true;cancelAnimationFrame(s.raf)}},[]);
+ // 圓體字型只在打開遊戲時載入，不影響其他頁面
+ useEffect(()=>{if(document.getElementById("game-cute-font"))return;const l=document.createElement("link");l.id="game-cute-font";l.rel="stylesheet";l.href=GAME_FONT;document.head.appendChild(l)},[]);
  useEffect(()=>{if(!flash)return;const t=setTimeout(()=>setFlash(""),1300);return()=>clearTimeout(t)},[flash]);
  // 鍵盤：方向鍵移動，空白鍵按住＝放下工具，放開＝提起
  useEffect(()=>{if(phase!=="play")return;const s=st.current;
@@ -135,39 +133,76 @@ export default function ShrimpGame({origin,onClose,onCoupon}:{origin:string;onCl
   q.grip={x:(e.clientX-r.left)/r.width*100,y:(e.clientY-r.top)/r.height*100};
   q.ptr={x:Math.max(0,Math.min(100,q.grip.x)),y:Math.max(0,Math.min(100,(e.clientY-off-r.top)/r.height*100))}};
  const s=st.current,holdPct=s.hold?Math.min(1,(performance.now()-s.hold.since)/(K.catchMs/K.fit[target])):0;
- return <div className="sheet-backdrop" onClick={phase==="play"?undefined:onClose}><div className={"sheet game"+(reduce?" reduce":"")} role="dialog" aria-label="樂甜釣蝦場" onClick={e=>e.stopPropagation()}>
-  <div className="sheet-grab"/><h2>🦐 樂甜釣蝦場</h2>
-  {phase==="intro"&&<>
-   <p className="game-step">① 選要抓什麼</p>
-   <div className="pick-row" role="radiogroup" aria-label="目標">{(Object.keys(TARGETS) as TargetId[]).map(id=><button key={id} role="radio" aria-checked={target===id} className={"pick"+(target===id?" on":"")} onClick={()=>setTarget(id)}><Sprite className="pick-icon" name={id} emoji={TARGETS[id].icon}/><b>{TARGETS[id].name}</b><small>{TARGETS[id].seconds} 秒抓 {TARGETS[id].goal} 隻</small></button>)}</div>
+ const left=Math.max(0,s.goal-s.caught),timeLow=phase==="play"&&s.left<=10;
+ const hearts=<span className="lives" aria-label={`剩 ${s.lives} 次機會`}>{"❤️".repeat(Math.max(0,s.lives))}{"🤍".repeat(LIVES-Math.max(0,s.lives))}</span>;
+ return <div className="sheet-backdrop game-backdrop" onClick={phase==="play"?undefined:onClose}><div className={"sheet game cute"+(reduce?" reduce":"")+" ph-"+phase} role="dialog" aria-label="樂甜釣蝦場" onClick={e=>e.stopPropagation()}>
+  <div className="game-top">
+   {phase==="play"||phase==="sending"?<span className="icon-btn ghost" aria-hidden/>:<button type="button" className="icon-btn" aria-label="關閉遊戲" onClick={onClose}>×</button>}
+   {phase!=="intro"&&<h2><CuteArt name="shrimp" className="title-ico"/>樂甜釣蝦場</h2>}
+   <span className="mode-badge"><i/>免費玩・贏折價券</span>
+  </div>
+  {phase==="intro"&&<div className="game-body">
+   <section className="game-hero">
+    <span className="eyebrow">ANXING · CATCH &amp; PLAY</span>
+    <small className="hero-brand">安星水產</small>
+    <h2 className="wordmark" aria-label="樂甜釣蝦場">{"樂甜釣蝦場".split("").map((c,i)=><b key={i} aria-hidden>{c}</b>)}</h2>
+    <p className="hero-sub">選好工具，把海鮮好朋友撈進水桶！</p>
+    <div className="hero-art" aria-hidden><CuteArt name="crab" className="m m-crab"/><CuteArt name="bucket" className="m m-bucket"/><CuteArt name="shrimp" className="m m-shrimp"/><CuteArt name="lobster" className="m m-lobster"/><i className="spark s1">✦</i><i className="spark s2">✧</i><i className="spark s3">✦</i><span className="bubble-tag">一起來玩！</span></div>
+    <div className="hero-facts"><div><b>{T.seconds}<small>秒</small></b><span>限時挑戰</span></div><div><b>{LIVES}<small>次</small></b><span>失手機會</span></div><div><b>0<small>元</small></b><span>免費遊玩</span></div></div>
+   </section>
+   <p className="game-step"><i>1</i>選要抓什麼</p>
+   <div className="pick-row" role="radiogroup" aria-label="目標">{(Object.keys(TARGETS) as TargetId[]).map(id=><button key={id} type="button" role="radio" aria-checked={target===id} className={"pick"+(target===id?" on":"")} onClick={()=>setTarget(id)}><Sprite className="pick-icon" name={id} emoji={TARGETS[id].icon}/><b>{TARGETS[id].name}</b><small>{TARGETS[id].seconds} 秒抓 {TARGETS[id].goal} 隻</small></button>)}</div>
    <p className="pick-desc">{T.desc}</p>
-   <p className="game-step">② 選工具 <small>（★ 越多越適合抓{T.name}）</small></p>
-   <div className="pick-row tools" role="radiogroup" aria-label="工具">{(Object.keys(TOOLS) as ToolId[]).map(id=><button key={id} role="radio" aria-checked={tool===id} className={"pick"+(tool===id?" on":"")} onClick={()=>setTool(id)}><Sprite className="pick-icon" name={id} emoji={TOOLS[id].icon}/><b>{TOOLS[id].name}</b><small className="stars">{stars(TOOLS[id].fit[target])}</small></button>)}</div>
+   <p className="game-step"><i>2</i>選工具 <small>★ 越多越適合抓{T.name}</small></p>
+   <div className="pick-row tools" role="radiogroup" aria-label="工具">{(Object.keys(TOOLS) as ToolId[]).map(id=><button key={id} type="button" role="radio" aria-checked={tool===id} className={"pick"+(tool===id?" on":"")} onClick={()=>setTool(id)}><Sprite className="pick-icon" name={id} emoji={TOOLS[id].icon}/><b>{TOOLS[id].name}</b><small className="stars">{stars(TOOLS[id].fit[target])}</small></button>)}</div>
    <p className="pick-desc">{K.desc}</p>
-   <p className="game-rule"><b>玩法：</b>共 3 次機會（{"❤️".repeat(3)}），被跑掉 3 次就結束。手指按住的是{K.name}<b>握把（尾端）</b>，{K.name}前端在手指上方，不會被手指擋住；按住水面放下{K.name}，停在{T.name}身上直到圈圈填滿就抓住；按著<b>慢慢</b>拖到池中央的水桶再放開。拖太快或{T.name}掙扎會掉回水裡；撈到破鞋扣 3 秒。</p>
-   <p className="game-prize">過關獎勵：<b>滿 NT$1,000 折 NT$5</b> 優惠券（每筆訂單限用一張、不累加、24 小時內有效）。免費遊玩，不用先購買。</p>
-   {msg&&<p className="err">{msg}</p>}<button className="primary grow" onClick={start}>開始抓{T.name}</button><button className="sheet-close" onClick={onClose}>先不要</button></>}
-  {phase!=="intro"&&<>
-   <div className="game-stats"><span>⏱ {s.left.toFixed(1)} 秒</span><span className="lives" aria-label={`剩 ${s.lives} 次機會`}>{"❤️".repeat(Math.max(0,s.lives))}{"🤍".repeat(LIVES-Math.max(0,s.lives))}</span><span className="caught">{T.icon} {s.caught} / {s.goal}</span></div>
+   <div className="rule-card"><b className="rule-title">怎麼玩</b>
+    <ol className="rule-steps">
+     <li><i>1</i><span>手指按住的是{K.name}<b>握把（尾端）</b>，{K.name}前端在手指上方，不會被手指擋住。</span></li>
+     <li><i>2</i><span>按住水面放下{K.name}，停在{T.name}身上直到<b>圈圈填滿</b>就抓住。</span></li>
+     <li><i>3</i><span>按著<b>慢慢</b>拖到池中央的水桶再放開，就入桶囉！</span></li>
+    </ol>
+    <div className="rule-chips"><span className="chip ok">共 3 次機會 ❤️❤️❤️</span><span className="chip warn">拖太快、掙扎會掉回水裡</span><span className="chip warn">撈到破鞋扣 3 秒</span></div>
+   </div>
+   <p className="game-prize"><span className="ticket" aria-hidden>🎟️</span><span>過關獎勵：<b>滿 NT$1,000 折 NT$5</b> 優惠券<small>每筆訂單限用一張、不累加、24 小時內有效。免費遊玩，不用先購買。</small></span></p>
+   {msg&&<p className="err">{msg}</p>}
+   <button type="button" className="primary grow btn-gold" onClick={start}>開始抓{T.name} <span aria-hidden>▶</span></button>
+   <button type="button" className="sheet-close text-btn" onClick={onClose}>先不要</button>
+  </div>}
+  {phase!=="intro"&&<div className="game-body play">
+   <div className="game-stats">
+    <div className="hud-cell"><small>抓到</small><span className="caught"><Sprite className="hud-ico" name={target} emoji={T.icon}/> {s.caught} / {s.goal}</span></div>
+    <div className={"hud-cell hud-time"+(timeLow?" low":"")}><small>剩餘時間</small><strong><b>{Math.ceil(s.left)}</b><small>s</small></strong></div>
+    <div className="hud-cell"><small>機會</small>{hearts}</div>
+   </div>
+   <div className="goal-bar"><div><b>{T.name}任務 · {K.name}</b><span>{left>0?`再抓 ${left} 隻過關`:"任務完成！"}</span></div><div className="goal-track"><i style={{width:Math.min(100,s.caught/Math.max(1,s.goal)*100)+"%"}}/></div></div>
    <div className={"pond t-"+target} ref={pond} aria-label={`池塘：按住放下${K.name}，拖到水桶放開`}
     onPointerDown={e=>{if(phase!=="play")return;(e.target as HTMLElement).setPointerCapture?.(e.pointerId);at(e);const q=st.current;q.down=true;q.ripples.push({x:q.ptr.x,y:q.ptr.y,t:performance.now()})}}
     onPointerMove={e=>{if(phase==="play")at(e)}} onPointerUp={()=>{if(phase==="play"){st.current.grip=null;release()}}} onPointerCancel={()=>{if(phase==="play"){st.current.grip=null;release()}}}>
+    <span className="pond-bubbles" aria-hidden><i/><i/><i/><i/><i/></span>
     <span className={"bucket"+(s.carry&&Math.hypot(s.tx-BUCKET.x,s.ty-BUCKET.y)<BUCKET.r+4?" ready":"")} style={{left:BUCKET.x+"%",top:BUCKET.y+"%"}}><Sprite name="bucket" emoji="🪣"/></span>
     {!reduce&&s.ripples.map(r=><span key={r.t} className="ripple" style={{left:r.x+"%",top:r.y+"%"}}/>)}
     {s.objs.map(o=>{const rot=o.boot?o.a/6:target==="crab"?((o.a+90)%180+180)%180-90:o.a-FACE[target];
      return <span key={o.id} className={"pond-obj"+(o.boot?" boot":"")+(o.hide>0?" hidden":"")+(o===s.carry?" carried":"")} style={{left:o.x+"%",top:o.y+"%",transform:`translate(-50%,-50%) rotate(${rot}deg)`}}>{o.boot?<Sprite name="boot" emoji="🥾"/>:<Sprite name={target} emoji={T.icon}/>}</span>})}
-    {target==="lobster"&&ROCKS.map((r,i)=><span key={i} className="rock" style={{left:r.x+"%",top:r.y+"%"}}>🪨</span>)}
+    {target==="lobster"&&ROCKS.map((r,i)=><span key={i} className="rock" style={{left:r.x+"%",top:r.y+"%"}}><CuteArt name="rock" className="spr cute"/></span>)}
     {s.grip&&s.down&&<><span className="grip-shaft" style={{left:s.grip.x+"%",top:s.grip.y+"%",height:Math.hypot((s.tx-s.grip.x)*(pond.current?.clientWidth??0)/100,(s.ty-s.grip.y)*(pond.current?.clientHeight??0)/100)+"px",transform:`rotate(${Math.atan2(-(s.tx-s.grip.x)*(pond.current?.clientWidth??0)/100,(s.ty-s.grip.y)*(pond.current?.clientHeight??0)/100)*180/Math.PI+180}deg)`}}/><span className="grip" data-x={s.grip.x.toFixed(1)} data-y={s.grip.y.toFixed(1)} style={{left:s.grip.x+"%",top:s.grip.y+"%"}}/></>}
-    <span className={"tool-cursor t-"+tool+(s.down?" down":"")} data-x={s.tx.toFixed(1)} data-y={s.ty.toFixed(1)} style={{left:s.tx+"%",top:s.ty+"%",width:K.r*2+"%"}}><span className="ring" style={{background:`conic-gradient(#ffd877 ${holdPct*360}deg,transparent 0)`}}/><Sprite className="ti" name={tool} emoji={K.icon}/></span>
+    <span className={"tool-cursor t-"+tool+(s.down?" down":"")} data-x={s.tx.toFixed(1)} data-y={s.ty.toFixed(1)} style={{left:s.tx+"%",top:s.ty+"%",width:K.r*2+"%"}}><span className="ring" style={{background:`conic-gradient(#ffd35a ${holdPct*360}deg,transparent 0)`}}/><Sprite className="ti" name={tool} emoji={K.icon}/></span>
     {s.carry&&<span className="risk" aria-label="掉落風險"><i style={{width:Math.min(100,s.risk*100)+"%"}}/></span>}
     {flash&&<span className="pond-flash" role="status">{flash}</span>}
    </div>
-   {phase==="play"&&<p className="hint">手指握尾端、看上方{K.name}前端 · 按住放下{K.name} → 圈滿抓住 → 慢慢拖到 🪣 放開（鍵盤：方向鍵移動、按住空白鍵）</p>}
-   {phase==="play"&&<button className="sheet-close" onClick={finish}>提前結束這局</button>}
-   {phase==="sending"&&<p className="hint">結算中…</p>}
-   {phase==="done"&&<>{won?<div className="coupon-card"><b>恭喜過關！</b><span>滿 NT${won.minTotal.toLocaleString()} 折 NT${won.discount}</span><small>已存到購物車，結帳時自動套用・{new Date(won.expiresAt).toLocaleString("zh-TW",{timeZone:"Asia/Taipei",month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"})} 前有效</small></div>:!msg&&<p className="game-rule">{s.lives<=0?"3 次機會用完了！":""}這局抓到 {s.caught} 隻{T.name}，差一點！換個工具再挑戰吧。</p>}
-    {msg&&<p className="err">{msg}</p>}
-    <button className="primary grow" onClick={()=>{setPhase("intro");setWon(null);setMsg("")}}>再玩一次</button><button className="sheet-close" onClick={onClose}>回到商店</button></>}
-  </>}
+   {phase==="play"&&<p className="hint">手指握尾端、看上方{K.name}前端 · 按住放下{K.name} → 圈滿抓住 → 慢慢拖到水桶放開（鍵盤：方向鍵移動、按住空白鍵）</p>}
+   {phase==="play"&&<button type="button" className="sheet-close text-btn" onClick={finish}>提前結束這局</button>}
+  </div>}
+  {phase==="sending"&&<div className="game-result"><div className="result-card"><span className="result-spark" aria-hidden>✦</span><p className="hint">結算中…</p></div></div>}
+  {phase==="done"&&<div className="game-result"><div className="result-card" role="status">
+   <span className="result-spark" aria-hidden>✦</span>
+   <p className="result-kicker">{won?"任務完成":"這局成績"}</p>
+   <h3>{won?"恭喜過關！":"再一次，會更順手！"}</h3>
+   <div className="result-score"><CuteArt name={target} className="result-ico"/><b>{s.caught}</b><small>/ {s.goal} 隻{T.name}</small></div>
+   {won?<div className="coupon-card"><b>🎟️ 優惠券到手</b><span>滿 NT${won.minTotal.toLocaleString()} 折 NT${won.discount}</span><small>已存到購物車，結帳時自動套用・{new Date(won.expiresAt).toLocaleString("zh-TW",{timeZone:"Asia/Taipei",month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"})} 前有效</small></div>:!msg&&<p className="game-rule">{s.lives<=0?"3 次機會用完了！":""}這局抓到 {s.caught} 隻{T.name}，差一點！換個工具再挑戰吧。</p>}
+   {msg&&<p className="err">{msg}</p>}
+   <button type="button" className="primary grow btn-teal" onClick={()=>{setPhase("intro");setWon(null);setMsg("")}}>再玩一次</button>
+   <button type="button" className="sheet-close btn-outline" onClick={onClose}>回到商店</button>
+  </div></div>}
  </div></div>;
 }
