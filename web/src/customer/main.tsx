@@ -1,5 +1,6 @@
 import {lazy,Suspense,useEffect,useMemo,useRef,useState} from "react";
 import {productImageSrc} from "../lib/product-photos";
+import {dedupeProductsByDisplayName} from "../lib/product-display";
 import {createRoot} from "react-dom/client";
 import {loadApiOrigin,errorText,newKey} from "../lib/api-config";
 import "./customer.css";
@@ -52,7 +53,7 @@ function Shop({origin}:{origin:string}){
  const [focus,setFocus]=useState(-1),[sel,setSel]=useState<M|null>(null),[pick,setPick]=useState(1),[toast,setToast]=useState("");
  const [zone,setZone]=useState<string|null>(null),listRef=useRef<HTMLDivElement>(null);
  const idem=useRef(newKey());
- const load=()=>fetch(origin+"/api/public/menu",{cache:"no-store",credentials:"omit"}).then(async r=>{if(!r.ok)throw new Error();const d=await r.json();setMenu(d.items);setUnits(d.units??[])}).catch(()=>setMsg("目前無法讀取商品，請稍後再試。"));
+ const load=()=>fetch(origin+"/api/public/menu",{cache:"no-store",credentials:"omit"}).then(async r=>{if(!r.ok)throw new Error();const d=await r.json();setMenu(dedupeProductsByDisplayName(d.items));setUnits(d.units??[])}).catch(()=>setMsg("目前無法讀取商品，請稍後再試。"));
  useEffect(()=>{load()},[]);
  const lines=(menu??[]).filter(m=>cart[m.id]>0);
  const subtotal=lines.reduce((s,m)=>s+priceNum(m.price)*cart[m.id],0),count=lines.reduce((s,m)=>s+cart[m.id],0);
