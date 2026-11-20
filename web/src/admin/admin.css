@@ -24,3 +24,7 @@
 .export-table th{background:#f1f5f9;white-space:nowrap}
 .export-table tr.dup td{background:#fff4e5}
 .admin-msg.warn,.tag.warn{background:#fff4e5;color:#8a4b00;border-color:#f5c27a}
+
+/* 商品照片 */
+.product-photo-row{display:flex;gap:12px;align-items:flex-start}.product-photo-body{flex:1;min-width:0}.product-photo{flex:0 0 72px;width:72px;height:72px;border-radius:10px;overflow:hidden;border:1px solid #dce8e8;background:#fff;display:grid;place-items:center}.product-photo img{width:100%;height:100%;object-fit:contain;display:block}.product-photo.empty{font-size:11px;color:#8aa0a8;background:#f4f8f8}.photo-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.photo-actions .photo-upload{position:relative;display:inline-flex;align-items:center;min-height:34px;padding:0 12px;border:1px solid #bfd5d7;border-radius:8px;background:#fff;color:#075f68;font-size:13px;cursor:pointer}.photo-actions .photo-upload input{position:absolute;inset:0;opacity:0;cursor:pointer}.photo-actions button{min-height:34px;font-size:13px}
+@media(min-width:700px){.product-photo{flex-basis:96px;width:96px;height:96px}}

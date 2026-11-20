@@ -4,6 +4,8 @@ import {Input} from "@/components/ui/input";
 import {NativeSelect,NativeSelectOption} from "@/components/ui/native-select";
 import {storagePhotos,photoSections,type Item} from "@/lib/storage-photos";
 import {locations} from "@/components/storage-map";
+import {getApiOrigin} from "@/lib/pages-api";
+import {productImageSrc} from "@/lib/product-photos";
 
 const locationOf=(id:string)=>locations.some(z=>z.id===id)?id:"unassigned";
 type Props={zone:string;items:Item[];disabled:boolean;error:string;update:(item:Item,changes:Partial<Item>)=>Promise<boolean>};
@@ -50,6 +52,7 @@ function ProductCard({item:i,categories,disabled,update}:{item:Item;categories:s
  const low=i.tracked&&i.minimum>0&&i.quantity<=i.minimum;
  const photos=storagePhotos.filter(p=>p.zone===i.zone);
  return <article className={"inventory-row "+(low?"low":"")}>
+ {productImageSrc(i.imageUrl,getApiOrigin())&&<a className="item-photo" href={productImageSrc(i.imageUrl,getApiOrigin())} target="_blank" rel="noopener noreferrer" aria-label={i.name+" 商品照片（另開分頁）"}><img src={productImageSrc(i.imageUrl,getApiOrigin())} alt={i.name} loading="lazy" decoding="async"/></a>}
  <div className="item-main"><div><strong>{i.name}</strong>{!i.tracked&&<span className="pending-tag">待盤點</span>}{low&&<span className="low-tag">庫存不足</span>}</div><small>{i.spec} · 售價 {i.price==="貼標"?"貼標":"$"+i.price}</small></div>
  <label className="storage-picker">商品分類<NativeSelect aria-label={i.name+"的分類"} value={i.category} disabled={disabled} onChange={e=>update(i,{category:e.target.value})}>{Array.from(new Set([...categories,"未分類"])).map(c=><NativeSelectOption key={c} value={c}>{c}</NativeSelectOption>)}</NativeSelect></label>
  <label className="storage-picker">存放位置<NativeSelect aria-label={i.name+"的存放位置"} value={locationOf(i.zone)} disabled={disabled} onChange={e=>update(i,{zone:e.target.value,photoId:"",positionNote:"",fridgeId:""})}><NativeSelectOption value="unassigned">待分配</NativeSelectOption>{locations.map(z=><NativeSelectOption key={z.id} value={z.id}>{z.name}</NativeSelectOption>)}</NativeSelect></label>

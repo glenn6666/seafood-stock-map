@@ -1,8 +1,9 @@
 import {useEffect,useMemo,useState} from "react";
-import {inventoryFetch} from "../lib/pages-api";
+import {inventoryFetch,getApiOrigin} from "../lib/pages-api";
+import {productImageSrc,compressProductPhoto} from "../lib/product-photos";
 import {errorText} from "../lib/api-config";
 import type {Me} from "../main";
-type P={id:string;zone:string;name:string;spec:string;unit:string;category:string;price:string;cost?:string;costNum?:number|null;costUnparsed?:boolean;quantity:number;onSale:boolean;dailyLimit:number;perOrderMax:number;displayZone:string;displayUnitId:string|null};
+type P={id:string;zone:string;name:string;spec:string;unit:string;category:string;price:string;cost?:string;costNum?:number|null;costUnparsed?:boolean;quantity:number;onSale:boolean;dailyLimit:number;perOrderMax:number;displayZone:string;displayUnitId:string|null;imageUrl?:string};
 type DU={id:string;name:string;type:"freezer"|"tank";sort:number;active:boolean;kind?:string;area?:string};
 export default function Products({me}:{me:Me}){
  const admin=me.role==="admin";
@@ -24,6 +25,18 @@ export default function Products({me}:{me:Me}){
   const r=await inventoryFetch("/api/products/bulk-on-sale",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({ids,onSale})});
   if(r.ok){setMsg(`已${onSale?"上架":"下架"} ${(await r.json()).changed} 項`);setSel(new Set());load()}else setMsg(await errorText(r));
  }
+ const [photoBusy,setPhotoBusy]=useState("");
+ async function setPhoto(p:P,file:File|null){
+  setPhotoBusy(p.id);setMsg("");
+  try{
+   let imageUrl="";
+   if(file){const b=await compressProductPhoto(file);const r=await inventoryFetch("/api/products/photos",{method:"POST",headers:{"Content-Type":b.type},body:b});if(!r.ok)throw new Error(await errorText(r,"照片上傳失敗"));imageUrl=(await r.json()).imageUrl}
+   else if(!confirm(`移除「${p.name}」的商品照片？（照片檔保留，可再上傳）`))return;
+   const r=await inventoryFetch(`/api/products/${encodeURIComponent(p.id)}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({imageUrl})});
+   if(!r.ok)throw new Error(await errorText(r,"照片儲存失敗"));
+   setMsg(file?`已更新「${p.name}」的商品照片`:`已移除「${p.name}」的商品照片`);load();
+  }catch(e){setMsg(e instanceof Error?e.message:"照片儲存失敗")}finally{setPhotoBusy("")}
+ }
  const toggle=(id:string)=>setSel(s=>{const n=new Set(s);n.has(id)?n.delete(id):n.add(id);return n});
  const allShown=shown.length>0&&shown.every(p=>sel.has(p.id));
  const val=<K extends keyof P>(p:P,k:K)=>(edit[p.id]?.[k]??p[k]) as P[K];
@@ -40,8 +53,11 @@ export default function Products({me}:{me:Me}){
   {admin&&items.some(p=>p.costUnparsed)&&<p className="admin-msg warn" role="status">有 {items.filter(p=>p.costUnparsed).length} 項商品的舊成本無法自動轉成數字（例如含單位或區間），記帳匯出時不會計入成本，請逐項重新輸入。</p>}
   {admin&&<div className="bulk-bar"><label className="select"><input type="checkbox" checked={allShown} onChange={()=>setSel(s=>{const n=new Set(s);shown.forEach(p=>allShown?n.delete(p.id):n.add(p.id));return n})}/> 全選目前列表</label><span>已選 {sel.size} 項</span><button className="primary" disabled={!sel.size} onClick={()=>bulk(true)}>全部上架</button><button disabled={!sel.size} onClick={()=>bulk(false)}>全部下架</button>{sel.size>0&&<button onClick={()=>setSel(new Set())}>清除選取</button>}</div>}
   <div className="admin-list">{shown.map(p=><div key={p.id} className="admin-card">
+   <div className="product-photo-row">{productImageSrc(p.imageUrl,getApiOrigin())?<a className="product-photo" href={productImageSrc(p.imageUrl,getApiOrigin())} target="_blank" rel="noopener noreferrer"><img src={productImageSrc(p.imageUrl,getApiOrigin())} alt={p.name} loading="lazy" decoding="async"/></a>:<span className="product-photo empty" aria-hidden>無照片</span>}<div className="product-photo-body">
    <div className="row">{admin&&<label className="select"><input type="checkbox" checked={sel.has(p.id)} onChange={()=>toggle(p.id)} aria-label={`選取 ${p.name}`}/></label>}<strong>{p.name}</strong><small>{p.spec}</small>{p.onSale&&<span className="tag ok">上架中</span>}{admin&&p.costUnparsed&&<span className="tag warn">成本待確認</span>}</div>
    <small>{p.category}・庫存 {p.quantity} {p.unit}・展示：{unitName(p.displayUnitId)}{p.displayZone?"":"（自動）"}{!admin&&p.onSale?`・每日限量 ${p.dailyLimit||"不限"}・每筆上限 ${p.perOrderMax||"不限"}`:""}</small>
+   {admin&&<div className="photo-actions"><label className="photo-upload">{photoBusy===p.id?"上傳中…":p.imageUrl?"換照片":"上傳照片"}<input type="file" accept="image/*" disabled={!!photoBusy} onChange={e=>{const f=e.target.files?.[0];e.target.value="";if(f)setPhoto(p,f)}}/></label>{p.imageUrl&&<button type="button" disabled={!!photoBusy} onClick={()=>setPhoto(p,null)}>移除照片</button>}</div>}
+   </div></div>
    {admin&&<div className="grid">
     <label>售價<input value={val(p,"price")} disabled={!admin} onChange={e=>set(p,"price",e.target.value)} inputMode="numeric"/></label>
     {admin&&<label>成本（每{p.unit||"單位"}，整數）<input type="number" min={0} step={1} value={val(p,"costNum")??""} onChange={e=>set(p,"costNum",e.target.value===""?null:Math.max(0,Math.floor(Number(e.target.value))||0))}/>{p.costUnparsed&&<small className="tag warn" data-testid="cost-unparsed">舊成本「{p.cost}」無法判讀，請重新輸入</small>}</label>}

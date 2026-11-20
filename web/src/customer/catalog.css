@@ -86,3 +86,7 @@ body:has(.shop-home){overflow:hidden;height:100%}
 
 .dine-entry{display:flex;align-items:center;justify-content:center;gap:8px;margin:0 0 12px;padding:10px 14px;border-radius:12px;background:#163b4d;color:#ffe6b1;border:2px solid #c89543;font-weight:800;text-decoration:none;font-size:14px;line-height:1.3}
 .dine-entry:hover{color:#fff8e8}
+
+/* 商品照片 */
+.item-thumb.photo{padding:0;overflow:hidden;background:#fff;border:0;cursor:zoom-in;min-height:0}.item-thumb.photo img{width:100%;height:100%;object-fit:cover;display:block}
+.sheet .sheet-photo{display:block;width:100%;max-height:min(52vh,460px);object-fit:contain;background:#fff;border-radius:12px;margin:4px 0 10px}

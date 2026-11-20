@@ -7,6 +7,7 @@ import {DINE_STORE} from '../lib/dine-menu';
 import {LINE_OA_PAGE} from '../dine/line-order';
 import {loadApiOrigin} from '../lib/api-config';
 import {groupOf} from '../customer/shop-groups';
+import {productImageSrc} from '../lib/product-photos';
 import './portal.css';
 
 const ARCADE_URL='https://anxing-seafood-arcade.lisa50921.chatgpt.site/';
@@ -43,7 +44,7 @@ function GroupFrame({mode,active}:{mode:'lookup'|'stock';active:boolean}){
  const frame=ref.current;frame?.addEventListener('load',attach);attach();return()=>{observer?.disconnect();frame?.removeEventListener('load',attach)}},[active]);
  return <iframe ref={ref} className="portal-group" title={mode==='lookup'?'團購到貨查詢':'團購現貨商品'} src={base+'group-buy.html?mode='+mode} style={{height}}/>;
 }
-type Item={id:string;name:string;spec:string;unit:string;category:string;price:string;available:number;displayUnit:{id:string;type:string;kind?:string}|null};
+type Item={id:string;name:string;spec:string;unit:string;category:string;price:string;available:number;displayUnit:{id:string;type:string;kind?:string}|null;imageUrl?:string};
 function Frozen({origin}:{origin:string}){
  const [items,setItems]=useState<Item[]>([]),[status,setStatus]=useState('loading'),[query,setQuery]=useState(''),[category,setCategory]=useState('全部'),[updated,setUpdated]=useState('');
  async function load(){setStatus('loading');try{const r=await fetch(origin+'/api/public/menu',{cache:'no-store',credentials:'omit'});if(!r.ok)throw Error();const d=await r.json();setItems(d.items.filter((i:Item)=>groupOf(i)==='chilled'));setUpdated(new Date().toLocaleString('zh-TW',{timeZone:'Asia/Taipei'}));setStatus('ready')}catch{setStatus('error')}}
@@ -52,7 +53,7 @@ function Frozen({origin}:{origin:string}){
  return <><div className="portal-stock-tools"><label>搜尋商品<input type="search" value={query} onChange={e=>setQuery(e.target.value)} placeholder="搜尋品名、規格…"/></label><button disabled={status==='loading'} onClick={load}>重新整理</button></div>
  <div className="portal-filters" aria-label="商品分類">{categories.map(c=><button key={c} aria-pressed={category===c} onClick={()=>setCategory(c)}>{c}</button>)}</div>
  {status==='loading'?<p role="status">正在更新商品…</p>:status==='error'?<p role="alert">目前無法讀取商品，請按「重新整理」再試一次，或聯繫 LINE 客服。</p>:<><p className="portal-count">{shown.length} 項商品 <small>更新時間：{updated}</small></p>
- <div className="portal-products">{shown.map(i=><article key={i.id}><div className="portal-product-top"><span>{i.category}</span><small>{i.available>0?'可訂購':'暫時售完'}</small></div><h2>{i.name}</h2><p>{i.spec||'規格請洽店員'}</p><strong>NT$ {i.price||'洽詢'} <small>／{i.unit}</small></strong><a href={LINE_OA_PAGE} target="_blank" rel="noopener noreferrer">詢問商品 ↗</a></article>)}</div>{!shown.length&&<p className="portal-empty">{items.length?'沒有符合條件的商品，請換個關鍵字。':'目前沒有上架的冷藏・冷凍商品，歡迎洽詢小編。'}</p>}<a className="portal-original" href={base+'order.html'}>前往海鮮購物下單 →</a></>}
+ <div className="portal-products">{shown.map(i=><article key={i.id} className="has-photo">{productImageSrc(i.imageUrl,origin)?<a className="portal-product-photo" href={productImageSrc(i.imageUrl,origin)} target="_blank" rel="noopener noreferrer" aria-label={i.name+" 看大圖"}><img src={productImageSrc(i.imageUrl,origin)} alt={i.name} loading="lazy" decoding="async"/></a>:<div className="portal-product-photo empty" aria-hidden><span>🧊</span><small>照片準備中</small></div>}<div className="portal-product-top"><span>{i.category}</span><small>{i.available>0?'可訂購':'暫時售完'}</small></div><h2>{i.name}</h2><p>{i.spec||'規格請洽店員'}</p><strong>NT$ {i.price||'洽詢'} <small>／{i.unit}</small></strong><a href={LINE_OA_PAGE} target="_blank" rel="noopener noreferrer">詢問商品 ↗</a></article>)}</div>{!shown.length&&<p className="portal-empty">{items.length?'沒有符合條件的商品，請換個關鍵字。':'目前沒有上架的冷藏・冷凍商品，歡迎洽詢小編。'}</p>}<a className="portal-original" href={base+'order.html'}>前往海鮮購物下單 →</a></>}
  </>;
 }
 createRoot(document.getElementById('root')!).render(<App/>);

@@ -16,7 +16,7 @@ export const fridges = [
  {id:"01-middle",label:"冰箱 2 · 海鮮",left:36,width:30},
  {id:"01-right",label:"冰箱 3 · 冷凍食品",left:66,width:30},
 ];
-export type Item={id:string;zone:string;category:string;name:string;spec:string;price:string;quantity:number;unit:string;minimum:number;batch:string;tracked:boolean;photoId?:string;positionNote?:string;fridgeId?:string};
+export type Item={id:string;zone:string;category:string;name:string;spec:string;price:string;quantity:number;unit:string;minimum:number;batch:string;tracked:boolean;photoId?:string;positionNote?:string;fridgeId?:string;imageUrl?:string};
 export function photoSections(photoId:string){
  if(photoId==="photo-08-freezers")return [
   {id:"08-front",label:"左前方冷凍櫃",left:1,top:43,width:60,height:50},
