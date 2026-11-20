@@ -8,6 +8,7 @@ import {LINE_OA_PAGE} from '../dine/line-order';
 import {loadApiOrigin} from '../lib/api-config';
 import {groupOf} from '../customer/shop-groups';
 import {productImageSrc} from '../lib/product-photos';
+import {dedupeProductsByDisplayName} from '../lib/product-display';
 import './portal.css';
 
 const ARCADE_URL='https://anxing-seafood-arcade.lisa50921.chatgpt.site/';
@@ -47,7 +48,7 @@ function GroupFrame({mode,active}:{mode:'lookup'|'stock';active:boolean}){
 type Item={id:string;name:string;spec:string;unit:string;category:string;price:string;available:number;displayUnit:{id:string;type:string;kind?:string}|null;imageUrl?:string};
 function Frozen({origin}:{origin:string}){
  const [items,setItems]=useState<Item[]>([]),[status,setStatus]=useState('loading'),[query,setQuery]=useState(''),[category,setCategory]=useState('全部'),[updated,setUpdated]=useState('');
- async function load(){setStatus('loading');try{const r=await fetch(origin+'/api/public/menu',{cache:'no-store',credentials:'omit'});if(!r.ok)throw Error();const d=await r.json();setItems(d.items.filter((i:Item)=>groupOf(i)==='chilled'));setUpdated(new Date().toLocaleString('zh-TW',{timeZone:'Asia/Taipei'}));setStatus('ready')}catch{setStatus('error')}}
+ async function load(){setStatus('loading');try{const r=await fetch(origin+'/api/public/menu',{cache:'no-store',credentials:'omit'});if(!r.ok)throw Error();const d=await r.json();setItems(dedupeProductsByDisplayName(d.items.filter((i:Item)=>groupOf(i)==='chilled')));setUpdated(new Date().toLocaleString('zh-TW',{timeZone:'Asia/Taipei'}));setStatus('ready')}catch{setStatus('error')}}
  useEffect(()=>{load()},[origin]);
  const categories=['全部',...new Set(items.map(i=>i.category))],shown=items.filter(i=>(category==='全部'||i.category===category)&&(!query||[i.name,i.spec,i.category].join(' ').includes(query.trim())));
  return <><div className="portal-stock-tools"><label>搜尋商品<input type="search" value={query} onChange={e=>setQuery(e.target.value)} placeholder="搜尋品名、規格…"/></label><button disabled={status==='loading'} onClick={load}>重新整理</button></div>
