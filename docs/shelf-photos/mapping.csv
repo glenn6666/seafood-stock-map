@@ -1,0 +1,163 @@
+﻿photo_no,file,item_id,item_name,item_price,photo_price,confidence,role,note
+5,LINE_ALBUM_架上_260820_29.jpg,stk1031-108,鯖魚（冷凍）,89,89,high,main,挪威薄鹽鯖魚
+5,LINE_ALBUM_架上_260820_29.jpg,stk1031-026,鯖魚（架上）,89,89,high,main,挪威薄鹽鯖魚
+7,LINE_ALBUM_架上_260820_31.jpg,stk1031-110,虱目魚肚（冷凍）,125,125,high,main,牛奶虱目魚肚 170g
+7,LINE_ALBUM_架上_260820_31.jpg,stk1031-025,虱目魚肚（架上）,125,125,high,main,牛奶虱目魚肚 170g
+10,LINE_ALBUM_架上_260820_34.jpg,stk1031-038,煙燻鮭魚,159,,high,main,煙燻鮭魚切片
+12,LINE_ALBUM_架上_260820_36.jpg,stk1031-098,牛肋條（冷凍）,280,280,high,main,美國安格斯 Choice 牛肋條 400g
+12,LINE_ALBUM_架上_260820_36.jpg,stk1031-084,牛肋條（架上）,280,280,high,main,美國安格斯 Choice 牛肋條 400g
+12,LINE_ALBUM_架上_260820_36.jpg,A-肉類-5,美國牛肋條,280,280,high,main,美國安格斯 Choice 牛肋條 400g
+13,LINE_ALBUM_架上_260820_37.jpg,stk1031-073,比臉大,269,269,medium,main,美國安格斯 Prime 背肩牛排 280g（價錢 269 同比臉大，請確認）
+13,LINE_ALBUM_架上_260820_37.jpg,A-肉類-3,美國安格斯霜降比臉大牛排,269,269,medium,main,美國安格斯 Prime 背肩牛排 280g（價錢 269 同比臉大，請確認）
+14,LINE_ALBUM_架上_260820_38.jpg,stk1031-071,無骨牛,319,319,high,main,美國安格斯 Choice 無骨牛小排 200g
+14,LINE_ALBUM_架上_260820_38.jpg,A-肉類-2,美國安格斯無骨牛小排,319,319,high,main,美國安格斯 Choice 無骨牛小排 200g
+19,LINE_ALBUM_架上_260919_4.jpg,stk1031-099,帶骨牛小排（冷凍）,279,279,high,main,Choice 帶骨牛小排 300g
+19,LINE_ALBUM_架上_260919_4.jpg,stk1031-070,帶骨牛小排（架上）,279,279,high,main,Choice 帶骨牛小排 300g
+23,LINE_ALBUM_架上_261120_1.png,stk1031-003,海苔原味,69,69,high,main,岩燒海苔 原味／梅子（同一張）
+23,LINE_ALBUM_架上_261120_1.png,stk1031-004,海苔梅子,69,69,high,main,岩燒海苔 原味／梅子（同一張）
+24,LINE_ALBUM_架上_261120_10.jpg,stk1031-021,赤蝦,199,199,high,main,赤蝦
+30,LINE_ALBUM_架上_261120_16.jpg,stk1031-086,香腸,209,209,high,main,二空老兵牌香腸 500g
+34,LINE_ALBUM_架上_261120_2.jpg,stk1031-075,舒肥雞,45,45,high,main,台灣舒肥雞胸 100g
+37,LINE_ALBUM_架上_261120_22.jpg,A-肉類-13,美國安格斯骰子牛,169,169,high,main,美國安格斯骰子牛 200g 海報
+40,LINE_ALBUM_架上_261120_25.jpg,A-肉類-1,美國安格斯帶骨牛小排,269,279,high,main,Choice 帶骨牛小排 300g（同款，A 目錄 269）（照片價 279，系統價 269）
+45,LINE_ALBUM_架上_261120_3.jpg,stk1031-114,鮭魚菲力（冷凍）,189,189,high,main,鮭魚菲力 200/250g
+45,LINE_ALBUM_架上_261120_3.jpg,stk1031-016,鮭魚菲力（架上）,189,189,high,main,鮭魚菲力 200/250g
+54,LINE_ALBUM_架上_261120_38.jpg,stk1031-060,半殼,169,169,high,main,半殼扇貝 550g
+55,LINE_ALBUM_架上_261120_39.jpg,stk1031-037,鮑魚,429,429,high,main,活凍大鮑魚 16p
+57,LINE_ALBUM_架上_261120_40.jpg,stk1031-063,組合貝,299,299,high,main,組合干貝柱 1kg
+58,LINE_ALBUM_架上_261120_41.jpg,stk1031-061,凡立貝,280,280,high,main,帆立貝肉 1kg
+59,LINE_ALBUM_架上_261120_42.jpg,stk1031-052,鮮凍小干貝,159,159,high,main,鮮凍小干貝 330g
+60,LINE_ALBUM_架上_261120_43.jpg,stk1031-042,鳳羅,150,150,high,main,大鳳螺 600g
+62,LINE_ALBUM_架上_261120_45.jpg,stk1031-057,湯包,199,199,high,main,禾家鮮肉湯包 1.5kg
+63,LINE_ALBUM_架上_261120_46.jpg,stk1031-101,蝦球（冷凍）,270,270,high,main,御炸蝦球 L號 500g
+63,LINE_ALBUM_架上_261120_46.jpg,stk1031-054,蝦球（架上）,270,270,high,main,御炸蝦球 L號 500g
+64,LINE_ALBUM_架上_261120_47.jpg,stk1031-106,蝦仁漿（冷凍）,55,55,high,main,蝦仁漿 100g
+64,LINE_ALBUM_架上_261120_47.jpg,stk1031-048,蝦仁漿（架上）,55,55,high,main,蝦仁漿 100g
+66,LINE_ALBUM_架上_261120_49.jpg,stk1031-112,翡翠蔥抓餅,109,109,high,main,禾家鄉翡翠蔥抓餅 1.4kg（蔥抓餅與翡翠蔥抓餅同價，兩項都放）
+66,LINE_ALBUM_架上_261120_49.jpg,stk1031-044,蔥抓餅,109,109,high,main,禾家鄉翡翠蔥抓餅 1.4kg（蔥抓餅與翡翠蔥抓餅同價，兩項都放）
+67,LINE_ALBUM_架上_261120_5.jpg,stk1031-119,4P草蝦（冷凍）,200,200,high,main,馬來西亞 4P 大草蝦
+67,LINE_ALBUM_架上_261120_5.jpg,stk1031-068,4P草蝦（架上）,200,200,high,main,馬來西亞 4P 大草蝦
+69,LINE_ALBUM_架上_261120_51.jpg,stk1031-043,雞塊,199,199,high,main,龍紅雞塊 1kg
+70,LINE_ALBUM_架上_261120_52.jpg,stk1031-033,小龍蝦各,299,299,medium,main,小龍蝦全口味（十三香／蒜香／麻辣同一張）
+70,LINE_ALBUM_架上_261120_52.jpg,stk1031-105,蒜香小龍蝦,299,299,medium,main,小龍蝦全口味（十三香／蒜香／麻辣同一張）
+70,LINE_ALBUM_架上_261120_52.jpg,stk1031-104,麻辣小龍蝦,299,299,medium,main,小龍蝦全口味（十三香／蒜香／麻辣同一張）
+71,LINE_ALBUM_架上_261120_53.jpg,stk1031-030,巨蟹棒,299,299,high,main,日本巨蟹棒 600g
+72,LINE_ALBUM_架上_261120_54.jpg,stk1031-107,烏龍麵（冷凍）,139,139,high,main,讚岐烏龍麵 1250g
+72,LINE_ALBUM_架上_261120_54.jpg,stk1031-047,烏龍麵（架上）,139,139,high,main,讚岐烏龍麵 1250g
+73,LINE_ALBUM_架上_261120_55.jpg,stk1031-081,雞腿肉香腸,199,199,high,main,雞腿肉香腸 1kg
+74,LINE_ALBUM_架上_261120_56.jpg,stk1031-058,蟹味棒,90,90,high,main,日式蟹味棒 270g
+75,LINE_ALBUM_架上_261120_57.jpg,stk1031-103,花枝丸（冷凍）,139,139,high,main,特級花枝丸 600g
+75,LINE_ALBUM_架上_261120_57.jpg,stk1031-055,花枝丸（架上）,139,139,high,main,特級花枝丸 600g
+76,LINE_ALBUM_架上_261120_58.jpg,stk1031-017,脆皮肥腸,199,199,high,main,蔥椒脆皮肥腸
+77,LINE_ALBUM_架上_261120_59.jpg,stk1031-036,紅龍牛肉湯,79,79,high,main,紅龍牛肉湯（牛肉湯同價，兩項都放）
+77,LINE_ALBUM_架上_261120_59.jpg,stk1031-113,牛肉湯,79,79,high,main,紅龍牛肉湯（牛肉湯同價，兩項都放）
+78,LINE_ALBUM_架上_261120_6.jpg,stk1031-116,午仔魚（冷凍）,180,180,high,main,午仔魚 大隻300-400g
+78,LINE_ALBUM_架上_261120_6.jpg,stk1031-014,午仔魚（架上）,180,180,high,main,午仔魚 大隻300-400g
+81,LINE_ALBUM_架上_261120_62.jpg,stk1031-115,尼信（冷凍）,145,145,high,main,尼信魚卵生魚片 170g
+81,LINE_ALBUM_架上_261120_62.jpg,stk1031-059,尼信（架上）,145,145,high,main,尼信魚卵生魚片 170g
+82,LINE_ALBUM_架上_261120_63.jpg,stk1031-040,甜蝦,299,299,high,main,生食級去殼帶尾甜蝦 50尾
+83,LINE_ALBUM_架上_261120_64.jpg,A-肉類-15,大成雞腿排,59,59,high,main,大成香煎雞腿排 150g
+84,LINE_ALBUM_架上_261120_65.jpg,stk1031-080,骰子牛,129,129,high,main,美國安格斯骰子牛 200g（原肉非重組）
+85,LINE_ALBUM_架上_261120_66.jpg,stk1031-079,松阪豬,188,188,high,main,西班牙伊比利松阪豬 200g
+85,LINE_ALBUM_架上_261120_66.jpg,A-肉類-4,西班牙伊比利松阪豬,188,188,high,main,西班牙伊比利松阪豬 200g
+89,LINE_ALBUM_架上_261120_7.jpg,stk1031-102,鱸魚清肉（冷凍）,85,85,high,main,金目鱸魚清肉片
+89,LINE_ALBUM_架上_261120_7.jpg,stk1031-027,鱸魚清肉（架上）,85,85,high,main,金目鱸魚清肉片
+92,LINE_ALBUM_架上_261120_72.jpg,stk1031-111,雞腿捲,109,109,high,main,爆漿雞腿卷 350g
+92,LINE_ALBUM_架上_261120_72.jpg,A-肉類-14,爆汁雞腿捲,109,109,high,main,爆漿雞腿卷 350g
+95,LINE_ALBUM_架上_261120_75.jpg,A-肉類-12,小羔羊捲片,299,299,high,main,澳洲小羔羊五花卷片 500g
+100,LINE_ALBUM_架上_261120_8.jpg,stk1031-015,鮭魚切片,149,149,high,main,智利鮭魚切片
+101,LINE_ALBUM_架上_261120_80.jpg,stk1031-090,豬五花小,190,190,high,main,台灣豬五花捲片 500g
+101,LINE_ALBUM_架上_261120_80.jpg,A-肉類-10,豬五花捲片(小包),190,190,high,main,台灣豬五花捲片 500g
+102,LINE_ALBUM_架上_261120_81.jpg,stk1031-088,牛五花小,220,220,high,main,美國牛五花捲片 500g
+102,LINE_ALBUM_架上_261120_81.jpg,A-肉類-8,牛五花捲片(小包),220,220,high,main,美國牛五花捲片 500g
+103,LINE_ALBUM_架上_261120_82.jpg,stk1031-002,胡椒粉,25,25,high,main,阿順師胡椒粉包
+104,LINE_ALBUM_架上_261120_83.jpg,stk1031-011,玉米粒,30,30,high,main,爭鮮甜玉米粒（3罐90）
+107,107_一排小卷_165_使用者提供.jpg,stk1031-109,一排小卷（冷凍）,165,165,high,main,一排小卷 300g以上 一盒165（使用者 11/20 提供的新照片；舊海報印 150 已作廢）
+107,107_一排小卷_165_使用者提供.jpg,stk1031-046,一排小卷（架上）,165,165,high,main,一排小卷 300g以上 一盒165（使用者 11/20 提供的新照片；舊海報印 150 已作廢）
+108,LINE_ALBUM_架上_261120_87.jpg,stk1031-032,軟絲,180,180,high,main,4A 大軟絲 350g
+109,LINE_ALBUM_架上_261120_88.jpg,stk1031-064,透抽,165,165,high,main,大透抽 250g
+110,LINE_ALBUM_架上_261120_89.jpg,stk1031-041,蟹腳,150,150,high,main,沙蟹腳300g
+111,LINE_ALBUM_架上_261120_9.jpg,stk1031-020,小羔羊肋條,139,139,high,main,澳洲小羔羊肋條
+112,LINE_ALBUM_架上_261120_90.jpg,stk1031-094,蟹管肉（冷凍）,69,69,high,main,蟹管肉 90g
+112,LINE_ALBUM_架上_261120_90.jpg,stk1031-045,蟹管肉（架上）,69,69,high,main,蟹管肉 90g
+113,LINE_ALBUM_架上_261120_91.jpg,stk1031-093,國王蝦（冷凍）,299,299,high,main,國王蝦 21/25 泰國大白蝦 600g
+113,LINE_ALBUM_架上_261120_91.jpg,stk1031-066,國王蝦（架上）,299,299,high,main,國王蝦 21/25 泰國大白蝦 600g
+114,LINE_ALBUM_架上_261120_92.jpg,stk1031-100,50/60白蝦（冷凍）,250,250,high,main,50/60 活凍白蝦
+114,LINE_ALBUM_架上_261120_92.jpg,stk1031-067,50/60白蝦（架上）,250,250,high,main,50/60 活凍白蝦
+116,LINE_ALBUM_架上_261120_94.jpg,stk1031-118,8P草蝦（冷凍）,165,165,high,main,馬來西亞活凍 8P 大草蝦
+116,LINE_ALBUM_架上_261120_94.jpg,stk1031-069,8P草蝦（架上）,165,165,high,main,馬來西亞活凍 8P 大草蝦
+119,LINE_ALBUM_架上_261120_97.jpg,stk1031-117,泰蝦仁（冷凍）,299,299,high,main,泰蝦仁 600g
+119,LINE_ALBUM_架上_261120_97.jpg,stk1031-050,泰蝦仁（架上）,299,299,high,main,泰蝦仁 600g
+123,S__5496839_0.jpg,stk1031-087,牛五花,399,399,high,main,美國牛五花捲片 1kg
+123,S__5496839_0.jpg,A-肉類-7,牛五花捲片(大包),399,399,high,main,美國牛五花捲片 1kg
+124,S__5496840_0.jpg,stk1031-089,豬五花,350,350,high,main,台灣豬五花捲片 1kg
+124,S__5496840_0.jpg,A-肉類-9,豬五花捲片(大包),350,350,high,main,台灣豬五花捲片 1kg
+125,S__5496841_0.jpg,stk1031-091,板建牛卷,280,280,high,main,澳洲板腱牛捲片 500g
+125,S__5496841_0.jpg,A-肉類-11,牛板腱捲片,280,280,high,main,澳洲板腱牛捲片 500g
+126,S__5496842_0.jpg,stk1031-085,豬梅花,355,355,high,main,台灣豬梅花捲片 1kg
+126,S__5496842_0.jpg,A-肉類-6,台灣豬梅花捲片,355,355,high,main,台灣豬梅花捲片 1kg
+127,S__5496843_0.jpg,stk1031-092,綿羊卷,299,299,high,main,紐西蘭綿羊肩捲片 500g
+2,LINE_ALBUM_架上_260820_26.jpg,,,,,ambiguous,not attached,巨型鱈場蟹腳：庫存沒有鱈場蟹腳（蟹腳已配沙蟹腳 150 元）
+17,LINE_ALBUM_架上_260919_2.jpg,,,,,ambiguous,not attached,北海道生食級干貝 Mix 包 360 元：組合貝 299／鮮凍小干貝 159 價錢都對不上
+29,LINE_ALBUM_架上_261120_15.jpg,,,,,ambiguous,not attached,殺清魷魚串 79 元：庫存沒有魷魚串（透抽 165 不同）
+31,LINE_ALBUM_架上_261120_17.jpg,,,,,ambiguous,not attached,美國牛五花燒烤片 500g：已用 102 號（捲片 500g 220 元）當牛五花小
+35,LINE_ALBUM_架上_261120_20.jpg,,,,,ambiguous,not attached,台灣豬五花燒烤片 500g：已用 101 號當豬五花小
+61,LINE_ALBUM_架上_261120_44.jpg,,,,,ambiguous,not attached,北海道ほたて貝柱 1650 元/包：對不上庫存干貝品項
+79,LINE_ALBUM_架上_261120_60.jpg,,,,,ambiguous,not attached,生食級花枝片 229 元：庫存「花枝」是 139 元，不確定是不是同一樣
+88,LINE_ALBUM_架上_261120_69.jpg,,,,,ambiguous,not attached,西班牙伊比利豬梅花肉片 100g 99 元：庫存豬梅花是台灣豬
+90,LINE_ALBUM_架上_261120_70.jpg,,,,,ambiguous,not attached,美國安格斯無骨牛小排肉片 100g 169 元：庫存無骨牛是 319 元整片
+94,LINE_ALBUM_架上_261120_74.jpg,,,,,ambiguous,not attached,雞肉捲片 500g 190 元：庫存雞肉卷 109 元對不上
+115,LINE_ALBUM_架上_261120_93.jpg,,,,,ambiguous,not attached,超大極品白蝦 30/40 250 元/盒：可能是有氧蝦（250 元），不確定
+118,LINE_ALBUM_架上_261120_96.jpg,,,,,ambiguous,not attached,馬來西亞活凍白蝦 40/50 250g 120 元：可能是有氧蝦，不確定
+120,LINE_ALBUM_架上_261120_98.jpg,,,,,ambiguous,not attached,馬來西亞頂級超大蝦仁 21/25 399 元：庫存沒有對應蝦仁（泰蝦仁 299）
+3,LINE_ALBUM_架上_260820_27.jpg,,,,,unmatched,not attached,鳳勾翅
+4,LINE_ALBUM_架上_260820_28.jpg,,,,,unmatched,not attached,鳳勾翅
+8,LINE_ALBUM_架上_260820_32.jpg,,,,,unmatched,not attached,三去大黑公魚
+11,LINE_ALBUM_架上_260820_35.jpg,,,,,unmatched,not attached,金園厚切排骨
+27,LINE_ALBUM_架上_261120_13.jpg,,,,,unmatched,not attached,泰國蝦母蝦（活體）
+33,LINE_ALBUM_架上_261120_19.jpg,,,,,unmatched,not attached,中秋燒烤肉片組合海報（多樣商品）
+36,LINE_ALBUM_架上_261120_21.jpg,,,,,unmatched,not attached,A5 和牛霜降燒烤片
+38,LINE_ALBUM_架上_261120_23.jpg,,,,,unmatched,not attached,北海道秋鮭魚卵
+68,LINE_ALBUM_架上_261120_50.jpg,,,,,unmatched,not attached,日式綜合火鍋料
+80,LINE_ALBUM_架上_261120_61.jpg,,,,,unmatched,not attached,日本生食級生蠔
+86,LINE_ALBUM_架上_261120_67.jpg,,,,,unmatched,not attached,日本佐賀 A5 和牛霜降切片
+87,LINE_ALBUM_架上_261120_68.jpg,,,,,unmatched,not attached,紐西蘭老饕牛舌切片
+91,LINE_ALBUM_架上_261120_71.jpg,,,,,unmatched,not attached,豚肩排肉 450g
+105,LINE_ALBUM_架上_261120_84.jpg,,,,,unmatched,not attached,袋裝蚵仔（無標籤）
+106,LINE_ALBUM_架上_261120_85.jpg,,,,,unmatched,not attached,帶殼生蠔（無標籤）
+117,LINE_ALBUM_架上_261120_95.jpg,,,,,unmatched,not attached,馬來西亞 5P 大草蝦（庫存只有 4P／8P）
+1,LINE_ALBUM_架上_260820_25.jpg,,,,,duplicate,not attached,與 078 號同一樣商品（另一張／重複下載）
+6,LINE_ALBUM_架上_260820_30.jpg,,,,,duplicate,not attached,與 100 號同一樣商品（另一張／重複下載）
+9,LINE_ALBUM_架上_260820_33.jpg,,,,,duplicate,not attached,與其他未配對照片重複
+15,LINE_ALBUM_架上_260919_1.jpg,,,,,duplicate,not attached,與 045 號同一樣商品（另一張／重複下載）
+16,LINE_ALBUM_架上_260919_11.jpg,,,,,duplicate,not attached,與 007 號同一樣商品（另一張／重複下載）
+18,LINE_ALBUM_架上_260919_3.jpg,,,,,duplicate,not attached,與 089 號同一樣商品（另一張／重複下載）
+20,LINE_ALBUM_架上_260919_5.jpg,,,,,duplicate,not attached,與 078 號同一樣商品（另一張／重複下載）
+21,LINE_ALBUM_架上_260919_74.jpg,,,,,duplicate,not attached,與 067 號同一樣商品（另一張／重複下載）
+22,LINE_ALBUM_架上_261120_1.jpg,,,,,duplicate,not attached,與 127 號同一樣商品（另一張／重複下載）
+25,LINE_ALBUM_架上_261120_11.jpg,,,,,duplicate,not attached,與 085 號同一樣商品（另一張／重複下載）
+26,LINE_ALBUM_架上_261120_12.jpg,,,,,duplicate,not attached,與 019 號同一樣商品（另一張／重複下載）
+28,LINE_ALBUM_架上_261120_14.jpg,,,,,duplicate,not attached,與 019 號同一樣商品（另一張／重複下載）
+32,LINE_ALBUM_架上_261120_18.jpg,,,,,duplicate,not attached,與 126 號同一樣商品（另一張／重複下載）
+39,LINE_ALBUM_架上_261120_24.jpg,,,,,duplicate,not attached,與其他未配對照片重複
+41,LINE_ALBUM_架上_261120_26.jpg,,,,,duplicate,not attached,與其他未配對照片重複
+42,LINE_ALBUM_架上_261120_27.jpg,,,,,duplicate,not attached,與其他未配對照片重複
+43,LINE_ALBUM_架上_261120_28.jpg,,,,,duplicate,not attached,與其他未配對照片重複
+44,LINE_ALBUM_架上_261120_29.jpg,,,,,duplicate,not attached,與 005 號同一樣商品（另一張／重複下載）
+46,LINE_ALBUM_架上_261120_30.jpg,,,,,duplicate,not attached,與 100 號同一樣商品（另一張／重複下載）
+47,LINE_ALBUM_架上_261120_31.jpg,,,,,duplicate,not attached,與其他未配對照片重複
+48,LINE_ALBUM_架上_261120_32.jpg,,,,,duplicate,not attached,與其他未配對照片重複
+49,LINE_ALBUM_架上_261120_33.jpg,,,,,duplicate,not attached,與 010 號同一樣商品（另一張／重複下載）
+50,LINE_ALBUM_架上_261120_34.jpg,,,,,duplicate,not attached,與其他未配對照片重複
+51,LINE_ALBUM_架上_261120_35.jpg,,,,,duplicate,not attached,與 012 號同一樣商品（另一張／重複下載）
+52,LINE_ALBUM_架上_261120_36.jpg,,,,,duplicate,not attached,與 013 號同一樣商品（另一張／重複下載）
+53,LINE_ALBUM_架上_261120_37.jpg,,,,,duplicate,not attached,與 014 號同一樣商品（另一張／重複下載）
+56,LINE_ALBUM_架上_261120_4.jpg,,,,,duplicate,not attached,與 007 號同一樣商品（另一張／重複下載）
+65,LINE_ALBUM_架上_261120_48.jpg,,,,,duplicate,not attached,與其他未配對照片重複
+93,LINE_ALBUM_架上_261120_73.jpg,,,,,duplicate,not attached,與 014 號同一樣商品（另一張／重複下載）
+96,LINE_ALBUM_架上_261120_76.jpg,,,,,duplicate,not attached,與 123 號同一樣商品（另一張／重複下載）
+97,LINE_ALBUM_架上_261120_77.jpg,,,,,duplicate,not attached,與 124 號同一樣商品（另一張／重複下載）
+98,LINE_ALBUM_架上_261120_78.jpg,,,,,duplicate,not attached,與 126 號同一樣商品（另一張／重複下載）
+99,LINE_ALBUM_架上_261120_79.jpg,,,,,duplicate,not attached,與 125 號同一樣商品（另一張／重複下載）
+121,S__38813875.jpg,,,,,duplicate,not attached,與其他未配對照片重複
+122,S__38813888.jpg,,,,,duplicate,not attached,與 023 號同一樣商品（另一張／重複下載）

@@ -2,7 +2,8 @@ import {getCatalog,catalogAdmin} from './catalog';
 import {storagePhotos,photoSections,normalizePhotoId} from "../web/src/lib/storage-photos";
 import {catalogPrice} from "../web/src/lib/catalog";
 import {ledgerRoute} from "./ledger";
-import {publicDineMenu,publicDinePhoto,createDineOrder,dineAdminRoute} from "./dine";
+import {publicDineMenu,publicDinePhoto,createDineOrder,dineAdminRoute,uploadDinePhoto} from "./dine";
+import {isValidImageUrl} from "../web/src/lib/dine-menu";
 
 export type Env={DB:D1Database;INVENTORY_TOKEN:string;ALLOWED_ORIGIN:string};
 type Role="admin"|"staff";
@@ -76,7 +77,7 @@ async function createSession(env:Env,userId:string,tokenVersion:number){
 // ---------- 庫存（沿用舊 API 契約） ----------
 async function getInventory(env:Env){
  const {results}=await env.DB.prepare("SELECT * FROM inventory ORDER BY zone,name").all();
- return {items:results.map((i:any)=>({id:i.id,zone:i.zone,name:i.name,spec:i.spec,quantity:i.quantity,unit:i.unit,minimum:i.minimum,batch:i.batch,category:i.category,price:i.price,tracked:!!i.tracked,photoId:normalizePhotoId(i.zone,i.photo_id),positionNote:i.position_note,fridgeId:i.fridge_id}))};
+ return {items:results.map((i:any)=>({id:i.id,zone:i.zone,name:i.name,spec:i.spec,quantity:i.quantity,unit:i.unit,minimum:i.minimum,batch:i.batch,category:i.category,price:i.price,tracked:!!i.tracked,photoId:normalizePhotoId(i.zone,i.photo_id),positionNote:i.position_note,fridgeId:i.fridge_id,imageUrl:i.image_url??""}))};
 }
 async function postInventory(env:Env,actor:Actor,i:any){
  for(const f of ["id","zone","name","spec","unit","batch","category","price"])if(typeof i[f]!=="string"||i[f].length>300)throw new HttpError(400,"欄位格式不正確");
@@ -145,9 +146,9 @@ async function updateUnit(env:Env,id:string,b:any){
 // 與 0006 遷移相同規則：去掉逗號、空白、NT$、$、結尾「元」後必須是純整數，否則 NULL（待管理員確認）
 function parseCost(t:string):number|null{const c=t.trim().replace(/[,\s]/g,"").replace(/^NT\$|^\$/,"").replace(/元$/,"");return /^\d{1,9}$/.test(c)?parseInt(c,10):null}
 async function listProducts(env:Env,actor:Actor){
- const {results}=await env.DB.prepare("SELECT id,zone,name,spec,unit,category,price,cost,cost_num,quantity,on_sale,daily_limit,per_order_max,display_zone FROM inventory ORDER BY zone,name").all<any>();
+ const {results}=await env.DB.prepare("SELECT * FROM inventory ORDER BY zone,name").all<any>();
  const units=await getUnits(env);
- return {items:results.map(r=>({id:r.id,zone:r.zone,name:r.name,spec:r.spec,unit:r.unit,category:r.category,price:r.price,quantity:r.quantity,onSale:!!r.on_sale,dailyLimit:r.daily_limit,perOrderMax:r.per_order_max,displayZone:r.display_zone,displayUnitId:autoUnit(units,r)?.id??null,...(actor.role==="admin"?{cost:r.cost,costNum:r.cost_num,costUnparsed:r.cost_num===null&&String(r.cost??"").trim()!==""}:{})})),units:units.map(u=>({...u,active:!!u.active}))};
+ return {items:results.map(r=>({id:r.id,zone:r.zone,name:r.name,spec:r.spec,unit:r.unit,category:r.category,price:r.price,quantity:r.quantity,onSale:!!r.on_sale,dailyLimit:r.daily_limit,perOrderMax:r.per_order_max,displayZone:r.display_zone,displayUnitId:autoUnit(units,r)?.id??null,imageUrl:r.image_url??"",...(actor.role==="admin"?{cost:r.cost,costNum:r.cost_num,costUnparsed:r.cost_num===null&&String(r.cost??"").trim()!==""}:{})})),units:units.map(u=>({...u,active:!!u.active}))};
 }
 async function updateProduct(env:Env,id:string,b:any){
  const sets:string[]=[],binds:unknown[]=[];
@@ -158,6 +159,7 @@ async function updateProduct(env:Env,id:string,b:any){
   if(b.cost===undefined){sets.push("cost=?");binds.push(b.costNum===null?"":String(b.costNum))}}
  if(b.onSale!==undefined){if(typeof b.onSale!=="boolean")throw new HttpError(400,"上架設定不正確");sets.push("on_sale=?");binds.push(b.onSale?1:0)}
  for(const [k,c] of [["dailyLimit","daily_limit"],["perOrderMax","per_order_max"]] as const)if(b[k]!==undefined){if(!Number.isSafeInteger(b[k])||b[k]<0||b[k]>100000)throw new HttpError(400,"限量需為 0 以上整數");sets.push(`${c}=?`);binds.push(b[k])}
+ if(b.imageUrl!==undefined){if(typeof b.imageUrl!=="string"||!isValidImageUrl(b.imageUrl.trim()))throw new HttpError(400,"照片網址不正確（請用上傳的照片）");sets.push("image_url=?");binds.push(b.imageUrl.trim())}
  if(b.displayZone!==undefined){
   if(typeof b.displayZone!=="string"||(b.displayZone!==""&&!(await getUnits(env)).some(u=>u.id===b.displayZone)))throw new HttpError(400,"展示櫃不存在");
   sets.push("display_zone=?");binds.push(b.displayZone);
@@ -424,8 +426,8 @@ async function route(request:Request,env:Env,url:URL):Promise<unknown>{
  if(p==="/api/public/menu"&&m==="GET"){
   const d=taipeiDate();
   const units=await getUnits(env);
-  const {results}=await env.DB.prepare("SELECT i.id,i.name,i.spec,i.unit,i.category,i.price,i.quantity,i.daily_limit,i.per_order_max,i.display_zone,COALESCE(s.qty,0) AS sold FROM inventory i LEFT JOIN daily_sales s ON s.item_id=i.id AND s.sale_date=? WHERE i.on_sale=1 ORDER BY i.category,i.name").bind(d).all<any>();
-  return {items:results.map(r=>{let a=Math.max(0,r.quantity);if(r.daily_limit>0)a=Math.min(a,Math.max(0,r.daily_limit-r.sold));if(r.per_order_max>0)a=Math.min(a,r.per_order_max);const u=autoUnit(units,r);return {id:r.id,name:r.name,spec:r.spec,unit:r.unit,category:r.category,price:r.price,available:a,displayUnit:u?pubUnit(u):null}}),
+  const {results}=await env.DB.prepare("SELECT i.*,COALESCE(s.qty,0) AS sold FROM inventory i LEFT JOIN daily_sales s ON s.item_id=i.id AND s.sale_date=? WHERE i.on_sale=1 ORDER BY i.category,i.name").bind(d).all<any>();
+  return {items:results.map(r=>{let a=Math.max(0,r.quantity);if(r.daily_limit>0)a=Math.min(a,Math.max(0,r.daily_limit-r.sold));if(r.per_order_max>0)a=Math.min(a,r.per_order_max);const u=autoUnit(units,r);return {id:r.id,name:r.name,spec:r.spec,unit:r.unit,category:r.category,price:r.price,available:a,displayUnit:u?pubUnit(u):null,imageUrl:r.image_url??""}}),
    units:units.filter(u=>u.active).map(pubUnit),game:{seconds:GAME.seconds,target:GAME.target,targets:TARGETS,tools:TOOLS,discount:COUPON.discount,minTotal:COUPON.minTotal}};
  }
  if(p==="/api/public/dine-catalog"&&m==="GET")return getCatalog(env);
@@ -485,6 +487,7 @@ async function route(request:Request,env:Env,url:URL):Promise<unknown>{
  if(p==="/api/display-units"&&m==="GET"){requireRole(actor,"admin","staff");return {units:(await getUnits(env)).map(u=>({...u,active:!!u.active}))}}
  const du=p.match(/^\/api\/display-units\/([a-z0-9-]{1,40})$/);
  if(du&&m==="PATCH"){requireRole(actor,"admin");return updateUnit(env,du[1],await readJson(request))}
+ if(p==="/api/products/photos"&&m==="POST")return uploadDinePhoto(request,env,requireRole(actor,"admin")); // 商品照片沿用 dine_photos 儲存
  if(p==="/api/products/bulk-on-sale"&&m==="POST"){requireRole(actor,"admin");return bulkOnSale(env,await readJson(request))}
  const pm=p.match(/^\/api\/products\/(.{1,300})$/);
  if(pm&&m==="PATCH"){requireRole(actor,"admin");return updateProduct(env,decodeURIComponent(pm[1]),await readJson(request))}

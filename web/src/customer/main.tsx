@@ -1,4 +1,5 @@
 import {lazy,Suspense,useEffect,useMemo,useRef,useState} from "react";
+import {productImageSrc} from "../lib/product-photos";
 import {createRoot} from "react-dom/client";
 import {loadApiOrigin,errorText,newKey} from "../lib/api-config";
 import "./customer.css";
@@ -7,7 +8,7 @@ import "./catalog.css";
 import type {Coupon} from "./ShrimpGame";
 import ShopMap,{LIVE} from "./ShopMap";
 import {GROUPS,UNIT_BLURB,groupOf,inGroupUnits,type GroupId} from "./shop-groups";
-type M={id:string;name:string;spec:string;unit:string;category:string;price:string;available:number;displayUnit:U|null};
+type M={id:string;name:string;spec:string;unit:string;category:string;price:string;available:number;displayUnit:U|null;imageUrl?:string};
 type O={orderNo:string;status:string;customerName:string;total:number;subtotal?:number;discount?:number;createdAt:string;items:{name:string;spec:string;unit:string;qty:number;unitPrice:number}[]};
 const STEPS=["待處理","備貨中","可取貨","已完成"];
 const tokenFromHash=()=>location.hash.match(/^#\/o\/([A-Za-z0-9_-]{20,64})$/)?.[1]??null;
@@ -105,7 +106,7 @@ function Shop({origin}:{origin:string}){
   <button type="button" className={checkout?"on":""} onClick={openCheckout}><span aria-hidden>🛒</span>結帳{count>0&&<i className="dock-badge">{count}</i>}</button>
  </nav>;
  const sheet=sel&&<div className="sheet-backdrop" onClick={()=>setSel(null)}><div className="sheet" role="dialog" aria-label={sel.name} onClick={e=>e.stopPropagation()}>
-   <div className="sheet-grab"/><span className="sheet-tag">{sel.displayUnit?unitIcon(sel.displayUnit)+" "+sel.displayUnit.name:""}・{sel.category}</span>
+   <div className="sheet-grab"/>{productImageSrc(sel.imageUrl,origin)&&<img className="sheet-photo" src={productImageSrc(sel.imageUrl,origin)} alt={sel.name} decoding="async"/>}<span className="sheet-tag">{sel.displayUnit?unitIcon(sel.displayUnit)+" "+sel.displayUnit.name:""}・{sel.category}</span>
    <h2>{sel.name}</h2><p className="sheet-spec">{sel.spec}</p>
    <p className="sheet-price">${sel.price}<small> / {sel.unit}</small></p>
    <p className="sheet-avail">{sel.available>0?`可訂 ${sel.available} ${sel.unit}`:"已售完，請挑選其他商品"}</p>
@@ -124,7 +125,8 @@ function Shop({origin}:{origin:string}){
    {coupon&&<button className="game-banner" type="button" onClick={()=>setGame(true)}><span>🦐</span><b>樂甜釣蝦場</b><small>{`已有優惠券：滿 ${coupon.minTotal} 折 ${coupon.discount}`}</small></button>}
  </>;
  const itemCard=(m:M)=><div key={m.id} className={"card item"+(m.available?"":" soldout")}>
-   <div className="item-thumb" data-kind={m.displayUnit?.kind||(m.displayUnit?.type==="tank"?"cold":"fridge")} aria-hidden>{unitIcon(m.displayUnit??{type:"freezer"})}</div>
+   {productImageSrc(m.imageUrl,origin)?<button type="button" className="item-thumb photo" onClick={()=>choose(m)} aria-label={m.name+" 看大圖"}><img src={productImageSrc(m.imageUrl,origin)} alt="" loading="lazy" decoding="async"/></button>
+    :<div className="item-thumb" data-kind={m.displayUnit?.kind||(m.displayUnit?.type==="tank"?"cold":"fridge")} aria-hidden>{unitIcon(m.displayUnit??{type:"freezer"})}</div>}
    <div className="item-main">
     {m.displayUnit&&<span className="item-area">{m.displayUnit.name}</span>}
     <strong onClick={()=>choose(m)}>{m.name}</strong>

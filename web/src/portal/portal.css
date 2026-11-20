@@ -16,3 +16,7 @@
 @media(max-width:620px){.portal-menu .photo-button{flex:0 0 124px;width:124px;min-height:124px}}
 @media(max-width:350px){.portal-menu .photo-button{flex-basis:104px;width:104px;min-height:104px}}
 @media(prefers-reduced-motion:reduce){.portal *{scroll-behavior:auto!important}}
+
+/* 冷凍現貨商品照片 */
+.portal-products article.has-photo{padding-top:0;overflow:hidden}.portal-product-photo{display:block;margin:0 -22px 14px;aspect-ratio:1/1;background:#fff;border-bottom:1px solid #e0e6df}.portal-product-photo.empty{display:grid;place-content:center;justify-items:center;gap:6px;background:linear-gradient(160deg,#eef4f1,#dfe9e4);color:#86958b}.portal-product-photo.empty span{font-size:34px;opacity:.7}.portal-product-photo.empty small{font-size:11px}.portal-product-photo img{width:100%;height:100%;object-fit:contain;display:block}
+@media(max-width:700px){.portal-product-photo{margin:0 -14px 10px}}
