@@ -8,9 +8,44 @@ function asDataUrl(blob:Blob):Promise<string>{
 }
 
 async function embeddedImage(url:string){
- const response=await fetch(url,{signal:AbortSignal.timeout(10000)});
- if(!response.ok)throw new Error('無法載入菜單中的圖片');
- return asDataUrl(await response.blob());
+ // Preview images may have been cached without an Origin/CORS response header.
+ // Reload them as CORS requests rather than reusing that image-only cache entry.
+ for(let attempt=0;attempt<2;attempt++){
+  try{
+   const response=await fetch(url,{cache:'reload',signal:AbortSignal.timeout(30000)});
+   if(!response.ok)throw new Error(`HTTP ${response.status}`);
+   return await asDataUrl(await response.blob());
+  }catch(error){if(attempt===1)throw error;}
+ }
+ throw new Error('無法載入菜單中的圖片');
+}
+
+export async function embedCatalogImages(svg:SVGSVGElement,baseURI=document.baseURI){
+ const sources=new Map<string,SVGImageElement[]>();
+ for(const image of Array.from(svg.querySelectorAll('image'))){
+  const href=image.getAttribute('href');
+  if(!href||href.startsWith('data:'))continue;
+  const url=new URL(href,baseURI).href;
+  const images=sources.get(url)??[];
+  images.push(image);
+  sources.set(url,images);
+ }
+ // A TV menu has 37 images. Bound concurrency so queued requests do not use
+ // their whole timeout before a connection is available.
+ const entries=Array.from(sources);
+ let next=0;
+ await Promise.all(Array.from({length:Math.min(4,entries.length)},async()=>{
+  while(next<entries.length){
+   const index=next++;
+   const [url,images]=entries[index];
+   try{
+    const data=await embeddedImage(url);
+    images.forEach(image=>image.setAttribute('href',data));
+   }catch{
+    throw new Error(`第 ${index+1} 張菜單圖片無法匯出，請稍後重試，或重新上傳該圖片。`);
+   }
+  }
+ }));
 }
 
 export async function downloadCatalogJpg(art:SVGSVGElement,title:string){
@@ -23,19 +58,8 @@ export async function downloadCatalogJpg(art:SVGSVGElement,title:string){
  svg.setAttribute('width',String(canvas.width));
  svg.setAttribute('height',String(canvas.height));
 
- // SVGs drawn to a canvas must carry their own images. Several layers can use the same source.
- const sources=new Map<string,Promise<string>>();
- await Promise.all(Array.from(svg.querySelectorAll('image'),async image=>{
-  const href=image.getAttribute('href');
-  if(!href||href.startsWith('data:'))return;
-  const url=new URL(href,document.baseURI).href;
-  if(!sources.has(url))sources.set(url,embeddedImage(url));
-  try{
-   image.setAttribute('href',await sources.get(url)!);
-  }catch{
-   throw new Error('菜單有圖片無法匯出，請確認圖片網址可存取，或先將圖片上傳至後台。');
-  }
- }));
+ // SVGs drawn to a canvas must carry their own images.
+ await embedCatalogImages(svg);
 
  const xml=new XMLSerializer().serializeToString(svg);
  const svgUrl=URL.createObjectURL(new Blob([xml],{type:'image/svg+xml;charset=utf-8'}));
