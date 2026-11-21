@@ -26,23 +26,6 @@ const ORDER_GUIDES=[
     ]
   },
   {
-    "title": "🔴 黑貓宅配",
-    "items": [
-      "店內架上現貨冷凍商品滿 NT$5,000 免運；未滿依黑貓實際運費收取，視商品體積約 NT$160～290。",
-      "團購商品不計入 NT$5,000 免運門檻；僅限店內架上現貨商品。團購商品如需宅配，運費須自行負擔。",
-      "不同溫層不可合併宅配（冷凍、常溫不可一起計算）。"
-    ]
-  },
-  {
-    "title": "🔴 7-11 店到店",
-    "items": [
-      "須另外購買 7-11 專用寄貨箱，寄貨箱費用由顧客自行負擔；箱價依實際購買為準。",
-      "店到店商品滿 NT$3,500 免運，寄貨箱費用仍須自行負擔。",
-      "團購商品不計入 NT$3,500 免運門檻；僅限店內架上現貨商品。團購商品如需店到店，運費須自行負擔。",
-      "不同溫層不可合併寄送（冷凍、常溫不可一起計算）。"
-    ]
-  },
-  {
     "title": "🔴 Lalamove 短程外送",
     "items": [
       "可短程運送地區：新莊、三重、板橋、五股、樹林、中和。",
@@ -50,14 +33,6 @@ const ORDER_GUIDES=[
       "運費依 Lalamove App 當下顯示之實際金額收取，依時段及路程計價。",
       "運費由顧客自行負擔，直接交給外送員現金即可。",
       "歡迎自行使用 Lalamove App 叫外送員來取貨。"
-    ]
-  },
-  {
-    "title": "🔴 活體運送",
-    "items": [
-      "活體可代殺後冷凍寄送。",
-      "活體可使用短程 Lalamove 運送，交貨前會錄影證明出貨時為活體。",
-      "運送途中無法保證活體存活；Lalamove 短程約 10 分鐘至 1 小時，店家說明即使途中死亡，商品仍屬新鮮，請自行評估運送風險。"
     ]
   },
   {
@@ -71,8 +46,8 @@ const ORDER_GUIDES=[
     ]
   }
 ] as const;
-const STEPS=["待處理","備貨中","可取貨","已完成"] as const;
-const STEP_LABEL:Record<string,string>={"待處理":"已接單","備貨中":"製作中","可取貨":"可取餐","已完成":"已完成","已取消":"已取消"};
+// 顧客端狀態文字：新單（待處理）一律顯示「待確認」，後續狀況由客服透過 LINE 告知。只改顯示，不改資料庫狀態。
+const STEP_LABEL:Record<string,string>={"待處理":"待確認","備貨中":"製作中","可取貨":"可取餐","已完成":"已完成","已取消":"已取消"};
 const tokenFromHash=()=>location.hash.match(/^#\/o\/([A-Za-z0-9_-]{20,64})$/)?.[1]??null;
 const BASE=import.meta.env.BASE_URL;
 const logo=BASE+"dine/logo.webp";
@@ -253,10 +228,10 @@ function Menu({origin}:{origin:string}){
     <div className="actions"><button className="primary" disabled={busy||!lines.length}>{busy?"送出中…":"送出預約・待客服確認"}</button><button type="button" className="ghost" onClick={()=>changeTab("menu")}>繼續點餐</button></div>
    </form>}
   </div>
-  <nav className="dock" aria-label="點餐選單">
+  {tab==="menu"&&<nav className="dock" aria-label="點餐選單">
    <button type="button" className={tab==="menu"?"on":""} onClick={()=>changeTab("menu")}><span aria-hidden>🍽️</span>菜單</button>
-   <button type="button" className={tab==="cart"?"on":""} onClick={()=>changeTab("cart")}><span>查看餐點・結帳 {count>0&&`（${count}）`}</span><strong>NT$ {priced.toLocaleString("en-US")}{hasMarket&&"＋時價"}</strong></button>
-  </nav>
+   <button type="button" onClick={()=>changeTab("cart")}><span>查看餐點・結帳 {count>0&&`（${count}）`}</span><strong>NT$ {priced.toLocaleString("en-US")}{hasMarket&&"＋時價"}</strong></button>
+  </nav>}
   <dialog ref={dialog} className="food-dialog" onCancel={()=>setDetail(null)} onClose={()=>setDetail(null)} onClick={e=>{if(e.target===e.currentTarget)setDetail(null)}}>
    {detail&&<><button type="button" className="dialog-close" onClick={()=>setDetail(null)} aria-label="關閉餐點介紹">×</button><FoodImage item={detail}/><div className="dialog-body"><p className="eyebrow">安星水產・現點料理</p><h2>{detail.name}</h2><p className="spec">{itemNote(detail)}</p><p className="price">{detail.market?MARKET_LABEL:`NT$ ${(detail.price??0).toLocaleString("en-US")}`}</p><button type="button" className="primary" disabled={(cart[detail.id]??0)>=20} onClick={()=>add(detail)}>{(cart[detail.id]??0)>=20?"已達單品上限":"＋ 加入餐點"}{(cart[detail.id]??0)>0&&`（已選 ${cart[detail.id]} 份）`}</button></div></>}
   </dialog>
@@ -290,7 +265,8 @@ function LineOrderConfirmation({order,lookupUrl}:{order:LineOrderInput;lookupUrl
 }
 
 function Lookup({origin,token}:{origin:string;token:string}){
- const [o,setO]=useState<any>(null),[msg,setMsg]=useState("");
+ const [o,setO]=useState<any>(null),[msg,setMsg]=useState(""),[copied,setCopied]=useState(false);
+ const copyLink=()=>{navigator.clipboard?.writeText(location.href).then(()=>{setCopied(true);setTimeout(()=>setCopied(false),1800)}).catch(()=>{})};
  const load=()=>fetch(`${origin}/api/public/orders/${token}`,{cache:"no-store",credentials:"omit"}).then(async r=>{
   if(r.status===404)return setMsg("查無此訂單，請確認連結是否完整。");
   if(r.status===429)return setMsg((await r.json()).error);
@@ -298,23 +274,18 @@ function Lookup({origin,token}:{origin:string;token:string}){
  }).catch(()=>setMsg("目前無法查詢，請稍後再試。"));
  useEffect(()=>{load()},[token]);
  if(!o)return <div className="dine-body"><p className="hint">{msg||"查詢中…"}</p></div>;
- const idx=STEPS.indexOf(o.status);
  const hasMarket=(o.items??[]).some((l:any)=>l.market||l.unitPrice===0);
  return <div className="dine-body"><section className="cart">
   <h2>訂單 {o.orderNo}</h2>
-  <p>{o.customerName} 您好，目前狀態：<strong className="status">{STEP_LABEL[o.status]??o.status}</strong></p>
+  <p>{o.customerName} 您好，目前狀態：<strong className="status">{o.status?(STEP_LABEL[o.status]??o.status):"待確認"}</strong></p>
   {o.pickupAt&&<p>取餐時間：<strong>{formatPickup(o.pickupAt)}</strong></p>}
-  {o.status!=="已取消"&&<ol className="steps">{STEPS.map((s,i)=><li key={s} className={i<=idx?"done":""}>{STEP_LABEL[s]}</li>)}</ol>}
+  {o.status!=="已取消"&&<p className="status-note">後續狀況由客服透過 LINE 通知。</p>}
   <ul className="lines">{o.items.map((l:any,i:number)=><li key={i}><span>{l.name}{l.spec?`　${l.spec}`:""} × {l.qty} {l.unit}</span><span/><span>{l.market||l.unitPrice===0?"時價":`$${l.unitPrice*l.qty}`}</span></li>)}</ul>
   {hasMarket&&<p className="market-note">{MARKET_LABEL}，時價品項不計入合計。</p>}
   <p className="total">合計 ${o.total}{hasMarket?"＋時價":""}</p>
   {o.channel==="dine"&&o.status!=="已取消"&&o.status!=="已完成"&&<LineOrderConfirmation key={o.orderNo} order={mergeLineOrderInput(o,token)} lookupUrl={typeof location!=="undefined"?location.href:""}/>}
-  <p className="hint">請收藏或複製此頁網址，之後可隨時查詢訂單狀態。此連結僅供本人使用，請勿分享。</p>
-  <div className="actions">
-   <button type="button" className="ghost" onClick={()=>navigator.clipboard?.writeText(location.href)}>複製查詢連結</button>
-   <button type="button" className="ghost" onClick={load}>重新整理狀態</button>
-   <button type="button" className="primary" onClick={()=>{location.hash="#menu"}}>繼續點餐</button>
-  </div>
+  <p className="lookup-note">此頁網址可再次查看訂單內容，僅供本人使用。<button type="button" className="text-link" onClick={copyLink}>{copied?"已複製":"複製查詢連結"}</button></p>
+  <p className="lookup-more"><button type="button" className="text-link" onClick={()=>{location.hash="#menu"}}>← 繼續點餐</button></p>
  </section></div>;
 }
 
