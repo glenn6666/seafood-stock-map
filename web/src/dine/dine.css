@@ -103,7 +103,7 @@ body{background:#eee8dc}button,input,select,textarea{font-family:inherit}button{
 .line-confirm>p{margin:0 0 10px;font-size:14px;line-height:1.65}
 .line-preview{margin:0;padding:12px;background:#fff;border:1px solid var(--line);border-radius:10px;font-size:13px;line-height:1.65;white-space:pre-wrap;word-break:break-word;color:var(--ink)}
 .line-confirm .actions{margin-top:12px}
-.line-confirm a.primary{flex:1 1 100%;display:flex;align-items:center;justify-content:center;text-decoration:none;min-height:50px}
+.line-confirm a.primary{color:#ffe6b1;flex:1 1 100%;display:flex;align-items:center;justify-content:center;text-decoration:none;min-height:50px}
 .line-confirm a.ghost{display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
 
 
@@ -181,3 +181,8 @@ body{background:#eee8dc}button,input,select,textarea{font-family:inherit}button{
  .item-add{font-size:11px}
  .dine-hero .shop-link{font-size:11px}
 }
+
+.status-note{margin:6px 0 14px;font-size:13px;color:var(--muted)}
+.lookup-note{margin:14px 0 0;font-size:12px;line-height:1.7;color:var(--muted)}
+.text-link{background:none;border:0;padding:0 0 0 6px;font:inherit;font-weight:700;color:#926047;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.lookup-more{margin:10px 0 0;font-size:13px}.lookup-more .text-link{padding:6px 0}
