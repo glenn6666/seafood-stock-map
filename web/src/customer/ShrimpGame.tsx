@@ -293,10 +293,13 @@ export default function ShrimpGame({origin,onClose,onCoupon}:{origin:string;onCl
     {target==="shrimp"&&WEEDS.map((w,i)=><span key={"w"+i} className={"weed k-"+w.kind} style={{left:w.x+"%",top:w.y+"%"}}><WeedSpr kind={w.kind}/></span>)}
     {target==="lobster"&&ROCKS.map((r,i)=><span key={i} className="rock" style={{left:r.x+"%",top:r.y+"%"}}><CuteArt name="rock" className="spr cute"/></span>)}
     {tool!=="rod"&&s.grip&&s.down&&<><span className="grip-shaft" style={{left:s.grip.x+"%",top:s.grip.y+"%",height:Math.hypot((s.tx-s.grip.x)*(pond.current?.clientWidth??0)/100,(s.ty-s.grip.y)*(pond.current?.clientHeight??0)/100)+"px",transform:`rotate(${Math.atan2(-(s.tx-s.grip.x)*(pond.current?.clientWidth??0)/100,(s.ty-s.grip.y)*(pond.current?.clientHeight??0)/100)*180/Math.PI+180}deg)`}}/><span className="grip" data-x={s.grip.x.toFixed(1)} data-y={s.grip.y.toFixed(1)} style={{left:s.grip.x+"%",top:s.grip.y+"%"}}/></>}
-    <span className={"tool-cursor t-"+tool+(s.down?" down":"")} data-x={s.tx.toFixed(1)} data-y={s.ty.toFixed(1)} style={{left:s.tx+"%",top:s.ty+"%",width:Math.max(28,K.r/100*gNow().m*2)+"px"}}><span className="ring" style={{background:`conic-gradient(#ffd35a ${holdPct*360}deg,transparent 0)`}}/><Sprite className="ti" name={tool} emoji={K.icon}/></span>
+    {tool!=="rod"&&<span className={"tool-cursor t-"+tool+(s.down?" down":"")} data-x={s.tx.toFixed(1)} data-y={s.ty.toFixed(1)} style={{left:s.tx+"%",top:s.ty+"%",width:Math.max(28,K.r/100*gNow().m*2)+"px"}}><span className="ring" style={{background:`conic-gradient(#ffd35a ${holdPct*360}deg,transparent 0)`}}/><Sprite className="ti" name={tool} emoji={K.icon}/></span>}
     {s.carry&&<span className="risk" aria-label="掉落風險"><i style={{width:Math.min(100,s.risk*100)+"%"}}/></span>}
     {flash&&<span className="pond-flash" role="status">{flash}</span>}
    </div>
+   {phase==="play"&&tool==="rod"&&<div className="rod-overlay" aria-hidden>
+    <span className={"tool-cursor t-rod"+(s.down?" down":"")} data-x={s.tx.toFixed(1)} data-y={s.ty.toFixed(1)} style={{left:s.tx+"%",top:s.ty+"%",width:Math.max(28,K.r/100*gNow().m*2)+"px"}}><span className="ring" style={{background:`conic-gradient(#ffd35a ${holdPct*360}deg,transparent 0)`}}/><Sprite className="ti" name="rod" emoji={K.icon}/></span>
+   </div>}
    </div>
    {phase==="play"&&<button type="button" className="sheet-close text-btn early-end" onClick={finish}>提前結束這局</button>}
   </div>}
