@@ -19,7 +19,7 @@ function App(){
  const [token,setTokenState]=useState(tokenFromHash());
  useEffect(()=>{const f=()=>setTokenState(tokenFromHash());addEventListener("hashchange",f);return()=>removeEventListener("hashchange",f)},[]);
  const [origin,err]=useOrigin();
- return <main className={"shop comic"+(token?"":" shop-home")}>{token&&<header className="comic-hero"><img src={import.meta.env.BASE_URL+"comic/comic-market-cats-clean.webp?v=1"} alt="" width={1080} height={720} decoding="async"/><div><h1>安星水產</h1><p>{token?"訂單查詢":"線上訂購・逛逛店裡挑海鮮"}</p></div></header>}{!token&&!origin&&<p className="hint">{err?"":"載入中…"}</p>}
+ return <main className={"shop comic"+(token?"":" shop-home")}>{token&&<header className="comic-hero"><img src={import.meta.env.BASE_URL+"comic/comic-market-games.webp?v=1"} alt="" width={1080} height={720} decoding="async"/><div><h1>安星水產</h1><p>{token?"訂單查詢":"線上訂購・逛逛店裡挑海鮮"}</p></div></header>}{!token&&!origin&&<p className="hint">{err?"":"載入中…"}</p>}
   {err&&<p className="err" role="alert">{err}</p>}{origin&&(token?<Lookup origin={origin} token={token}/>:<Shop origin={origin}/>)}</main>;
 }
 type U={id:string;name:string;type:"freezer"|"tank";kind?:string;area?:string};
@@ -100,14 +100,6 @@ function Shop({origin}:{origin:string}){
  const siblingGroup:GroupId|null=group!=="all"?group:zone==="live"?"live":zone?groupOf({displayUnit:units.find(x=>x.id===zone)}):null;
  const subUnits=siblingGroup?units.filter(u=>inGroupUnits(siblingGroup,u)):[];
  const heading=panelHeading(zone,group,zoneNames,units);
- const liveOn=group==="live"||zone==="live"||LIVE.includes(zone??"");
- const dock=<nav className="shop-dock" aria-label="購物選單">
-  <button type="button" className={tab==="browse"&&!checkout?"on":""} onClick={()=>{setCheckout(false);setTab("browse")}}><span aria-hidden>🏪</span>逛店</button>
-  <button type="button" className={tab==="catalog"&&!checkout&&!liveOn?"on":""} onClick={returnToOrder}><span aria-hidden>🛍️</span>全部商品</button>
-  <button type="button" className={tab==="catalog"&&!checkout&&liveOn?"on":""} onClick={()=>tab==="browse"?returnToOrder():pickZone("live")}><span aria-hidden>🐟</span>活鮮</button>
-  <button type="button" className="nav-game" onClick={()=>setGame(true)}><span aria-hidden>🦐</span>釣蝦</button>
-  <button type="button" className={checkout?"on":""} onClick={tab==="browse"?returnToOrder:openCheckout}><span aria-hidden>🛒</span>結帳{count>0&&<i className="dock-badge">{count}</i>}</button>
- </nav>;
  const sheet=sel&&<div className="sheet-backdrop" onClick={()=>setSel(null)}><div className="sheet" role="dialog" aria-label={sel.name} onClick={e=>e.stopPropagation()}>
    <div className="sheet-grab"/>{productImageSrc(sel.imageUrl,origin)&&<img className="sheet-photo" src={productImageSrc(sel.imageUrl,origin)} alt={sel.name} decoding="async"/>}<span className="sheet-tag">{sel.displayUnit?unitIcon(sel.displayUnit)+" "+sel.displayUnit.name:""}・{sel.category}</span>
    <h2>{sel.name}</h2><p className="sheet-spec">{sel.spec}</p>
@@ -185,7 +177,7 @@ function Shop({origin}:{origin:string}){
      <p className="tagline">今天想吃什麼海味？</p>
      <p className="hero-sub">挑商品、選數量，輕鬆完成訂購。</p>
     </div>
-    <button type="button" className="panel-close" aria-label="逛逛店面" onClick={()=>{setCheckout(false);setTab("browse")}}>逛逛店面</button>
+    <button type="button" className="panel-close" aria-label="來去遊戲" onClick={()=>{setCheckout(false);setTab("browse")}}>來去遊戲</button>
    </header>
    <div className="panel-body">
     {!checkout&&<a className="dine-entry" href={import.meta.env.BASE_URL+"dine.html"}>🍽️ 想吃現做料理？ 前往線上點餐</a>}
@@ -194,7 +186,6 @@ function Shop({origin}:{origin:string}){
    </div>
   </section>
   {count>0&&!checkout&&tab==="catalog"&&<div className="order-cartbar"><div><b>已選 {count} 件</b><span>NT$ {total.toLocaleString()}{discount>0&&<small>（已折 NT$ {discount}）</small>}</span></div><button type="button" className="primary" onClick={openCheckout}>查看購物車・結帳</button></div>}
-  {dock}
   {toastEl}
   {sheet}
   {gameEl}
