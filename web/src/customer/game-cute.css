@@ -182,7 +182,7 @@
 .sheet.game.cute.ph-play .game-body.play>.hint{display:none}
 .sheet.game.cute .early-end{margin:4px 0 0;min-height:32px;font-size:12px}
 
-.sheet.game.cute .pond-wrap{flex:1;min-height:0;min-width:0;display:grid;place-items:center;container-type:size}
+.sheet.game.cute .pond-wrap{flex:1;min-height:0;min-width:0;width:100%;container-type:size}
 .sheet.game.cute.ph-play .pond,
 .sheet.game.cute.ph-play .pond.t-crab,
 .sheet.game.cute.ph-play .pond.t-lobster,
@@ -192,10 +192,15 @@
 .sheet.game.cute.ph-done .pond,
 .sheet.game.cute.ph-done .pond.t-crab,
 .sheet.game.cute.ph-done .pond.t-lobster{
- width:min(100cqw,100cqh);height:min(100cqw,100cqh);max-width:100%;max-height:100%;aspect-ratio:1;
- margin:0;border:0;border-radius:16px;box-shadow:0 4px 18px #204b6040;
- background:var(--pond-bg) center/cover no-repeat #7ec9c6;
+ width:100%;height:100%;max-width:100%;max-height:100%;aspect-ratio:auto;
+ margin:0;border:0;border-radius:14px;box-shadow:0 4px 18px #204b6040;
+ background-color:#7ec9c6;background-image:var(--pond-bg-wide);background-size:100% 100%;background-repeat:no-repeat;background-position:center;
  container-type:size
+}
+@container (max-aspect-ratio:1/1){
+ .sheet.game.cute .pond-wrap .pond,
+ .sheet.game.cute .pond-wrap .pond.t-crab,
+ .sheet.game.cute .pond-wrap .pond.t-lobster{background-image:var(--pond-bg-tall)}
 }
 .sheet.game.cute.ph-play .pond::before,
 .sheet.game.cute.ph-sending .pond::before,
@@ -205,27 +210,28 @@
 .sheet.game.cute.ph-done .pond-bubbles{display:none}
 
 /* 藍碗（蝦模式）約池寬 24%；去掉舊的沙島黃底 */
-.sheet.game.cute .pond.t-shrimp .bucket{width:24%;background:none;filter:drop-shadow(0 4px 0 #204b6033)}
+.sheet.game.cute .pond.t-shrimp .bucket{width:26cqmin;height:26cqmin;background:none;filter:drop-shadow(0 4px 0 #204b6033)}
 .sheet.game.cute .pond.t-shrimp .bucket .spr{width:100%;height:100%}
 .sheet.game.cute .pond .bucket{transform:translate(-50%,-50%);position:absolute}
 
 /* 蝦約池寬 20%，最小 96、最大 140 */
 .sheet.game.cute .pond-obj .spr[data-sprite=shrimp],
-.sheet.game.cute .pond-obj .spr-img[data-sprite=shrimp]{width:clamp(96px,20cqi,140px);height:clamp(96px,20cqi,140px)}
+.sheet.game.cute .pond-obj .spr-img[data-sprite=shrimp]{width:clamp(100px,24cqmin,150px);height:clamp(100px,24cqmin,150px)}
 .sheet.game.cute .pond-obj.boot .spr,
-.sheet.game.cute .pond-obj.boot .spr-img{width:clamp(72px,14cqi,110px);height:clamp(72px,14cqi,110px)}
+.sheet.game.cute .pond-obj.boot .spr-img{width:clamp(72px,16cqmin,110px);height:clamp(72px,16cqmin,110px)}
 .sheet.game.cute .pond-obj.carried .spr[data-sprite=shrimp],
-.sheet.game.cute .pond-obj.carried .spr-img[data-sprite=shrimp]{width:clamp(104px,22cqi,152px);height:clamp(104px,22cqi,152px)}
+.sheet.game.cute .pond-obj.carried .spr-img[data-sprite=shrimp]{width:clamp(110px,26cqmin,160px);height:clamp(110px,26cqmin,160px)}
 .sheet.game.cute .spr-img{object-fit:contain;pointer-events:none;display:block}
 .sheet.game.cute .pond-obj.frozen{filter:drop-shadow(0 0 8px #ffd35acc)}
 
 /* 釣竿：圖高約池的 58%，鉤尖（圖上約 36.1% / 30.6%）對準游標中心＝命中點 */
-.sheet.game.cute .tool-cursor.t-rod{overflow:visible}
+.sheet.game.cute .tool-cursor.t-rod,
+.sheet.game.cute .tool-cursor.t-rod.down{overflow:visible;transform:translate(-50%,-50%) scale(1)}
 .sheet.game.cute .tool-cursor.t-rod .ti.spr-img,
 .sheet.game.cute .tool-cursor.t-rod .rod-img{
  position:absolute;left:50%;top:50%;
- width:auto;height:58cqi;max-width:none;aspect-ratio:512/768;
- transform:translate(-36.1%,-30.6%);
+ width:clamp(200px,48cqmin,300px);height:clamp(200px,48cqmin,300px);max-width:none;aspect-ratio:1;
+ transform:translate(-42%,-50.6%);
  filter:drop-shadow(0 3px 0 #204b6033)
 }
 .sheet.game.cute .tool-cursor.t-rod:not(.down) .ti.spr-img{opacity:.95}
