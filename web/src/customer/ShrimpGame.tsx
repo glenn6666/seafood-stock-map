@@ -55,9 +55,9 @@ const stars=(f:number)=>f>=1.4?"★★★":f>=1?"★★☆":f>=.7?"★☆☆":"�
 // 俯視：碗在池中央。座標仍是 0–100%，但距離／速度／命中改依實際像素計算，避免長方形池塘把圓變成橢圓。
 const BUCKET={x:50,y:50};
 const ROCKS=[{x:20,y:18},{x:80,y:20},{x:22,y:82},{x:78,y:80}];
-// 水草長在池邊／池底，避開中央碗；r 是遮擋半徑（最短邊比例）
+// 俯視水草簇：可放在池裡各處，避開中央碗；r 是遮擋半徑（最短邊比例）
 const WEEDS: {x:number;y:number;kind:1|2|3;r:number}[]=[
- {x:16,y:78,kind:1,r:.13},{x:84,y:72,kind:2,r:.13},{x:15,y:26,kind:3,r:.12},{x:86,y:42,kind:1,r:.13},{x:50,y:90,kind:2,r:.12},
+ {x:20,y:22,kind:3,r:.13},{x:80,y:24,kind:2,r:.10},{x:18,y:62,kind:1,r:.16},{x:82,y:68,kind:1,r:.16},{x:50,y:84,kind:2,r:.10},
 ];
 const FACE:Record<string,number>={shrimp:-90,lobster:-90,crab:0};
 const clamp01=(v:number,a:number,b:number)=>Math.max(a,Math.min(b,v));

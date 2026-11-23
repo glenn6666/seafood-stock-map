@@ -252,9 +252,9 @@
 .sheet.game.cute .pond .weed .spr,
 .sheet.game.cute .pond .weed .spr-img{display:block;object-fit:contain;pointer-events:none}
 .sheet.game.cute .pond .weed.k-1 .spr,
-.sheet.game.cute .pond .weed.k-1 .spr-img{width:clamp(92px,28cqmin,155px);height:clamp(138px,42cqmin,230px)}
+.sheet.game.cute .pond .weed.k-1 .spr-img{width:clamp(118px,32cqmin,190px);height:clamp(118px,32cqmin,190px)}
 .sheet.game.cute .pond .weed.k-2 .spr,
-.sheet.game.cute .pond .weed.k-2 .spr-img{width:clamp(112px,32cqmin,185px);height:clamp(76px,22cqmin,125px)}
+.sheet.game.cute .pond .weed.k-2 .spr-img{width:clamp(80px,22cqmin,130px);height:clamp(80px,22cqmin,130px)}
 .sheet.game.cute .pond .weed.k-3 .spr,
-.sheet.game.cute .pond .weed.k-3 .spr-img{width:clamp(100px,28cqmin,165px);height:clamp(100px,28cqmin,165px)}
+.sheet.game.cute .pond .weed.k-3 .spr-img{width:clamp(104px,28cqmin,168px);height:clamp(104px,28cqmin,168px)}
 .sheet.game.cute .pond-obj.dashing{filter:drop-shadow(0 0 10px #fff8) drop-shadow(0 3px 0 #204b6026)}
