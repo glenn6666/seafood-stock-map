@@ -175,6 +175,7 @@
 .sheet.game.cute.ph-play .game-body.play,
 .sheet.game.cute.ph-sending .game-body.play,
 .sheet.game.cute.ph-done .game-body.play{flex:1;min-height:0;padding:4px 8px max(6px,env(safe-area-inset-bottom));overflow:hidden}
+.sheet.game.cute.ph-play .game-body.play{overflow:visible}
 .sheet.game.cute.ph-play .game-stats{padding:0 2px 4px}
 .sheet.game.cute.ph-play .hud-time b{font-size:24px}
 .sheet.game.cute.ph-play .hud-time strong{padding:1px 10px}
@@ -182,7 +183,8 @@
 .sheet.game.cute.ph-play .game-body.play>.hint{display:none}
 .sheet.game.cute .early-end{margin:4px 0 0;min-height:32px;font-size:12px}
 
-.sheet.game.cute .pond-wrap{flex:1;min-height:0;min-width:0;width:100%;container-type:size}
+.sheet.game.cute .pond-wrap{position:relative;flex:1;min-height:0;min-width:0;width:100%;container-type:size;overflow:visible}
+.sheet.game.cute .rod-overlay{position:absolute;inset:0;z-index:10;pointer-events:none;overflow:visible}
 .sheet.game.cute.ph-play .pond,
 .sheet.game.cute.ph-play .pond.t-crab,
 .sheet.game.cute.ph-play .pond.t-lobster,
@@ -224,7 +226,7 @@
 .sheet.game.cute .spr-img{object-fit:contain;pointer-events:none;display:block}
 .sheet.game.cute .pond-obj.frozen{filter:drop-shadow(0 0 8px #ffd35acc)}
 
-/* 釣竿：圖高約池的 58%，鉤尖（圖上約 36.1% / 30.6%）對準游標中心＝命中點 */
+/* 釣竿：鉤尖（rod-small 圖上約 42% / 50.6%）對準游標中心＝命中點；畫在 .rod-overlay 以免被池子 overflow 切到 */
 .sheet.game.cute .tool-cursor.t-rod,
 .sheet.game.cute .tool-cursor.t-rod.down{overflow:visible;transform:translate(-50%,-50%) scale(1)}
 .sheet.game.cute .tool-cursor.t-rod .ti.spr-img,
