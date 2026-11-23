@@ -1,5 +1,17 @@
 # 上線部署（訂單／顧客訂購頁／多帳號）
 
+## 顧客免費網址（2026-11-23）
+
+- 正式入口： https://anxing-seafood.pages.dev/
+- Cloudflare Pages 專案：`anxing-seafood`，正式分支 `main`；使用 Direct Upload。
+- `npm run build:pages` 建置 `dist-pages/`；`npm run deploy:pages` 發布前端。
+- 網站根目錄開啟訂購頁。沿用 `/seafood-stock-map/` 資產路徑，讓既有菜單照片、遊戲與頁面連結正常運作。
+- 原 GitHub Pages 仍可使用；`worker/allowed-origin.ts` 對 `wrangler.toml` 的逗號分隔來源清單做完整相等比對，不開放萬用網域或預覽子網域。
+- 修改來源清單後需要 `npx wrangler deploy` 更新原 `seafood-stock-api`。不需資料庫遷移，不要建立新的資料庫或複製後端。
+- 發布前執行 `node --test tests/allowed-origin.test.mjs tests/product-display.test.mjs` 與 `npm run typecheck`。發布後檢查讀商品、購物車金額及下單 OPTIONS 預檢，不在正式環境建立測試訂單。
+
+---
+
 > 本分支只在本機（wrangler dev --local＋本機 D1）測試過，**尚未部署**。以下指令會改動線上資源，需在已登入 Cloudflare 的電腦執行（`npx wrangler login`，帳號為 `seafood-stock-api.iamglenn0630.workers.dev` 所屬帳號）。
 
 ## 部署前檢查表（全部打勾才開始）

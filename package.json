@@ -4,6 +4,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "build:pages": "node scripts/build-pages.mjs",
+    "deploy:pages": "wrangler pages deploy dist-pages --project-name anxing-seafood --branch main",
     "build": "tsc -p tsconfig.json && vite build",
     "typecheck": "tsc -p tsconfig.json && tsc -p worker/tsconfig.json",
     "worker:dev": "wrangler dev --local --persist-to .wrangler/state",

@@ -1,4 +1,5 @@
 import {getCatalog,catalogAdmin} from './catalog';
+import {isAllowedOrigin} from './allowed-origin';
 import {storagePhotos,photoSections,normalizePhotoId} from "../web/src/lib/storage-photos";
 import {catalogPrice} from "../web/src/lib/catalog";
 import {ledgerRoute} from "./ledger";
@@ -529,8 +530,9 @@ export default {
  const headers=new Headers({"Content-Type":"application/json","Cache-Control":"no-store","Vary":"Origin","X-Content-Type-Options":"nosniff"});
  const reply=(data:unknown,status=200)=>new Response(JSON.stringify(data),{status,headers});
  if(!env.ALLOWED_ORIGIN||!env.INVENTORY_TOKEN||env.INVENTORY_TOKEN.length<8||!env.DB)return reply({error:"後端設定尚未完成"},503);
- if(origin&&origin!==env.ALLOWED_ORIGIN)return reply({error:"不允許此網站來源"},403);
- if(origin===env.ALLOWED_ORIGIN)headers.set("Access-Control-Allow-Origin",origin);
+ const allowed=isAllowedOrigin(origin,env.ALLOWED_ORIGIN);
+ if(origin&&!allowed)return reply({error:"不允許此網站來源"},403);
+ if(origin&&allowed)headers.set("Access-Control-Allow-Origin",origin);
  const url=new URL(request.url);
  if(!url.pathname.startsWith("/api/"))return reply({error:"Not found"},404);
  if(request.method==="OPTIONS"){

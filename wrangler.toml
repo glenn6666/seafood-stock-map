@@ -11,7 +11,7 @@ invocation_logs = true
 persist = true
 
 [vars]
-ALLOWED_ORIGIN = "https://glenn6666.github.io"
+ALLOWED_ORIGIN = "https://glenn6666.github.io,https://anxing-seafood.pages.dev"
 
 [[d1_databases]]
 binding = "DB"
