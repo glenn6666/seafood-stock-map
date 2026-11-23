@@ -1,0 +1,253 @@
+[
+  {
+    "source": "01-6兩烏魚子禮盒組.jpg",
+    "asset": "web/public/products/20261124/mullet-roe.webp",
+    "url": "/seafood-stock-map/products/20261124/mullet-roe.webp",
+    "bytes": 108622,
+    "sha256": "4080b78f5e8878675a7d9c018313bd60408dc1351010702e621558e2f94e868f",
+    "targets": [
+      {
+        "id": "stk1031-012",
+        "name": "6兩烏魚子",
+        "price": "900",
+        "previous_image_url": ""
+      },
+      {
+        "id": "stk1031-012-gift",
+        "name": "6兩烏魚子質感禮盒組",
+        "price": "950",
+        "previous_image_url": ""
+      }
+    ],
+    "pending_target": null
+  },
+  {
+    "source": "02-紅條燕尾-v2.jpg",
+    "asset": "web/public/products/20261124/red-fish.webp",
+    "url": "/seafood-stock-map/products/20261124/red-fish.webp",
+    "bytes": 109256,
+    "sha256": "7595bec6e95af8c3bbe94c5336538444e0ce1890dea8eb5ebfc1f031d38de380",
+    "targets": [
+      {
+        "id": "stk1031-013",
+        "name": "紅條燕尾",
+        "price": "299",
+        "previous_image_url": ""
+      }
+    ],
+    "pending_target": null
+  },
+  {
+    "source": "03-虱目魚肉-v3.jpg",
+    "asset": "web/public/products/20261124/milkfish-meat.webp",
+    "url": "/seafood-stock-map/products/20261124/milkfish-meat.webp",
+    "bytes": 120836,
+    "sha256": "e3ee07817f2fa5eeab020ded46928e730ea048a30452cabb8be8e4e085c4feeb",
+    "targets": [
+      {
+        "id": "stk1031-056",
+        "name": "虱目魚肉",
+        "price": "89",
+        "previous_image_url": ""
+      }
+    ],
+    "pending_target": null
+  },
+  {
+    "source": "04-鮭魚腹鰭-v3.jpg",
+    "asset": "web/public/products/20261124/salmon-fin.webp",
+    "url": "/seafood-stock-map/products/20261124/salmon-fin.webp",
+    "bytes": 140516,
+    "sha256": "c89b2221243f731762f9588f6b30ad5ad21c689c368bc6f540134fc57a1caa1a",
+    "targets": [
+      {
+        "id": "stk1031-096",
+        "name": "鮭魚腹鰭（冷凍）",
+        "price": "95",
+        "previous_image_url": ""
+      },
+      {
+        "id": "stk1031-053",
+        "name": "鮭魚腹鰭（架上）",
+        "price": "95",
+        "previous_image_url": ""
+      }
+    ],
+    "pending_target": null
+  },
+  {
+    "source": "05-龍虎石斑-v31.png",
+    "asset": "web/public/products/20261124/grouper.webp",
+    "url": "/seafood-stock-map/products/20261124/grouper.webp",
+    "bytes": 130822,
+    "sha256": "5038a23e81bc99a36cc6a4fa7afb4640152620737151098d2d6853d44944bed8",
+    "targets": [
+      {
+        "id": "stk1031-031",
+        "name": "龍虎石斑",
+        "price": "299",
+        "previous_image_url": ""
+      }
+    ],
+    "pending_target": null
+  },
+  {
+    "source": "06-花枝漿.jpg",
+    "asset": "web/public/products/20261124/cuttlefish-paste.webp",
+    "url": "/seafood-stock-map/products/20261124/cuttlefish-paste.webp",
+    "bytes": 190774,
+    "sha256": "10378fac2732313da842d6a0566455b5da081d733e6e9fb439270091926d77ab",
+    "targets": [
+      {
+        "id": "stk1031-049",
+        "name": "花枝漿",
+        "price": "69",
+        "previous_image_url": ""
+      }
+    ],
+    "pending_target": null
+  },
+  {
+    "source": "08-花枝-v3.jpg",
+    "asset": "web/public/products/20261124/cuttlefish.webp",
+    "url": "/seafood-stock-map/products/20261124/cuttlefish.webp",
+    "bytes": 136318,
+    "sha256": "448a55cda60adebfaa670f36003e80a81b7f5873c6c3da886fe027e0511b0c4e",
+    "targets": [
+      {
+        "id": "stk1031-034",
+        "name": "花枝",
+        "price": "229",
+        "previous_image_url": ""
+      }
+    ],
+    "pending_target": null
+  },
+  {
+    "source": "09-藍鑽蝦水餃-v3.jpg",
+    "asset": "web/public/products/20261124/shrimp-dumplings.webp",
+    "url": "/seafood-stock-map/products/20261124/shrimp-dumplings.webp",
+    "bytes": 137522,
+    "sha256": "15d736dd709fc32af367581d09c596acc051b632bff1bae7f4a3f2dfeaa3d583",
+    "targets": [
+      {
+        "id": "stk1031-022",
+        "name": "藍鑽蝦水餃",
+        "price": "260",
+        "previous_image_url": ""
+      }
+    ],
+    "pending_target": null
+  },
+  {
+    "source": "10-蝦餅-v7.jpg",
+    "asset": "web/public/products/20261124/shrimp-cakes.webp",
+    "url": "/seafood-stock-map/products/20261124/shrimp-cakes.webp",
+    "bytes": 177148,
+    "sha256": "51b9011255efbc5a856930c33488d1d5fc4ee93098b5b6c5bfe3af7c305db1b5",
+    "targets": [
+      {
+        "id": "stk1031-076",
+        "name": "蝦餅",
+        "price": "139",
+        "previous_image_url": ""
+      }
+    ],
+    "pending_target": null
+  },
+  {
+    "source": "11-爆漿雞腿肉捲-v4.jpg",
+    "asset": "web/public/products/20261124/chicken-roll.webp",
+    "url": "/seafood-stock-map/products/20261124/chicken-roll.webp",
+    "bytes": 173648,
+    "sha256": "6bdca7f0f8171ce32b188eb9bfdd7e955e3e84803ded156980b6741386e716bc",
+    "targets": [],
+    "pending_target": "stk1031-078"
+  },
+  {
+    "source": "12-霸味小丸子.jpg",
+    "asset": "web/public/products/20261124/meatballs.webp",
+    "url": "/seafood-stock-map/products/20261124/meatballs.webp",
+    "bytes": 162956,
+    "sha256": "6d6ae81f2f149ed59799548060753bdfb6e9c9c5c16c5e89437cd6b19f36550d",
+    "targets": [
+      {
+        "id": "stk1031-023",
+        "name": "霸味小丸子",
+        "price": "59",
+        "previous_image_url": ""
+      }
+    ],
+    "pending_target": null
+  },
+  {
+    "source": "13-燒烤豬五花.jpg",
+    "asset": "web/public/products/20261124/bbq-pork-belly.webp",
+    "url": "/seafood-stock-map/products/20261124/bbq-pork-belly.webp",
+    "bytes": 173358,
+    "sha256": "5a7916b66e8d13874ad76c01bd9c1f527566756125ec327d24905631044a8f9a",
+    "targets": [
+      {
+        "id": "stk1031-074",
+        "name": "燒烤豬五花",
+        "price": "200",
+        "previous_image_url": ""
+      }
+    ],
+    "pending_target": null
+  },
+  {
+    "source": "14-單眼帶骨牛-user1.png",
+    "asset": "web/public/products/20261124/single-eye-short-rib.webp",
+    "url": "/seafood-stock-map/products/20261124/single-eye-short-rib.webp",
+    "bytes": 224380,
+    "sha256": "f1f8e76db84f43d4b6f5d16cf180d7f6326d10ea48108d4ba01a97c00c91077f",
+    "targets": [
+      {
+        "id": "stk1031-072",
+        "name": "切好帶骨牛",
+        "price": "239",
+        "previous_image_url": ""
+      }
+    ],
+    "pending_target": null
+  },
+  {
+    "source": "15-桂花豬肋排-v3.jpg",
+    "asset": "web/public/products/20261124/pork-ribs.webp",
+    "url": "/seafood-stock-map/products/20261124/pork-ribs.webp",
+    "bytes": 237630,
+    "sha256": "8ddf4089e2deb053e5180cbe2d92f1ac5419bb505ad26054a94b5ef6ae50fe7b",
+    "targets": [
+      {
+        "id": "stk1031-097",
+        "name": "桂花豬肋排（冷凍）",
+        "price": "339",
+        "previous_image_url": ""
+      },
+      {
+        "id": "stk1031-077",
+        "name": "桂花豬肋排（架上）",
+        "price": "339",
+        "previous_image_url": ""
+      }
+    ],
+    "pending_target": null
+  },
+  {
+    "source": "16-沙蟹身-v5.jpg",
+    "asset": "web/public/products/20261124/crab-body.webp",
+    "url": "/seafood-stock-map/products/20261124/crab-body.webp",
+    "bytes": 192910,
+    "sha256": "8bb8f6754c9b3fb8143fe9e3db0e03fd7635b56a7e3156888c2aa8790da59666",
+    "targets": [
+      {
+        "id": "stk1031-062",
+        "name": "沙蟹身",
+        "price": "120",
+        "previous_image_url": ""
+      }
+    ],
+    "pending_target": null
+  }
+]
