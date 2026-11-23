@@ -19,7 +19,7 @@ function App(){
  const [token,setTokenState]=useState(tokenFromHash());
  useEffect(()=>{const f=()=>setTokenState(tokenFromHash());addEventListener("hashchange",f);return()=>removeEventListener("hashchange",f)},[]);
  const [origin,err]=useOrigin();
- return <main className={"shop comic"+(token?"":" shop-home")}>{token&&<header className="comic-hero"><img src={import.meta.env.BASE_URL+"comic/comic-market-cats.webp?v=1"} alt="" width={1080} height={720} decoding="async"/><div><h1>安星水產</h1><p>{token?"訂單查詢":"線上訂購・逛逛店裡挑海鮮"}</p></div></header>}{!token&&!origin&&<p className="hint">{err?"":"載入中…"}</p>}
+ return <main className={"shop comic"+(token?"":" shop-home")}>{token&&<header className="comic-hero"><img src={import.meta.env.BASE_URL+"comic/comic-market-cats-clean.webp?v=1"} alt="" width={1080} height={720} decoding="async"/><div><h1>安星水產</h1><p>{token?"訂單查詢":"線上訂購・逛逛店裡挑海鮮"}</p></div></header>}{!token&&!origin&&<p className="hint">{err?"":"載入中…"}</p>}
   {err&&<p className="err" role="alert">{err}</p>}{origin&&(token?<Lookup origin={origin} token={token}/>:<Shop origin={origin}/>)}</main>;
 }
 type U={id:string;name:string;type:"freezer"|"tank";kind?:string;area?:string};
@@ -88,7 +88,8 @@ function Shop({origin}:{origin:string}){
   setTimeout(()=>listRef.current?.scrollIntoView({behavior:reducedMotion()?"auto":"smooth",block:"start"}),50);
  }
  const openCheckout=()=>{if(lines.length){setSel(null);setCheckout(true);setTab("catalog");requestAnimationFrame(()=>document.querySelector(".panel-body")?.scrollTo({top:0}))}else{setToast("購物車是空的，點商品的「加入」開始選購");setTimeout(()=>setToast(""),1800)}};
- const map=<ShopMap onList={()=>pickZone("all")} names={zoneNames} counts={zoneCounts} active={zone} onZone={pickZone} onGame={()=>setGame(true)} onCounter={openCheckout} subtitle="點店面圖挑分類・右上釣蝦池玩遊戲"/>;
+ const returnToOrder=()=>{setQuery("");setSel(null);pickZone("all")};
+ const map=<ShopMap onOrder={returnToOrder} onGame={()=>setGame(true)} subtitle="點釣蝦池玩遊戲・選購商品請返回下單頁"/>;
  const gameEl=game&&<Suspense fallback={null}><ShrimpGame origin={origin} onClose={()=>setGame(false)} onCoupon={c=>setCoupon(c)}/></Suspense>;
  const toastEl=toast&&<p className="toast" role="status">{toast}</p>;
  const q=query.trim();
@@ -102,10 +103,10 @@ function Shop({origin}:{origin:string}){
  const liveOn=group==="live"||zone==="live"||LIVE.includes(zone??"");
  const dock=<nav className="shop-dock" aria-label="購物選單">
   <button type="button" className={tab==="browse"&&!checkout?"on":""} onClick={()=>{setCheckout(false);setTab("browse")}}><span aria-hidden>🏪</span>逛店</button>
-  <button type="button" className={tab==="catalog"&&!checkout&&!liveOn?"on":""} onClick={()=>{setCheckout(false);setTab("catalog");setGroup("all");setZone(null);setFocus(-1)}}><span aria-hidden>🛍️</span>全部商品</button>
-  <button type="button" className={tab==="catalog"&&!checkout&&liveOn?"on":""} onClick={()=>pickZone("live")}><span aria-hidden>🐟</span>活鮮</button>
+  <button type="button" className={tab==="catalog"&&!checkout&&!liveOn?"on":""} onClick={returnToOrder}><span aria-hidden>🛍️</span>全部商品</button>
+  <button type="button" className={tab==="catalog"&&!checkout&&liveOn?"on":""} onClick={()=>tab==="browse"?returnToOrder():pickZone("live")}><span aria-hidden>🐟</span>活鮮</button>
   <button type="button" className="nav-game" onClick={()=>setGame(true)}><span aria-hidden>🦐</span>釣蝦</button>
-  <button type="button" className={checkout?"on":""} onClick={openCheckout}><span aria-hidden>🛒</span>結帳{count>0&&<i className="dock-badge">{count}</i>}</button>
+  <button type="button" className={checkout?"on":""} onClick={tab==="browse"?returnToOrder:openCheckout}><span aria-hidden>🛒</span>結帳{count>0&&<i className="dock-badge">{count}</i>}</button>
  </nav>;
  const sheet=sel&&<div className="sheet-backdrop" onClick={()=>setSel(null)}><div className="sheet" role="dialog" aria-label={sel.name} onClick={e=>e.stopPropagation()}>
    <div className="sheet-grab"/>{productImageSrc(sel.imageUrl,origin)&&<img className="sheet-photo" src={productImageSrc(sel.imageUrl,origin)} alt={sel.name} decoding="async"/>}<span className="sheet-tag">{sel.displayUnit?unitIcon(sel.displayUnit)+" "+sel.displayUnit.name:""}・{sel.category}</span>
@@ -192,7 +193,7 @@ function Shop({origin}:{origin:string}){
     {listBody}
    </div>
   </section>
-  {count>0&&!checkout&&<div className="order-cartbar"><div><b>已選 {count} 件</b><span>NT$ {total.toLocaleString()}{discount>0&&<small>（已折 NT$ {discount}）</small>}</span></div><button type="button" className="primary" onClick={openCheckout}>查看購物車・結帳</button></div>}
+  {count>0&&!checkout&&tab==="catalog"&&<div className="order-cartbar"><div><b>已選 {count} 件</b><span>NT$ {total.toLocaleString()}{discount>0&&<small>（已折 NT$ {discount}）</small>}</span></div><button type="button" className="primary" onClick={openCheckout}>查看購物車・結帳</button></div>}
   {dock}
   {toastEl}
   {sheet}
