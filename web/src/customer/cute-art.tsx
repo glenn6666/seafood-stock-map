@@ -88,6 +88,26 @@ const ART:Record<string,()=>React.ReactElement>={
   <path d="M12 72c-4-18 8-34 24-38 6-12 26-14 34-2 14 2 22 16 18 32-2 10-12 16-22 16H28c-8 0-14-2-16-8Z" fill="#b9c8da" {...g}/>
   <path d="M30 46q8-6 16-4" fill="none" stroke="#e3ecf6" strokeWidth={4} strokeLinecap="round"/>
   <circle cx="64" cy="62" r="5" fill="#9fb1c6"/><circle cx="40" cy="70" r="3.4" fill="#9fb1c6"/></>,
+ "seaweed-1":()=><>
+  <ellipse cx="50" cy="50" rx="16" ry="16" fill="#2f8a3a"/>
+  {[[50,18,16,28,0],[50,18,16,28,40],[50,18,16,28,80],[50,18,16,28,120],[50,18,16,28,160],[50,18,16,28,200],[50,18,16,28,240],[50,18,16,28,280],[50,18,16,28,320]].map(([x,y,rx,ry,a],i)=>
+   <ellipse key={i} cx={x} cy={y} rx={rx} ry={ry} fill={i%2?"#7ed957":"#4cb83a"} transform={`rotate(${a} 50 50)`} {...g} strokeWidth={2.2}/>)}
+  <ellipse cx="50" cy="50" rx="12" ry="12" fill="#3aa12e" {...g} strokeWidth={2.2}/>
+  <ellipse cx="50" cy="50" rx="6" ry="6" fill="#8ee25a"/></>,
+ "seaweed-2":()=><>
+  <ellipse cx="50" cy="50" rx="12" ry="12" fill="#2f8a3a"/>
+  {[[50,26,12,22,15],[50,26,12,22,60],[50,26,12,22,105],[50,26,12,22,150],[50,26,12,22,195],[50,26,12,22,240],[50,26,12,22,285],[50,26,12,22,330]].map(([x,y,rx,ry,a],i)=>
+   <ellipse key={i} cx={x} cy={y} rx={rx} ry={ry} fill={i%2?"#8ed45e":"#62b848"} transform={`rotate(${a} 50 50)`} {...g} strokeWidth={2.2}/>)}
+  <ellipse cx="50" cy="50" rx="10" ry="10" fill="#3aa12e" {...g} strokeWidth={2.2}/>
+  <ellipse cx="50" cy="50" rx="5" ry="5" fill="#b6f07a"/></>,
+ "seaweed-3":()=><>
+  <ellipse cx="50" cy="50" rx="14" ry="14" fill="#2f8a3a"/>
+  {[[50,20,15,26,10],[50,20,15,26,55],[50,20,15,26,100],[50,20,15,26,145],[50,20,15,26,190],[50,20,15,26,235],[50,20,15,26,280],[50,20,15,26,325]].map(([x,y,rx,ry,a],i)=>
+   <ellipse key={i} cx={x} cy={y} rx={rx} ry={ry} fill={i%2?"#7ed957":"#4cb83a"} transform={`rotate(${a} 50 50)`} {...g} strokeWidth={2.2}/>)}
+  <ellipse cx="50" cy="50" rx="11" ry="11" fill="#3aa12e" {...g} strokeWidth={2.2}/>
+  <circle cx="36" cy="40" r="5" fill="#ffe4f0" {...g} strokeWidth={2}/><circle cx="36" cy="40" r="2" fill="#ffb44a"/>
+  <circle cx="64" cy="38" r="5" fill="#ffe4f0" {...g} strokeWidth={2}/><circle cx="64" cy="38" r="2" fill="#ffb44a"/>
+  <circle cx="52" cy="60" r="4.5" fill="#ffe4f0" {...g} strokeWidth={2}/><circle cx="52" cy="60" r="1.8" fill="#ffb44a"/></>,
 };
 export type ArtName=keyof typeof ART;
 export function CuteArt({name,className="",title}:{name:string;className?:string;title?:string}){

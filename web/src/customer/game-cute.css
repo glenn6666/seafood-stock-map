@@ -153,3 +153,108 @@
 @media (max-width:360px){.sheet.game.cute .wordmark{font-size:38px}.sheet.game.cute .pick-row.tools{gap:6px}.sheet.game.cute .pick b{font-size:13px}}
 @media (prefers-reduced-motion:reduce){.sheet.game.cute,.sheet.game.cute .m,.sheet.game.cute .result-ico,.sheet.game.cute .pond-bubbles i,.sheet.game.cute .hud-time.low strong,.sheet.game.cute .result-card{animation:none}}
 .sheet.game.cute.reduce .m,.sheet.game.cute.reduce .pond-bubbles i,.sheet.game.cute.reduce .result-ico{animation:none}
+
+/* —— 玩局畫面盡量大：取消 520px 卡寬，池塘填滿剩餘視窗 —— */
+.sheet.game.cute.ph-play,
+.sheet.game.cute.ph-sending,
+.sheet.game.cute.ph-done{max-width:none;width:100%;height:100dvh;border:0;border-radius:0;box-shadow:none}
+@media (min-width:700px){
+ .game-backdrop:has(.ph-play),
+ .game-backdrop:has(.ph-sending),
+ .game-backdrop:has(.ph-done){align-items:stretch;padding:0}
+ .sheet.game.cute.ph-play,
+ .sheet.game.cute.ph-sending,
+ .sheet.game.cute.ph-done{height:100dvh;max-width:none;margin:0;border:0;border-radius:0;box-shadow:none}
+}
+.sheet.game.cute.ph-play .game-top,
+.sheet.game.cute.ph-sending .game-top,
+.sheet.game.cute.ph-done .game-top{padding:max(6px,env(safe-area-inset-top)) 10px 6px}
+.sheet.game.cute.ph-play .game-top h2,
+.sheet.game.cute.ph-sending .game-top h2,
+.sheet.game.cute.ph-done .game-top h2{font-size:18px}
+.sheet.game.cute.ph-play .game-body.play,
+.sheet.game.cute.ph-sending .game-body.play,
+.sheet.game.cute.ph-done .game-body.play{flex:1;min-height:0;padding:4px 8px max(6px,env(safe-area-inset-bottom));overflow:hidden}
+.sheet.game.cute.ph-play .game-stats{padding:0 2px 4px}
+.sheet.game.cute.ph-play .hud-time b{font-size:24px}
+.sheet.game.cute.ph-play .hud-time strong{padding:1px 10px}
+.sheet.game.cute.ph-play .goal-bar{margin:0 0 6px}
+.sheet.game.cute.ph-play .game-body.play>.hint{display:none}
+.sheet.game.cute .early-end{margin:4px 0 0;min-height:32px;font-size:12px}
+
+.sheet.game.cute .pond-wrap{flex:1;min-height:0;min-width:0;width:100%;container-type:size}
+.sheet.game.cute.ph-play .pond,
+.sheet.game.cute.ph-play .pond.t-crab,
+.sheet.game.cute.ph-play .pond.t-lobster,
+.sheet.game.cute.ph-sending .pond,
+.sheet.game.cute.ph-sending .pond.t-crab,
+.sheet.game.cute.ph-sending .pond.t-lobster,
+.sheet.game.cute.ph-done .pond,
+.sheet.game.cute.ph-done .pond.t-crab,
+.sheet.game.cute.ph-done .pond.t-lobster{
+ width:100%;height:100%;max-width:100%;max-height:100%;aspect-ratio:auto;
+ margin:0;border:0;border-radius:14px;box-shadow:0 4px 18px #204b6040;
+ background-color:#7ec9c6;background-image:var(--pond-bg-wide);background-size:100% 100%;background-repeat:no-repeat;background-position:center;
+ container-type:size
+}
+@container (max-aspect-ratio:1/1){
+ .sheet.game.cute .pond-wrap .pond,
+ .sheet.game.cute .pond-wrap .pond.t-crab,
+ .sheet.game.cute .pond-wrap .pond.t-lobster{background-image:var(--pond-bg-tall)}
+}
+.sheet.game.cute.ph-play .pond::before,
+.sheet.game.cute.ph-sending .pond::before,
+.sheet.game.cute.ph-done .pond::before{display:none}
+.sheet.game.cute.ph-play .pond-bubbles,
+.sheet.game.cute.ph-sending .pond-bubbles,
+.sheet.game.cute.ph-done .pond-bubbles{display:none}
+
+/* 藍碗（蝦模式）約池寬 24%；去掉舊的沙島黃底 */
+.sheet.game.cute .pond.t-shrimp .bucket{width:26cqmin;height:26cqmin;background:none;filter:drop-shadow(0 4px 0 #204b6033)}
+.sheet.game.cute .pond.t-shrimp .bucket .spr{width:100%;height:100%}
+.sheet.game.cute .pond .bucket{transform:translate(-50%,-50%);position:absolute}
+
+/* 蝦約池寬 20%，最小 96、最大 140 */
+.sheet.game.cute .pond-obj .spr[data-sprite=shrimp],
+.sheet.game.cute .pond-obj .spr-img[data-sprite=shrimp]{width:clamp(100px,24cqmin,150px);height:clamp(100px,24cqmin,150px)}
+.sheet.game.cute .pond-obj.boot .spr,
+.sheet.game.cute .pond-obj.boot .spr-img{width:clamp(72px,16cqmin,110px);height:clamp(72px,16cqmin,110px)}
+.sheet.game.cute .pond-obj.carried .spr[data-sprite=shrimp],
+.sheet.game.cute .pond-obj.carried .spr-img[data-sprite=shrimp]{width:clamp(110px,26cqmin,160px);height:clamp(110px,26cqmin,160px)}
+.sheet.game.cute .spr-img{object-fit:contain;pointer-events:none;display:block}
+.sheet.game.cute .pond-obj.frozen{filter:drop-shadow(0 0 8px #ffd35acc)}
+
+/* 釣竿：圖高約池的 58%，鉤尖（圖上約 36.1% / 30.6%）對準游標中心＝命中點 */
+.sheet.game.cute .tool-cursor.t-rod,
+.sheet.game.cute .tool-cursor.t-rod.down{overflow:visible;transform:translate(-50%,-50%) scale(1)}
+.sheet.game.cute .tool-cursor.t-rod .ti.spr-img,
+.sheet.game.cute .tool-cursor.t-rod .rod-img{
+ position:absolute;left:50%;top:50%;
+ width:clamp(200px,48cqmin,300px);height:clamp(200px,48cqmin,300px);max-width:none;aspect-ratio:1;
+ transform:translate(-42%,-50.6%);
+ filter:drop-shadow(0 3px 0 #204b6033)
+}
+.sheet.game.cute .tool-cursor.t-rod:not(.down) .ti.spr-img{opacity:.95}
+.sheet.game.cute .title-ico.spr-img,
+.sheet.game.cute .hud-ico.spr-img,
+.sheet.game.cute .pick-icon.spr-img,
+.sheet.game.cute .result-ico.spr-img{width:100%;height:100%;object-fit:contain}
+.sheet.game.cute .title-ico.spr-img{width:28px;height:28px}
+.sheet.game.cute .hud-ico.spr-img{width:30px;height:30px}
+.sheet.game.cute .m-bucket.spr-img{width:96px;height:96px}
+.sheet.game.cute .m-shrimp.spr-img{width:70px;height:70px}
+.sheet.game.cute .pick-icon.spr-img{width:46px;height:46px}
+.sheet.game.cute .pick-row.tools .pick-icon.spr-img{width:40px;height:40px}
+.sheet.game.cute .result-ico.spr-img{width:54px;height:54px}
+
+/* 水草：畫在蝦子上層，讓蝦子可以躲進去；不擋操作 */
+.sheet.game.cute .pond .weed{position:absolute;transform:translate(-50%,-50%);z-index:2;pointer-events:none;filter:drop-shadow(0 3px 0 #204b6026)}
+.sheet.game.cute .pond .weed .spr,
+.sheet.game.cute .pond .weed .spr-img{display:block;object-fit:contain;pointer-events:none}
+.sheet.game.cute .pond .weed.k-1 .spr,
+.sheet.game.cute .pond .weed.k-1 .spr-img{width:clamp(118px,32cqmin,190px);height:clamp(118px,32cqmin,190px)}
+.sheet.game.cute .pond .weed.k-2 .spr,
+.sheet.game.cute .pond .weed.k-2 .spr-img{width:clamp(80px,22cqmin,130px);height:clamp(80px,22cqmin,130px)}
+.sheet.game.cute .pond .weed.k-3 .spr,
+.sheet.game.cute .pond .weed.k-3 .spr-img{width:clamp(104px,28cqmin,168px);height:clamp(104px,28cqmin,168px)}
+.sheet.game.cute .pond-obj.dashing{filter:drop-shadow(0 0 10px #fff8) drop-shadow(0 3px 0 #204b6026)}

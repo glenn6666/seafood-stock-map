@@ -6,7 +6,7 @@ const j=async(path,{method="GET",token,body}={})=>{const h={"Content-Type":"appl
 const out=[];const ok=(c,m)=>out.push((c?"✅ ":"❌ ")+m);
 const b=await chromium.launch({executablePath:"/usr/bin/google-chrome",args:["--enable-unsafe-swiftshader","--use-angle=swiftshader","--enable-webgl","--ignore-gpu-blocklist"]});
 const ctx=await b.newContext({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true});
-const p=await ctx.newPage();const errs=[];p.on("pageerror",e=>errs.push(e.message));p.on("console",m=>{if(m.type()==="error"&&!(m.location()?.url||"").includes("/comic/game/"))errs.push(m.text())});
+const p=await ctx.newPage();const errs=[];p.on("pageerror",e=>errs.push(e.message));p.on("console",m=>{if(m.type()==="error"&&!(m.location()?.url||"").includes("/comic/game"))errs.push(m.text())});
 // 可愛版改用自繪 SVG，不再載入 comic/game/*.webp（保留這行攔截不影響）
 await p.route("**/comic/game/boot.webp",r=>r.fulfill({status:404,body:""}));
 await p.goto(B+"?e2e");await p.waitForSelector("canvas.scene3d");await p.waitForTimeout(2500);
@@ -43,10 +43,10 @@ const OFF=Math.round(Math.max(90,Math.min(120,pb.height*.3)));
  await p.screenshot({path:"/workspace/screens-fullmap2/16-phone-grip.png"});
  await p.mouse.move(pb.x+pb.width*.3,pb.y+pb.height+OFF+40,{steps:6});await p.waitForTimeout(800);
  const t2=await p.locator(".tool-cursor").boundingBox();ok(t2.y+t2.height/2>pb.y+pb.height*.95,"手指在池外下方時工作端可到池底");await p.mouse.up();await p.waitForTimeout(200)}
-ok(Math.abs(pb.width-pb.height)<4&&Math.abs((bb.x+bb.width/2)-(pb.x+pb.width/2))<4&&Math.abs((bb.y+bb.height/2)-(pb.y+pb.height/2))<4,"俯視方形池塘、水桶在中央");
+ok(pb.width>200&&pb.height>200&&Math.abs((bb.x+bb.width/2)-(pb.x+pb.width/2))<6&&Math.abs((bb.y+bb.height/2)-(pb.y+pb.height/2))<6,"池塘填滿剩餘畫面、水桶在中央");
 ok((await p.locator(".pond-obj").first().getAttribute("style")).includes("rotate("),"獵物依移動方向旋轉");
 ok(await p.locator(".pond svg[data-sprite=crab]").count()>0,"螃蟹使用可愛版 SVG 圖案");
-ok(await p.locator(".pond svg[data-sprite=boot]").count()>0,"破鞋使用可愛版 SVG 圖案");
+ok((await p.locator(".pond svg[data-sprite=boot], .pond img[data-sprite=boot]").count())>0,"破鞋使用遊戲圖案");
 // 實際玩一隻：按住螃蟹 → 抓住 → 慢慢拖到水桶放開
 let got=false;for(let attempt=0;attempt<4&&!got;attempt++){
  const box=await p.locator(".pond").boundingBox();

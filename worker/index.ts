@@ -194,7 +194,7 @@ async function rateLimit(env:Env,request:Request,bucket:keyof typeof LIMITS){
 // 規則：35 秒內釣到 4 隻 → 滿 NT$1,000 折 NT$5；每筆訂單限用一張、不累加；券 24 小時內有效、只能用一次。
 // 遊戲在前端進行，伺服器只能做合理性檢查（開局時間、最短／最長時間、單局只能領一次、IP 限額），無法完全防止腳本作弊；折扣金額固定且小，風險有限。
 // 釣蝦場：可選目標（決定過關隻數／時間／最短合理時間）與工具（只影響前端手感，伺服器僅驗證並記錄）
-const TARGETS={shrimp:{goal:4,seconds:40,minSec:8},crab:{goal:3,seconds:40,minSec:8},lobster:{goal:2,seconds:45,minSec:10}} as const;
+const TARGETS={shrimp:{goal:4,seconds:40,minSec:12},crab:{goal:3,seconds:40,minSec:8},lobster:{goal:2,seconds:45,minSec:10}} as const;
 const TOOLS=["rod","net","tongs","cage"] as const;
 type Target=keyof typeof TARGETS;
 const GAME={seconds:TARGETS.shrimp.seconds,target:TARGETS.shrimp.goal,graceSec:15},COUPON={discount:5,minTotal:1000,ttlHours:24};

@@ -221,7 +221,7 @@ await t("釣蝦遊戲：目標／工具驗證、太快／未達標不發券；�
  assert.equal((await api("/api/public/game/start",{method:"POST",ip,body:{target:"whale",tool:"rod"}})).status,400,"未知目標");
  assert.equal((await api("/api/public/game/start",{method:"POST",ip,body:{target:"crab",tool:"bomb"}})).status,400,"未知工具");
  const gl=(await api("/api/public/game/start",{method:"POST",ip,body:{target:"lobster",tool:"cage"}})).data;assert.ok(gl.seconds===45&&gl.target===2,"龍蝦 45 秒 2 隻");
- assert.equal((await api("/api/public/game/finish",{method:"POST",ip,body:{gameId:g.gameId,caught:4}})).status,400,"8 秒內完成視為作弊");
+ assert.equal((await api("/api/public/game/finish",{method:"POST",ip,body:{gameId:g.gameId,caught:4}})).status,400,"12 秒內完成視為作弊");
  assert.equal((await api("/api/public/game/finish",{method:"POST",ip:freshIp(),body:{gameId:g.gameId,caught:4}})).status,404,"其他 IP 不能代領");
  const g2=(await api("/api/public/game/start",{method:"POST",ip,body:{target:"crab",tool:"tongs"}})).data;assert.ok(g2.seconds===40&&g2.target===3,"螃蟹 40 秒 3 隻");
  await sleep(8500);
