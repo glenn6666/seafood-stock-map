@@ -1,7 +1,7 @@
 // 樂甜釣蝦場（免費遊玩，俯視池塘）：先選目標（蝦／螃蟹／龍蝦）與工具（釣竿／網子／夾子／蝦籠），
 // 按住水面放下工具、停在獵物身上一會兒抓住，按著「慢慢」拖到碗／水桶上方放開即入桶；拖太快或獵物掙扎會掉回水裡。
 // 達標 → 伺服器發「滿 NT$1,000 折 NT$5」優惠券。開局與結算都經過 Worker；前端不產生優惠碼。
-// 蝦模式使用 comic/game-v2 插圖（釣不到時退回 cute-art SVG）；螃蟹／龍蝦與其他工具仍用 SVG。
+// 三種海鮮共用 cute-art SVG：選角、主視覺、池塘與結果維持同一套插畫。
 // 蝦模式：水草可躲（多半藏著時釣不到）、鉤住時約 20% 一次 2 隻、偶爾爆衝（上鉤時約 15% 會掙脫）。
 import {useEffect,useLayoutEffect,useRef,useState} from "react";
 import {errorText} from "../lib/api-config";
@@ -40,7 +40,7 @@ function V2Img({src,sprite,className=""}:{src:string;sprite:string;className?:st
  return <img className={"spr spr-img "+className} src={src} alt="" draggable={false} data-sprite={sprite} onError={()=>setOk(false)}/>;
 }
 function Sprite({name,className="",frame=1,caught=false,kind}:{name:SpriteName;emoji?:string;className?:string;frame?:number;caught?:boolean;kind?:TargetId}){
- if(name==="shrimp")return <V2Img className={className} sprite="shrimp" src={ART_BASE+(caught?"shrimp-caught.webp":frame===2?"shrimp-02.webp":"shrimp-01.webp")}/>;
+ if(name==="shrimp"||name==="crab"||name==="lobster")return <CuteArt className={"spr cute sea-friend "+(caught?"is-caught ":"")+"swim-"+frame+" "+className} name={name}/>;
  if(name==="boot")return <V2Img className={className} sprite="boot" src={ART_BASE+"boot.webp"}/>;
  if(name==="rod")return <V2Img className={className} sprite="rod" src={ART_BASE+"rod-small.webp"}/>;
  if(name==="bucket"&&kind==="shrimp")return <V2Img className={className} sprite="bucket" src={ART_BASE+"bowl.webp"}/>;

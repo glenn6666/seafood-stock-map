@@ -260,3 +260,10 @@
 .sheet.game.cute .pond .weed.k-3 .spr,
 .sheet.game.cute .pond .weed.k-3 .spr-img{width:clamp(104px,28cqmin,168px);height:clamp(104px,28cqmin,168px)}
 .sheet.game.cute .pond-obj.dashing{filter:drop-shadow(0 0 10px #fff8) drop-shadow(0 3px 0 #204b6026)}
+
+/* 三位海鮮朋友共用描邊、表情與尺寸，避免蝦是點陣圖、龍蝦是小圖示。 */
+.sheet.game.cute .pond-obj .sea-friend[data-sprite]{width:clamp(100px,24cqmin,150px);height:clamp(100px,24cqmin,150px)}
+.sheet.game.cute .pond-obj.carried .sea-friend[data-sprite]{width:clamp(110px,26cqmin,160px);height:clamp(110px,26cqmin,160px)}
+.sheet.game.cute .sea-friend.is-caught{filter:drop-shadow(0 0 4px #fff7)}
+.sheet.game.cute .pick-icon.sea-friend{width:52px;height:52px}
+.sheet.game.cute .hero-art .sea-friend{filter:drop-shadow(0 4px 0 #204b6022)}

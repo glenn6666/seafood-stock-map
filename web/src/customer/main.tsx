@@ -6,6 +6,7 @@ import {loadApiOrigin,errorText,newKey} from "../lib/api-config";
 import "./customer.css";
 import "./comic.css";
 import "./catalog.css";
+import "./ordering.css";
 import type {Coupon} from "./ShrimpGame";
 import ShopMap,{LIVE} from "./ShopMap";
 import {GROUPS,UNIT_BLURB,groupOf,inGroupUnits,type GroupId} from "./shop-groups";
@@ -37,8 +38,8 @@ const show3dWalk=()=>{try{const q=new URLSearchParams(location.search);return q.
 function panelHeading(zone:string|null,group:GroupId,zoneNames:Record<string,string>,units:U[]){
  const u=zone&&zone!=="live"?units.find(x=>x.id===zone):undefined;
  if(u)return {title:`${u.area?`${u.area}｜`:""}${u.name}`,blurb:UNIT_BLURB[u.id]??"",zoneLabel:u.name};
- if(zone==="live"||group==="live")return {title:`06｜${zoneNames.live??"活鮮水產"}`,blurb:UNIT_BLURB.live,zoneLabel:zoneNames.live};
- if(group==="dry")return {title:"07｜乾貨醬料",blurb:"乾貨、醬料與南北貨。",zoneLabel:""};
+ if(zone==="live"||group==="live")return {title:"活鮮水產",blurb:UNIT_BLURB.live,zoneLabel:zoneNames.live};
+ if(group==="dry")return {title:"乾貨醬料",blurb:"乾貨、醬料與南北貨。",zoneLabel:""};
  if(group==="chilled")return {title:"冷藏・冷凍",blurb:"冰箱與冰櫃裡的海鮮、肉品與火鍋料。",zoneLabel:""};
  return {title:"全部商品",blurb:"店裡現在開放訂購的海味，分類找或直接搜尋品名。",zoneLabel:""};
 }
@@ -86,7 +87,7 @@ function Shop({origin}:{origin:string}){
   if(mode==="3d"&&i>=0){setZone(id);setFocus(i)}else{setZone(id);if(mode!=="list")switchMode("list")}
   setTimeout(()=>listRef.current?.scrollIntoView({behavior:reducedMotion()?"auto":"smooth",block:"start"}),50);
  }
- const openCheckout=()=>{if(lines.length){setSel(null);setCheckout(true);setTab("catalog")}else{setToast("購物車是空的，先點店裡的櫃子挑商品");setTimeout(()=>setToast(""),1800)}};
+ const openCheckout=()=>{if(lines.length){setSel(null);setCheckout(true);setTab("catalog");requestAnimationFrame(()=>document.querySelector(".panel-body")?.scrollTo({top:0}))}else{setToast("購物車是空的，點商品的「加入」開始選購");setTimeout(()=>setToast(""),1800)}};
  const map=<ShopMap onList={()=>pickZone("all")} names={zoneNames} counts={zoneCounts} active={zone} onZone={pickZone} onGame={()=>setGame(true)} onCounter={openCheckout} subtitle="點店面圖挑分類・右上釣蝦池玩遊戲"/>;
  const gameEl=game&&<Suspense fallback={null}><ShrimpGame origin={origin} onClose={()=>setGame(false)} onCoupon={c=>setCoupon(c)}/></Suspense>;
  const toastEl=toast&&<p className="toast" role="status">{toast}</p>;
@@ -115,45 +116,49 @@ function Shop({origin}:{origin:string}){
    <button className="sheet-close" onClick={()=>setSel(null)}>關閉</button></div></div>;
  const filters=<>
    <div ref={listRef}/>
+   <div className="catalog-tools">
    <div className={zone?"panel-title zone-filter":"panel-title"}>
     <h2>{heading.title}</h2>
     {heading.blurb&&<p className="panel-blurb">{heading.blurb}</p>}
     {zone&&<button type="button" className="clear-zone" onClick={()=>{setZone(null);if(group==="live")setGroup("live")}}>顯示全部</button>}
    </div>
-   <div className="cats">{GROUPS.map(g=><button key={g.id} type="button" className={group===g.id?"active":""} onClick={()=>{setGroup(g.id);setCheckout(false);setTab("catalog");setZone(g.id==="live"?"live":null);setFocus(-1)}}>{g.label}</button>)}</div>
-   <label className="shop-search"><span aria-hidden>🔍</span><input type="search" value={query} onChange={e=>setQuery(e.target.value)} placeholder="找海味 搜尋品名" enterKeyHint="search" autoComplete="off"/></label>
+   <div className="cats">{GROUPS.map(g=><button key={g.id} type="button" aria-pressed={group===g.id} className={group===g.id?"active":""} onClick={()=>{setGroup(g.id);setCheckout(false);setTab("catalog");setZone(g.id==="live"?"live":null);setFocus(-1)}}>{g.label}</button>)}</div>
+   <label className="shop-search"><span aria-hidden>🔍</span><input type="search" value={query} onChange={e=>setQuery(e.target.value)} aria-label="搜尋商品" placeholder="搜尋品名，例如：鮭魚、白蝦" enterKeyHint="search" autoComplete="off"/></label>
    {subUnits.length>1&&<div className="unit-tabs" role="tablist" aria-label="櫃子">{subUnits.map(u=><button key={u.id} type="button" role="tab" aria-selected={zone===u.id} className={zone===u.id?"active":""} onClick={()=>pickZone(u.id)}>{u.name}</button>)}</div>}
+   </div>
+   <p className="results-count" role="status">{menu?`共 ${shown.length} 項商品${q?`・搜尋「${q}」`:""}`:msg?"商品暫時無法載入":"正在讀取商品…"}{(q||zone)&&<button type="button" onClick={()=>{setQuery("");setZone(null);setGroup("all")}}>清除篩選</button>}</p>
    {coupon&&<button className="game-banner" type="button" onClick={()=>setGame(true)}><span>🦐</span><b>樂甜釣蝦場</b><small>{`已有優惠券：滿 ${coupon.minTotal} 折 ${coupon.discount}`}</small></button>}
  </>;
- const itemCard=(m:M)=><div key={m.id} className={"card item"+(m.available?"":" soldout")}>
+ const itemCard=(m:M)=><div key={m.id} className={"card item"+(cart[m.id]>0?" in-cart":"")+(m.available?"":" soldout")}>
    {productImageSrc(m.imageUrl,origin)?<button type="button" className="item-thumb photo" onClick={()=>choose(m)} aria-label={m.name+" 看大圖"}><img src={productImageSrc(m.imageUrl,origin)} alt="" loading="lazy" decoding="async"/></button>
     :<div className="item-thumb" data-kind={m.displayUnit?.kind||(m.displayUnit?.type==="tank"?"cold":"fridge")} aria-hidden>{unitIcon(m.displayUnit??{type:"freezer"})}</div>}
    <div className="item-main">
     {m.displayUnit&&<span className="item-area">{m.displayUnit.name}</span>}
-    <strong onClick={()=>choose(m)}>{m.name}</strong>
+    <button type="button" className="item-name" onClick={()=>choose(m)}>{m.name}</button>
     {m.spec?<p className="spec">{m.spec}</p>:null}
     <div className="item-foot">
      <div className="item-meta">
       <span className="avail">{m.available?`可訂 ${m.available} ${m.unit}`:"已售完"}</span>
-      <b className="price">NT$ {priceNum(m.price).toLocaleString("en-US")}</b>
+      <b className="price">NT$ {priceNum(m.price).toLocaleString("en-US")}<small> / {m.unit}</small></b>
      </div>
-     {cart[m.id]>0?<div className="stepper"><button aria-label="減少" onClick={()=>setQty(m,cart[m.id]-1)}>－</button><output>{cart[m.id]}</output><button aria-label="增加" onClick={()=>setQty(m,cart[m.id]+1)} disabled={cart[m.id]>=m.available}>＋</button></div>
-      :<button type="button" className="item-add" aria-label="增加" disabled={!m.available} onClick={()=>addOne(m)}>＋加入</button>}
+     {cart[m.id]>0?<div className="stepper"><button aria-label={`減少${m.name}`} onClick={()=>setQty(m,cart[m.id]-1)}>－</button><output>{cart[m.id]}</output><button aria-label={`增加${m.name}`} onClick={()=>setQty(m,cart[m.id]+1)} disabled={cart[m.id]>=m.available}>＋</button></div>
+      :<button type="button" className="item-add" aria-label={`加入${m.name}`} disabled={!m.available} onClick={()=>addOne(m)}>{m.available?"＋ 加入":"已售完"}</button>}
     </div>
    </div>
   </div>;
  const listBody=!menu?<p className="hint">{msg||"載入中…"}</p>
   :!menu.length?<><p className="hint">目前沒有開放訂購的商品，仍可先玩釣蝦遊戲拿優惠券。</p><button className="game-banner" onClick={()=>setGame(true)}><span>🦐</span><b>樂甜釣蝦場</b><small>抓蝦／螃蟹／龍蝦，過關贏滿 NT$1,000 折 NT$5</small></button></>
-  :checkout?<form className="card form" onSubmit={submit}><h2>購物車</h2>
-  <ul className="lines">{lines.map(m=><li key={m.id}><span>{m.name} <small>{m.spec}</small></span><span className="cart-qty"><button type="button" aria-label="減少" onClick={()=>setQty(m,cart[m.id]-1)}>－</button>{cart[m.id]}<button type="button" aria-label="增加" disabled={cart[m.id]>=m.available} onClick={()=>setQty(m,cart[m.id]+1)}>＋</button></span><span>${priceNum(m.price)*cart[m.id]}</span></li>)}</ul>
+  :checkout?<form className="card form" onSubmit={submit}><div className="checkout-heading"><span>確認商品，再填寫聯絡資料</span><h2>確認您的訂單</h2></div><h3>選購商品 · {count} 件</h3>
+  <ul className="lines">{lines.map(m=><li key={m.id}><span>{m.name} <small>{m.spec}</small></span><span className="cart-qty"><button type="button" aria-label={`減少${m.name}`} onClick={()=>setQty(m,cart[m.id]-1)}>－</button>{cart[m.id]}<button type="button" aria-label={`增加${m.name}`} disabled={cart[m.id]>=m.available} onClick={()=>setQty(m,cart[m.id]+1)}>＋</button></span><span>NT$ {(priceNum(m.price)*cart[m.id]).toLocaleString()}</span></li>)}</ul>
   {coupon&&<p className={"coupon-line"+(couponOk?" ok":"")}>🎟 釣蝦優惠券：{couponOk?`已套用，折 NT$${coupon.discount}`:`再買 NT$${coupon.minTotal-subtotal} 即可折 NT$${coupon.discount}`}</p>}
-  {discount>0&&<p className="subtotal">小計 ${subtotal}・折抵 −${discount}</p>}<p className="total">合計 ${total}</p>
+  {discount>0&&<p className="subtotal">小計 NT$ {subtotal.toLocaleString()}・折抵 −NT$ {discount.toLocaleString()}</p>}<p className="total">合計 NT$ {total.toLocaleString()}</p>
   {!lines.length&&<p className="hint">購物車是空的。</p>}
-  <label>姓名<input value={f.customerName} onChange={e=>setF({...f,customerName:e.target.value})} required maxLength={40} autoComplete="name"/></label>
-  <label>聯絡電話<input value={f.phone} onChange={e=>setF({...f,phone:e.target.value})} required inputMode="tel" autoComplete="tel" pattern="[0-9+\-\s]{6,20}"/></label>
-  <label>備註（選填）<textarea value={f.note} onChange={e=>setF({...f,note:e.target.value})} maxLength={300}/></label>
+  <h3>訂購人資料</h3><p className="form-help">請留下正確的姓名與電話，方便店家聯繫您。</p>
+  <label>姓名（必填）<input placeholder="請填寫訂購人姓名" value={f.customerName} onChange={e=>setF({...f,customerName:e.target.value})} required maxLength={40} autoComplete="name"/></label>
+  <label>聯絡電話（必填）<input type="tel" placeholder="請填寫可聯繫的電話" value={f.phone} onChange={e=>setF({...f,phone:e.target.value})} required inputMode="tel" autoComplete="tel" pattern="[0-9+\-\s]{6,20}"/></label>
+  <label>備註（選填）<textarea placeholder="有其他需求，可在這裡告訴我們" rows={3} value={f.note} onChange={e=>setF({...f,note:e.target.value})} maxLength={300}/></label>
   {msg&&<p className="err" role="alert">{msg}</p>}
-  <button className="primary" disabled={busy||!lines.length}>{busy?"送出中…":"送出訂單"}</button><button type="button" onClick={()=>setCheckout(false)}>繼續選購</button></form>
+  <button className="primary" disabled={busy||!lines.length}>{busy?"送出中…":`確認送出訂單 · NT$ ${total.toLocaleString()}`}</button><button type="button" onClick={()=>setCheckout(false)}>繼續選購</button></form>
   :<>
    {allow3d&&<div className="view-toggle" role="group" aria-label="瀏覽方式">{auto3d&&<button className={mode==="3d"?"active":""} onClick={()=>switchMode("3d")}>🧊 3D 逛店</button>}<button className={mode==="list"?"active":""} onClick={()=>switchMode("list")}>☰ 列表</button></div>}
    {mode==="3d"?<section className="stage">
@@ -170,23 +175,24 @@ function Shop({origin}:{origin:string}){
     {msg&&<p className="err">{msg}</p>}
    </>}
   </>;
- return <div className="shop-shell">
+ return <div className={"shop-shell"+(tab==="browse"&&!checkout?" browsing":" ordering")}>
   <div className={"shop-map-pane"+(tab==="browse"?" is-on":"")}>{map}</div>
   <section className={"shop-panel"+(tab==="catalog"||checkout?" is-on":"")} aria-label="商品列表">
    <header className="panel-hero">
     <div className="panel-hero-text">
-     <span className="brand">ANXING OCEAN MARKET</span>
-     <p className="tagline">今天，帶點海味回家。</p>
-     <p className="hero-sub">從冰箱到活鮮缸，慢慢挑一份喜歡。</p>
+     <span className="brand">安星水產 <small>ANXING OCEAN MARKET</small></span>
+     <p className="tagline">今天想吃什麼海味？</p>
+     <p className="hero-sub">挑商品、選數量，輕鬆完成訂購。</p>
     </div>
-    <button type="button" className="panel-close" aria-label="回到店面" onClick={()=>{setCheckout(false);setTab("browse")}}>×</button>
+    <button type="button" className="panel-close" aria-label="逛逛店面" onClick={()=>{setCheckout(false);setTab("browse")}}>逛逛店面</button>
    </header>
    <div className="panel-body">
-    <a className="dine-entry" href={import.meta.env.BASE_URL+"dine.html"}>🍽️ 線上點餐　店內現做料理・預約自取</a>
+    {!checkout&&<a className="dine-entry" href={import.meta.env.BASE_URL+"dine.html"}>🍽️ 想吃現做料理？ 前往線上點餐</a>}
     {!checkout&&filters}
     {listBody}
    </div>
   </section>
+  {count>0&&!checkout&&<div className="order-cartbar"><div><b>已選 {count} 件</b><span>NT$ {total.toLocaleString()}{discount>0&&<small>（已折 NT$ {discount}）</small>}</span></div><button type="button" className="primary" onClick={openCheckout}>查看購物車・結帳</button></div>}
   {dock}
   {toastEl}
   {sheet}
