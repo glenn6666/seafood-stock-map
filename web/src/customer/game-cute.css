@@ -246,3 +246,15 @@
 .sheet.game.cute .pick-icon.spr-img{width:46px;height:46px}
 .sheet.game.cute .pick-row.tools .pick-icon.spr-img{width:40px;height:40px}
 .sheet.game.cute .result-ico.spr-img{width:54px;height:54px}
+
+/* 水草：畫在蝦子上層，讓蝦子可以躲進去；不擋操作 */
+.sheet.game.cute .pond .weed{position:absolute;transform:translate(-50%,-50%);z-index:2;pointer-events:none;filter:drop-shadow(0 3px 0 #204b6026)}
+.sheet.game.cute .pond .weed .spr,
+.sheet.game.cute .pond .weed .spr-img{display:block;object-fit:contain;pointer-events:none}
+.sheet.game.cute .pond .weed.k-1 .spr,
+.sheet.game.cute .pond .weed.k-1 .spr-img{width:clamp(92px,28cqmin,155px);height:clamp(138px,42cqmin,230px)}
+.sheet.game.cute .pond .weed.k-2 .spr,
+.sheet.game.cute .pond .weed.k-2 .spr-img{width:clamp(112px,32cqmin,185px);height:clamp(76px,22cqmin,125px)}
+.sheet.game.cute .pond .weed.k-3 .spr,
+.sheet.game.cute .pond .weed.k-3 .spr-img{width:clamp(100px,28cqmin,165px);height:clamp(100px,28cqmin,165px)}
+.sheet.game.cute .pond-obj.dashing{filter:drop-shadow(0 0 10px #fff8) drop-shadow(0 3px 0 #204b6026)}

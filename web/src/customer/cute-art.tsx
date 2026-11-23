@@ -88,6 +88,30 @@ const ART:Record<string,()=>React.ReactElement>={
   <path d="M12 72c-4-18 8-34 24-38 6-12 26-14 34-2 14 2 22 16 18 32-2 10-12 16-22 16H28c-8 0-14-2-16-8Z" fill="#b9c8da" {...g}/>
   <path d="M30 46q8-6 16-4" fill="none" stroke="#e3ecf6" strokeWidth={4} strokeLinecap="round"/>
   <circle cx="64" cy="62" r="5" fill="#9fb1c6"/><circle cx="40" cy="70" r="3.4" fill="#9fb1c6"/></>,
+ "seaweed-1":()=><>
+  <ellipse cx="32" cy="90" rx="10" ry="6" fill="#c5cdd6" {...g} strokeWidth={2.4}/>
+  <ellipse cx="48" cy="92" rx="13" ry="7" fill="#d5dce4" {...g} strokeWidth={2.4}/>
+  <ellipse cx="64" cy="90" rx="9" ry="6" fill="#b8c2ce" {...g} strokeWidth={2.4}/>
+  <path d="M40 88c-6-22-16-40-8-72 10 8 10 28 8 44 8-18 4-40 14-54 2 22-2 44-6 62Z" fill="#7fce5a" {...g}/>
+  <path d="M52 88c4-24 16-36 8-70-10 10-8 30-6 48 10-16 18-36 22-52-8 24-14 46-16 70Z" fill="#62b848" {...g}/>
+  <path d="M46 86c-2-20 2-40-4-62 8 6 8 26 6 42" fill="none" stroke="#d6ff9a" strokeWidth={3} strokeLinecap="round"/></>,
+ "seaweed-2":()=><>
+  <ellipse cx="28" cy="86" rx="11" ry="7" fill="#c5cdd6" {...g} strokeWidth={2.4}/>
+  <ellipse cx="50" cy="90" rx="16" ry="8" fill="#d5dce4" {...g} strokeWidth={2.4}/>
+  <ellipse cx="72" cy="86" rx="11" ry="7" fill="#b8c2ce" {...g} strokeWidth={2.4}/>
+  <path d="M34 84c-8-16-6-36 2-52 8 10 6 24 4 36" fill="#8ed45e" {...g}/>
+  <path d="M50 86c-10-18-4-40 6-58 10 12 8 28 4 44 10-16 18-28 16-48-2 22-8 38-12 54Z" fill="#62b848" {...g}/>
+  <path d="M66 84c8-16 6-34-2-50-6 12-4 26-2 36" fill="#7fce5a" {...g}/>
+  <path d="M44 70q6-8 12 0" fill="none" stroke="#d6ff9a" strokeWidth={3} strokeLinecap="round"/></>,
+ "seaweed-3":()=><>
+  <ellipse cx="30" cy="90" rx="10" ry="6" fill="#c5cdd6" {...g} strokeWidth={2.4}/>
+  <ellipse cx="50" cy="92" rx="14" ry="7" fill="#d5dce4" {...g} strokeWidth={2.4}/>
+  <ellipse cx="68" cy="90" rx="10" ry="6" fill="#b8c2ce" {...g} strokeWidth={2.4}/>
+  <path d="M38 88c-6-22-14-40-6-70 10 8 10 28 7 44 8-16 6-38 16-52 0 22-4 44-8 62Z" fill="#6fbf4c" {...g}/>
+  <path d="M54 88c4-24 14-36 8-68-10 10-8 30-6 46 10-14 16-34 20-50-8 24-12 46-14 68Z" fill="#58a83e" {...g}/>
+  <circle cx="34" cy="28" r="5" fill="#ffe4f0" {...g} strokeWidth={2}/><circle cx="34" cy="28" r="2" fill="#ffb44a"/>
+  <circle cx="70" cy="36" r="5" fill="#ffe4f0" {...g} strokeWidth={2}/><circle cx="70" cy="36" r="2" fill="#ffb44a"/>
+  <circle cx="58" cy="20" r="4.5" fill="#ffe4f0" {...g} strokeWidth={2}/><circle cx="58" cy="20" r="1.8" fill="#ffb44a"/></>,
 };
 export type ArtName=keyof typeof ART;
 export function CuteArt({name,className="",title}:{name:string;className?:string;title?:string}){
