@@ -7,8 +7,6 @@ import "./customer.css";
 import "./comic.css";
 import "./catalog.css";
 import "./ordering.css";
-import type {Coupon} from "./ShrimpGame";
-import {COUPON_RULE,storeCouponSubtotal} from '../lib/coupon-policy';
 import ShopMap,{LIVE} from "./ShopMap";
 import {GROUPS,UNIT_BLURB,groupOf,inGroupUnits,type GroupId} from "./shop-groups";
 type M={id:string;name:string;spec:string;unit:string;category:string;price:string;available:number;displayUnit:U|null;imageUrl?:string};
@@ -28,8 +26,6 @@ const ShrimpGame=lazy(()=>import("./ShrimpGame"));
 const KIND_ICON:Record<string,string>={fridge:"🧊",case:"🐟",dry:"🌰",cold:"❄️",shrimp:"🦐",ambient:"🐠"};
 export const unitIcon=(u:{type:string;kind?:string})=>KIND_ICON[u.kind??""]??(u.type==="tank"?"🐟":"🧊");
 const noDoor=(u?:{type:string;kind?:string}|null)=>!!u&&u.type==="freezer"&&(u.kind==="case"||u.kind==="dry");
-const COUPON_KEY="shrimp-coupon";
-const loadCoupon=():Coupon|null=>{try{const c=JSON.parse(localStorage.getItem(COUPON_KEY)??"null");return c&&new Date(c.expiresAt)>new Date()?c:null}catch{return null}};
 const Scene3D=lazy(()=>import("./Scene3D"));
 const canWebGL=()=>{try{const c=document.createElement("canvas");return !!(c.getContext("webgl2")||c.getContext("webgl"))}catch{return false}};
 const reducedMotion=()=>matchMedia?.("(prefers-reduced-motion: reduce)").matches;
@@ -50,9 +46,7 @@ function Shop({origin}:{origin:string}){
  const allow3d=useMemo(()=>show3dWalk(),[]);
  const auto3d=useMemo(()=>allow3d&&canWebGL()&&!reducedMotion(),[allow3d]);
  const [mode,setMode]=useState<"3d"|"list">(()=>{const pref=localStorage.getItem("shop-view");return allow3d&&canWebGL()&&!reducedMotion()&&pref!=="list"?"3d":"list"});
- const [coupon,setCouponState]=useState<Coupon|null>(loadCoupon),[game,setGame]=useState(false);
- const setCoupon=(c:Coupon|null)=>{setCouponState(c);if(c)localStorage.setItem(COUPON_KEY,JSON.stringify(c));else localStorage.removeItem(COUPON_KEY)};
- useEffect(()=>{if(!coupon)return;const controller=new AbortController();fetch(origin+'/api/public/coupons/check',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'omit',signal:controller.signal,body:JSON.stringify({code:coupon.code,channel:'shop'})}).then(async r=>{if([404,409].includes(r.status)){setCoupon(null);return}if(r.ok){const d=await r.json();setCoupon({...coupon,expiresAt:d.expiresAt,restrictions:d.restrictions})}}).catch(()=>{});return()=>controller.abort()},[origin,coupon?.code]);
+ const [game,setGame]=useState(false);
  const [focus,setFocus]=useState(-1),[sel,setSel]=useState<M|null>(null),[pick,setPick]=useState(1),[toast,setToast]=useState("");
  const [zone,setZone]=useState<string|null>(null),listRef=useRef<HTMLDivElement>(null);
  const idem=useRef(newKey());
@@ -60,8 +54,7 @@ function Shop({origin}:{origin:string}){
  useEffect(()=>{load()},[]);
  const lines=(menu??[]).filter(m=>cart[m.id]>0);
  const subtotal=lines.reduce((s,m)=>s+priceNum(m.price)*cart[m.id],0),count=lines.reduce((s,m)=>s+cart[m.id],0);
- const eligibleSubtotal=storeCouponSubtotal(lines,m=>priceNum(m.price)*cart[m.id]);
- const couponOk=!!coupon&&Date.parse(coupon.expiresAt)>Date.now()&&eligibleSubtotal>=coupon.minTotal,discount=couponOk?Math.min(coupon!.discount,eligibleSubtotal):0,total=subtotal-discount;
+ const discount=0,total=subtotal;
  const setQty=(m:M,n:number)=>setCart(c=>({...c,[m.id]:Math.max(0,Math.min(m.available,n))}));
  const sceneUnits=useMemo(()=>{const used=units.filter(u=>(menu??[]).some(m=>m.displayUnit?.id===u.id));return used.length?used:units},[units,menu]);
  const switchMode=(m:"3d"|"list")=>{setMode(m);localStorage.setItem("shop-view",m);setSel(null)};
@@ -70,9 +63,9 @@ function Shop({origin}:{origin:string}){
  function addOne(m:M){if(!m.available)return;setQty(m,(cart[m.id]??0)+1);setToast(`已加入「${m.name}」`);setTimeout(()=>setToast(""),1800)}
  async function submit(e:React.FormEvent){
   e.preventDefault();setBusy(true);setMsg("");
-  try{const r=await fetch(origin+"/api/public/orders",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"omit",body:JSON.stringify({...f,idempotencyKey:idem.current,...(couponOk?{couponCode:coupon!.code}:{}),items:lines.map(m=>({id:m.id,qty:cart[m.id]}))})});
-   if(!r.ok){const t=await errorText(r,"送出失敗，請再試一次。");setMsg(t);if(/優惠券(已使用|已過期|不存在)/.test(t))setCoupon(null);if(r.status===409||r.status===400||r.status===404){idem.current=newKey();load()}return}
-   const d=await r.json();if(couponOk)setCoupon(null);location.hash=`#/o/${d.lookupToken}`;
+  try{const r=await fetch(origin+"/api/public/orders",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"omit",body:JSON.stringify({...f,idempotencyKey:idem.current,items:lines.map(m=>({id:m.id,qty:cart[m.id]}))})});
+   if(!r.ok){const t=await errorText(r,"送出失敗，請再試一次。");setMsg(t);if(r.status===409||r.status===400||r.status===404){idem.current=newKey();load()}return}
+   const d=await r.json();location.hash=`#/o/${d.lookupToken}`;
   }catch{setMsg("連線中斷，請再按一次送出（不會重複下單）。")}finally{setBusy(false)}
  }
  const zoneNames=Object.fromEntries(units.map(u=>[u.id,u.name])),zoneCounts:Record<string,number>={};
@@ -93,7 +86,7 @@ function Shop({origin}:{origin:string}){
  const openCheckout=()=>{if(lines.length){setSel(null);setCheckout(true);setTab("catalog");requestAnimationFrame(()=>document.querySelector(".panel-body")?.scrollTo({top:0}))}else{setToast("購物車是空的，點商品的「加入」開始選購");setTimeout(()=>setToast(""),1800)}};
  const returnToOrder=()=>{setQuery("");setSel(null);pickZone("all")};
  const map=<ShopMap onOrder={returnToOrder} onGame={()=>setGame(true)} subtitle="點釣蝦池玩遊戲・選購商品請返回下單頁"/>;
- const gameEl=game&&<Suspense fallback={null}><ShrimpGame origin={origin} onClose={()=>setGame(false)} onCoupon={c=>setCoupon(c)}/></Suspense>;
+ const gameEl=game&&<Suspense fallback={null}><ShrimpGame origin={origin} onClose={()=>setGame(false)}/></Suspense>;
  const toastEl=toast&&<p className="toast" role="status">{toast}</p>;
  const q=query.trim();
  const groupRank=(g:ReturnType<typeof groupOf>)=>({live:0,chilled:1,dry:2}[g]??9);
@@ -123,7 +116,6 @@ function Shop({origin}:{origin:string}){
    {subUnits.length>1&&<div className="unit-tabs" role="tablist" aria-label="櫃子">{subUnits.map(u=><button key={u.id} type="button" role="tab" aria-selected={zone===u.id} className={zone===u.id?"active":""} onClick={()=>pickZone(u.id)}>{u.name}</button>)}</div>}
    </div>
    <p className="results-count" role="status">{menu?`共 ${shown.length} 項商品${q?`・搜尋「${q}」`:""}`:msg?"商品暫時無法載入":"正在讀取商品…"}{(q||zone)&&<button type="button" onClick={()=>{setQuery("");setZone(null);setGroup("all")}}>清除篩選</button>}</p>
-   {coupon&&<button className="game-banner" type="button" onClick={()=>setGame(true)}><span>🦐</span><b>樂甜釣蝦場</b><small>{`今天有效：店內商品滿 ${coupon.minTotal} 折 ${coupon.discount}`}</small></button>}
  </>;
  const itemCard=(m:M)=><div key={m.id} className={"card item"+(cart[m.id]>0?" in-cart":"")+(m.available?"":" soldout")}>
    {productImageSrc(m.imageUrl,origin)?<button type="button" className="item-thumb photo" onClick={()=>choose(m)} aria-label={m.name+" 看大圖"}><img src={productImageSrc(m.imageUrl,origin)} alt="" loading="lazy" decoding="async"/></button>
@@ -146,7 +138,6 @@ function Shop({origin}:{origin:string}){
   :!menu.length?<><p className="hint">目前沒有開放訂購的商品，仍可先玩釣蝦遊戲拿優惠券。</p><button className="game-banner" onClick={()=>setGame(true)}><span>🦐</span><b>樂甜釣蝦場</b><small>抓蝦／螃蟹／龍蝦，30 秒抓到 6 隻以上，贏今天有效的店內商品優惠券</small></button></>
   :checkout?<form className="card form" onSubmit={submit}><div className="checkout-heading"><span>確認商品，再填寫聯絡資料</span><h2>確認您的訂單</h2></div><h3>選購商品 · {count} 件</h3>
   <ul className="lines">{lines.map(m=><li key={m.id}><span>{m.name} <small>{m.spec}</small></span><span className="cart-qty"><button type="button" aria-label={`減少${m.name}`} onClick={()=>setQty(m,cart[m.id]-1)}>－</button>{cart[m.id]}<button type="button" aria-label={`增加${m.name}`} disabled={cart[m.id]>=m.available} onClick={()=>setQty(m,cart[m.id]+1)}>＋</button></span><span>NT$ {(priceNum(m.price)*cart[m.id]).toLocaleString()}</span></li>)}</ul>
-  {coupon&&<p className={"coupon-line"+(couponOk?" ok":"")}>🎟 釣蝦優惠券：{couponOk?`已套用，折 NT$${discount}`:Date.parse(coupon.expiresAt)<=Date.now()?'已過期':`店內商品再買 NT$${Math.max(0,coupon.minTotal-eligibleSubtotal)} 即可折 NT$${coupon.discount}`}<br/>{COUPON_RULE}</p>}
   {discount>0&&<p className="subtotal">小計 NT$ {subtotal.toLocaleString()}・折抵 −NT$ {discount.toLocaleString()}</p>}<p className="total">合計 NT$ {total.toLocaleString()}</p>
   {!lines.length&&<p className="hint">購物車是空的。</p>}
   <h3>訂購人資料</h3><p className="form-help">請留下正確的姓名與電話，方便店家聯繫您。</p>
@@ -164,7 +155,7 @@ function Shop({origin}:{origin:string}){
     </Suspense>
     <p className="stage-hint">{focus<0?"點冰箱或魚缸靠近看看，左右滑動切換":sceneUnits[focus]?.type==="tank"?`${sceneUnits[focus]?.name}：點游動的海鮮挑選`:noDoor(sceneUnits[focus])?`${sceneUnits[focus]?.name}：點商品挑選`:`${sceneUnits[focus]?.name}：點門打開，再點商品`}</p>
     {focus>=0&&<div className="stage-nav"><button aria-label="上一個" onClick={()=>setFocus(Math.max(-1,focus-1))}>‹</button><button onClick={()=>setFocus(-1)}>總覽</button><button aria-label="下一個" disabled={focus>=sceneUnits.length-1} onClick={()=>setFocus(Math.min(sceneUnits.length-1,focus+1))}>›</button></div>}
-    {!coupon&&<button className="game-banner" onClick={()=>setGame(true)}><span>🦐</span><b>樂甜釣蝦場</b><small>抓蝦／螃蟹／龍蝦，30 秒抓到 6 隻以上，贏今天有效的店內商品優惠券</small></button>}
+    {<button className="game-banner" onClick={()=>setGame(true)}><span>🦐</span><b>樂甜釣蝦場</b><small>抓蝦／螃蟹／龍蝦，30 秒抓到 6 隻以上，贏今天有效的店內商品優惠券</small></button>}
    </section>:<>
     <div className="menu">{shown.map(itemCard)}</div>
     {!shown.length&&<p className="hint">{q?`找不到「${q}」相關的商品，換個關鍵字或分類看看。`:"這個分類目前沒有開放訂購的商品。"}</p>}

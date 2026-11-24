@@ -1,0 +1,45 @@
+// Local database only; run after api.test.mjs creates the fixture administrator.
+import assert from 'node:assert/strict';
+import {execFileSync} from 'node:child_process';
+const base=process.env.API??'http://127.0.0.1:8791';
+assert.equal(new URL(base).hostname,'127.0.0.1');
+const key=()=>crypto.randomUUID(),ip='198.51.100.171';
+const hash=async s=>Buffer.from(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s))).toString('base64url');
+const sql=command=>execFileSync(process.execPath,['node_modules/wrangler/bin/wrangler.js','d1','execute','DB','--local','--persist-to',process.env.PERSIST??'.wrangler/verified-vouchers-tests','--command',command],{stdio:'ignore'});
+async function api(path,body,token){const r=await fetch(base+path,{method:body?'POST':'GET',headers:{'Content-Type':'application/json','CF-Connecting-IP':ip,...(token?{Authorization:'Bearer '+token}:{})},body:body?JSON.stringify(body):undefined});return {status:r.status,data:await r.json()}}
+async function play(playerId=key(),caught=6){const r=await api('/api/public/game/start',{playerId,target:'crab',tool:'tongs'});assert.equal(r.status,200,JSON.stringify(r.data));const gameId=r.data.gameId;sql(`UPDATE game_sessions SET started_at=CAST(strftime('%s','now') AS INTEGER)-30 WHERE id_hash='${await hash(gameId)}'`);const f=await api('/api/public/game/finish',{gameId,caught});assert.equal(f.status,200);assert.equal(f.data.coupon,undefined,'winning does not mint a cart coupon');return {gameId,playerId}}
+const game=await play(),claimToken=key(),body={...game,claimToken,groupNickname:'  群友小蝦  ',joined:true};
+assert.equal((await api('/api/public/game/vouchers/claim',{...body,joined:false})).status,400);
+assert.equal((await api('/api/public/game/vouchers/claim',{...body,groupNickname:''})).status,400);
+assert.equal((await api('/api/public/game/vouchers/claim',{...body,playerId:key()})).status,400,'game identity cannot be replaced');
+const replies=await Promise.all([api('/api/public/game/vouchers/claim',body),api('/api/public/game/vouchers/claim',body)]);
+assert.ok(replies.every(r=>r.status===200));const voucher=replies[0].data.voucher;
+assert.equal(voucher.id,replies[1].data.voucher.id);assert.equal(voucher.status,'pending');assert.equal(voucher.groupNickname,'群友小蝦');assert.equal(voucher.expiresAt.slice(11),'16:00:00.000Z');
+const status=()=>api('/api/public/game/vouchers/status',{claimToken});
+assert.equal((await status()).data.voucher.status,'pending','joined declaration does not issue voucher before staff verification');
+assert.equal((await api('/api/public/game/vouchers/status',{claimToken:key()})).status,404,'claim token protects private nickname');
+const sameName=await play();assert.equal((await api('/api/public/game/vouchers/claim',{...sameName,claimToken:key(),groupNickname:'群友小蝦',joined:true})).status,409,'one nickname per day across devices');
+const samePlayer=await play(game.playerId);assert.equal((await api('/api/public/game/vouchers/claim',{...samePlayer,claimToken:key(),groupNickname:'另一個暱稱',joined:true})).status,409,'one device per day across nicknames');
+const tooFew=await play(key(),5);assert.equal((await api('/api/public/game/vouchers/claim',{...tooFew,claimToken:key(),groupNickname:'未達標',joined:true})).status,400);
+assert.equal((await api('/api/game-vouchers')).status,401);
+assert.equal((await api('/api/game-vouchers/'+voucher.id+'/approve',{groupMemberConfirmed:true})).status,401);
+const login=await api('/api/auth/login',{username:'boss',password:'boss-pass-123'});assert.equal(login.status,200);const admin=login.data.token;
+assert.equal((await api('/api/users',{username:'voucherstaff',password:'voucher-staff-123',role:'staff'},admin)).status,200);
+const staff=(await api('/api/auth/login',{username:'voucherstaff',password:'voucher-staff-123'})).data.token;assert.ok(staff);
+const action=(id,name,b={})=>api('/api/game-vouchers/'+id+'/'+name,b,staff);
+assert.equal((await action(voucher.id,'approve')).status,400,'must explicitly confirm real LINE group membership');
+assert.equal((await action(voucher.id,'redeem',{storePurchaseConfirmed:true})).status,409,'pending voucher is unusable');
+const approvals=await Promise.all([action(voucher.id,'approve',{groupMemberConfirmed:true}),action(voucher.id,'approve',{groupMemberConfirmed:true})]);assert.equal(approvals.filter(r=>r.status===200).length,1);
+assert.equal((await status()).data.voucher.status,'approved');
+const list=(await api('/api/game-vouchers',undefined,staff)).data.vouchers;const row=list.find(r=>r.id===voucher.id);assert.equal(row.approvedBy,'voucherstaff');assert.ok(!JSON.stringify(row).includes('token_hash'));assert.ok(!JSON.stringify(row).includes('player_hash'));
+assert.equal((await action(voucher.id,'redeem')).status,400,'store-only spending must be checked');
+const redemptions=await Promise.all([action(voucher.id,'redeem',{storePurchaseConfirmed:true}),action(voucher.id,'redeem',{storePurchaseConfirmed:true})]);assert.equal(redemptions.filter(r=>r.status===200).length,1);assert.equal((await status()).data.voucher.status,'redeemed');
+assert.equal((await api('/api/public/coupons/check',{code:voucher.voucherNo})).status,400,'manual voucher cannot be auto-applied to a shopping cart');
+const expiredGame=await play(),expiredToken=key();const expired=(await api('/api/public/game/vouchers/claim',{...expiredGame,claimToken:expiredToken,groupNickname:'即將過期',joined:true})).data.voucher;
+sql(`UPDATE game_vouchers SET expires_at='2000-01-01T16:00:00.000Z' WHERE id='${expired.id}'`);
+assert.equal((await action(expired.id,'approve',{groupMemberConfirmed:true})).status,409);assert.equal((await api('/api/public/game/vouchers/status',{claimToken:expiredToken})).data.voucher.status,'expired');
+const rejectedGame=await play(),rejected=(await api('/api/public/game/vouchers/claim',{...rejectedGame,claimToken:key(),groupNickname:'核對失敗重試',joined:true})).data.voucher;assert.equal((await action(rejected.id,'reject')).status,200);
+const retryGame=await play(rejectedGame.playerId);assert.equal((await api('/api/public/game/vouchers/claim',{...retryGame,claimToken:key(),groupNickname:'核對失敗重試',joined:true})).status,200,'rejected application does not count as a voucher issued');
+const yesterday=new Date(Date.now()+8*3600e3-86400e3).toISOString().slice(0,10);sql(`UPDATE game_vouchers SET claim_day='${yesterday}' WHERE id='${voucher.id}'`);
+const nextDay=await play(game.playerId);assert.equal((await api('/api/public/game/vouchers/claim',{...nextDay,claimToken:key(),groupNickname:'群友小蝦',joined:true})).status,200,'daily allowance resets on next Taiwan date');
+console.log('PASS: no automatic coupons, LINE nickname/manual membership gate, daily device/nickname limit, private receipt, staff approval, single-use redemption and same-day expiry.');

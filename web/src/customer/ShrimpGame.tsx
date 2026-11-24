@@ -7,23 +7,25 @@ import {useEffect,useLayoutEffect,useRef,useState} from "react";
 import {errorText} from "../lib/api-config";
 import {CuteArt} from "./cute-art";
 import GameLeaderboard from './GameLeaderboard';
+import GameVoucherWallet from './GameVoucherWallet';
+import {LINE_GROUP_URL} from '../lib/game-vouchers';
 import {COUPON_RULE} from '../lib/coupon-policy';
-import {GAME_SECONDS,COUPON_CATCH_MIN,TOOL_FIT,pointsPerCatch} from '../lib/game-rules';
+import {GAME_SECONDS,COUPON_CATCH_MIN,TOOL_FIT,TOOL_BEHAVIOR,pointsPerCatch,toolBlocksThreat} from '../lib/game-rules';
 import "./game-cute.css";
 export type Coupon={code:string;discount:number;minTotal:number;expiresAt:string;scope?:string;restrictions?:string};
 type TargetId="shrimp"|"crab"|"lobster";type ToolId="rod"|"net"|"tongs"|"cage";
-type Obj={id:number;x:number;y:number;vx:number;vy:number;boot:boolean;hide:number;turn:number;a:number;rock:number;linger:number;dash:number;weed:number};
+type Obj={id:number;x:number;y:number;vx:number;vy:number;boot:boolean;hide:number;turn:number;a:number;rock:number;linger:number;dash:number;weed:number;actionIn:number;attack:number;jump:number};
 export const TARGETS:Record<TargetId,{name:string;icon:string;seconds:number;speed:number;struggle:number;desc:string}>={
- shrimp:{name:"蝦",icon:"🦐",seconds:GAME_SECONDS,speed:10,struggle:.05,desc:"會躲進水草、偶爾爆衝；把鉤子停在身上就能釣，有機會一次 2 隻"},
+ shrimp:{name:"蝦",icon:"🦐",seconds:GAME_SECONDS,speed:10,struggle:.05,desc:"會躲進水草、偶爾爆衝；網子與蝦籠能一次抓兩隻"},
  crab:{name:"螃蟹",icon:"🦀",seconds:GAME_SECONDS,speed:9,struggle:.05,desc:"沿池底橫著走、會停下來，比較穩"},
  lobster:{name:"龍蝦",icon:"🦞",seconds:GAME_SECONDS,speed:6,struggle:.16,desc:"躲在石頭後偶爾出來，又重又會甩尾"},
 };
 // r=抓取半徑(%)、catchMs=停留多久抓住、carry=安全拖曳速度(%/秒)、lag=跟手延遲、fit=對各目標的適合度（越高越好抓、越不易掉）
 export const TOOLS:Record<ToolId,{name:string;icon:string;r:number;catchMs:number;carry:number;lag:number;fit:Record<TargetId,number>;desc:string}>={
- rod:{name:"釣竿",icon:"🎣",r:9,catchMs:400,carry:80,lag:.10,fit:TOOL_FIT.rod,desc:"把鉤子對準蝦子，停一下就釣得到"},
- net:{name:"網子",icon:"🥅",r:11,catchMs:350,carry:38,lag:.28,fit:TOOL_FIT.net,desc:"範圍大好撈，但水阻大、拖慢；龍蝦會撐破網"},
- tongs:{name:"夾子",icon:"🥢",r:4,catchMs:150,carry:70,lag:.06,fit:TOOL_FIT.tongs,desc:"一夾就住，要夾準；蝦子太滑，螃蟹最合適"},
- cage:{name:"蝦籠",icon:"🧺",r:9,catchMs:1500,carry:32,lag:.20,fit:TOOL_FIT.cage,desc:"會吸引附近獵物鑽進來，要耐心等；抓龍蝦最好用"},
+ rod:{name:"釣竿",icon:"🎣",...TOOL_BEHAVIOR.rod,fit:TOOL_FIT.rod,desc:"小鉤跟手快，一次一隻；對準後停一下再提起"},
+ net:{name:"網子",icon:"🥅",...TOOL_BEHAVIOR.net,fit:TOOL_FIT.net,desc:"大範圍可一次撈兩隻，但水阻重，必須慢慢拖回桶"},
+ tongs:{name:"夾子",icon:"🥢",...TOOL_BEHAVIOR.tongs,fit:TOOL_FIT.tongs,desc:"範圍最小但一夾就住，跟手精準，能擋住螃蟹鉗擊"},
+ cage:{name:"蝦籠",icon:"🧺",...TOOL_BEHAVIOR.cage,fit:TOOL_FIT.cage,desc:"按住固定位置等獵物入籠，可裝兩隻；入籠後能防止龍蝦跳走"},
 };
 const ART_BASE=import.meta.env.BASE_URL+"comic/game-v2/";
 const POND_BG_TALL=`url(${JSON.stringify(ART_BASE+"pond-bg-tall.webp")})`;
@@ -86,12 +88,12 @@ const behindWeed=(o:Obj,g:ReturnType<typeof pondGeom>)=>{
  if(o.linger>0)return true;
  const {w,d}=nearWeed(o,g);return d<w.r*g.m*.62;
 };
-export default function ShrimpGame({origin,onClose,onCoupon}:{origin:string;onClose:()=>void;onCoupon:(c:Coupon)=>void}){
+export default function ShrimpGame({origin,onClose}:{origin:string;onClose:()=>void}){
  const [phase,setPhase]=useState<"intro"|"play"|"sending"|"done">("intro"),[msg,setMsg]=useState(""),[target,setTarget]=useState<TargetId>("shrimp"),[tool,setTool]=useState<ToolId>("rod");
- const [,force]=useState(0),[won,setWon]=useState<Coupon|null>(null),[flash,setFlash]=useState("");
+ const [,force]=useState(0),[flash,setFlash]=useState("");
  const [nickname,setNickname]=useState(()=>{try{return localStorage.getItem('shrimp-nickname')??''}catch{return ''}});
  const [playerId]=useState(()=>{try{const saved=localStorage.getItem('shrimp-player-id');if(saved&&/^[A-Za-z0-9_-]{20,64}$/.test(saved))return saved;const id=crypto.randomUUID();localStorage.setItem('shrimp-player-id',id);return id}catch{return crypto.randomUUID()}});
- const [passed,setPassed]=useState(false),[couponNotice,setCouponNotice]=useState(''),[boardRefresh,setBoardRefresh]=useState(0);
+ const [passed,setPassed]=useState(false),[boardRefresh,setBoardRefresh]=useState(0);
  const [finalScore,setFinalScore]=useState<number|null>(null);
  const unitPoints=pointsPerCatch(target,tool);
  const reduce=typeof matchMedia==="function"&&matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -102,7 +104,7 @@ export default function ShrimpGame({origin,onClose,onCoupon}:{origin:string;onCl
  const gNow=()=>pondGeom(pond.current);
  const spawn=(id:number,boot=false):Obj=>{
   const g=gNow(),sp=(boot?4:T.speed)*(reduce?.6:1)*(.7+Math.random()*.6),a=Math.random()*Math.PI*2,rock=Math.floor(Math.random()*ROCKS.length);
-  const lob=target==="lobster"&&!boot,o={id,x:lob?ROCKS[rock].x:20+Math.random()*60,y:lob?ROCKS[rock].y:20+Math.random()*60,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,boot,hide:lob?1+Math.random()*3:0,turn:1+Math.random()*2,a:a*180/Math.PI,rock,linger:0,dash:0,weed:0};
+  const lob=target==="lobster"&&!boot,o={id,x:lob?ROCKS[rock].x:20+Math.random()*60,y:lob?ROCKS[rock].y:20+Math.random()*60,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,boot,hide:lob?1+Math.random()*3:0,turn:1+Math.random()*2,a:a*180/Math.PI,rock,linger:0,dash:0,weed:0,actionIn:2+Math.random()*3,attack:0,jump:0};
   clampXY(o,g);return o;
  };
  const dropPair=(s:typeof st.current,g:ReturnType<typeof pondGeom>,now:number,reason:string)=>{
@@ -113,7 +115,7 @@ export default function ShrimpGame({origin,onClose,onCoupon}:{origin:string;onCl
   setFlash(reason+" 再試一次！");
  };
  async function start(){
-  setMsg("");setPassed(false);setWon(null);setCouponNotice('');setFinalScore(null);
+  setMsg("");setPassed(false);setFinalScore(null);
   try{localStorage.setItem('shrimp-nickname',nickname.trim())}catch{/* Optional preference. */}
   try{const r=await fetch(origin+"/api/public/game/start",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"omit",body:JSON.stringify({target,tool,nickname:nickname.trim(),playerId})});if(!r.ok){setMsg(await errorText(r,"目前無法開始遊戲"));return}
    const d=await r.json();const s=st.current,n=target==="shrimp"?8:target==="lobster"?4:6;
@@ -130,8 +132,31 @@ export default function ShrimpGame({origin,onClose,onCoupon}:{origin:string;onCl
   const vPx=g.d(s.tx,s.ty,ox,oy)/Math.max(dt,1e-3);s.speed=s.speed*.8+vPx*.2;
   const freezeId=s.down&&s.hold&&!s.carry?s.hold.id:-1;
   for(const o of s.objs){
+   if(!o.boot){
+    o.actionIn=Math.max(0,o.actionIn-dt);
+    if(target==='crab'){
+     if(o.attack>0){
+      o.attack=Math.max(0,o.attack-dt);
+      if(o.attack===0&&s.down&&g.d(o.x,o.y,s.tx,s.ty)<.14*g.m){
+       if(toolBlocksThreat(target,tool))setFlash(K.name+'擋住了螃蟹鉗擊！');
+       else{if(o===s.carry||o===s.carry2)dropPair(s,g,now,'螃蟹鉗擊，工具鬆開了！');s.hold=null;s.down=false;setFlash('螃蟹鉗擊！先閃開，再按住工具')}
+      }
+     }else if(o.actionIn<=0&&s.down&&g.d(o.x,o.y,s.tx,s.ty)<.19*g.m){o.attack=.65;o.actionIn=3+Math.random()*2;setFlash('小心！螃蟹準備鉗擊')}
+    }
+    if(target==='lobster'){
+     if(o.jump>0){o.jump=Math.max(0,o.jump-dt);if(o.jump===0)s.ripples.push({x:o.x,y:o.y,t:now})}
+     const protectedCatch=(o===s.carry||o===s.carry2)&&toolBlocksThreat(target,tool);
+     if(o.jump<=0&&o.actionIn<=0&&!protectedCatch&&((s.down&&g.d(o.x,o.y,s.tx,s.ty)<.22*g.m)||Math.random()<dt*.5)){
+      if(o===s.carry||o===s.carry2)dropPair(s,g,now,'龍蝦甩尾跳走了！');
+      if(s.hold?.id===o.id)s.hold=null;
+      const angle=Math.atan2((o.y-s.ty)/sy,(o.x-s.tx)/sx)+(Math.random()-.5)*.6;
+      o.jump=.6;o.dash=.6;o.hide=0;o.actionIn=3+Math.random()*2;o.vx=Math.cos(angle)*T.speed*6;o.vy=Math.sin(angle)*T.speed*6;
+      setFlash('龍蝦跳走了！落水後再抓，蝦籠能鎖住牠')
+     }
+    }
+   }
    if(o===s.carry||o===s.carry2)continue;
-   if(o.id===freezeId){o.vx=0;o.vy=0;continue} // 停在獵物身上時先凍住，比較好釣
+   if(o.id===freezeId&&o.jump<=0){o.vx=0;o.vy=0;continue} // 跳躍中的龍蝦不會被工具凍住。
    if(o.hide>0){o.hide-=dt;const r=ROCKS[o.rock];o.x+=(r.x-o.x)*Math.min(1,dt*4);o.y+=(r.y-o.y)*Math.min(1,dt*4);continue}
    if(target==="shrimp"&&o.linger>0){o.linger-=dt;const w=WEEDS[o.weed]??nearWeed(o,g).w;o.x+=(w.x-o.x)*Math.min(1,dt*3);o.y+=(w.y-o.y)*Math.min(1,dt*3);continue}
    if(o.dash>0){o.dash-=dt;if(o.dash<=0){const sp=(o.boot?4:T.speed)*(reduce?.6:1)*(.7+Math.random()*.6),ang=Math.atan2(o.vy,o.vx);o.vx=Math.cos(ang)*sp;o.vy=Math.sin(ang)*sp}}
@@ -176,7 +201,7 @@ export default function ShrimpGame({origin,onClose,onCoupon}:{origin:string;onCl
    }
   }
   if(s.down&&!s.carry){
-   const near=s.objs.filter(o=>o.hide<=0&&!behindWeed(o,g)&&g.d(o.x,o.y,s.tx,s.ty)<hitR).sort((a,b)=>g.d(a.x,a.y,s.tx,s.ty)-g.d(b.x,b.y,s.tx,s.ty))[0];
+   const near=s.objs.filter(o=>o.hide<=0&&o.jump<=0&&!behindWeed(o,g)&&g.d(o.x,o.y,s.tx,s.ty)<hitR).sort((a,b)=>g.d(a.x,a.y,s.tx,s.ty)-g.d(b.x,b.y,s.tx,s.ty))[0];
    if(!near)s.hold=null;
    else if(!s.hold||s.hold.id!==near.id)s.hold={id:near.id,since:now};
    else if(now-s.hold.since>=(near.boot?200:K.catchMs/K.fit[target])){
@@ -184,12 +209,12 @@ export default function ShrimpGame({origin,onClose,onCoupon}:{origin:string;onCl
     if(near.boot){setFlash("撈到破鞋！不計分，再試一次");Object.assign(near,spawn(near.id,true))}
     else{
      s.carry=near;s.carry2=null;s.risk=0;near.linger=0;near.dash=0;
-     // 蝦模式：約 20% 再釣到附近或隨機的第二隻
-     if(target==="shrimp"&&Math.random()<.2){
-      const others=s.objs.filter(o=>o!==near&&!o.boot&&o.hide<=0&&!behindWeed(o,g));
+     // 網子與蝦籠可同時裝兩隻，只收附近的獵物。
+     if(tool==="net"||tool==="cage"){
+      const others=s.objs.filter(o=>o!==near&&!o.boot&&o.hide<=0&&o.jump<=0&&!behindWeed(o,g));
       others.sort((a,b)=>g.d(a.x,a.y,near.x,near.y)-g.d(b.x,b.y,near.x,near.y));
-      const close=others.find(o=>g.d(o.x,o.y,near.x,near.y)<hitR*3.2);
-      const extra=close??(others[Math.floor(Math.random()*others.length)]||null);
+      const close=others.find(o=>g.d(o.x,o.y,near.x,near.y)<hitR*1.2);
+      const extra=close??null;
       if(extra){extra.linger=0;extra.dash=0;s.carry2=extra;setFlash("一次 2 隻！")}
      }
      if(!s.carry2)setFlash(`抓到${T.name}了！慢慢拖到${target==="shrimp"?"碗":"水桶"}`);
@@ -224,7 +249,7 @@ export default function ShrimpGame({origin,onClose,onCoupon}:{origin:string;onCl
   const s=st.current;if(s.over)return;s.over=true;cancelAnimationFrame(s.raf);setPhase("sending");
   try{const r=await fetch(origin+"/api/public/game/finish",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"omit",body:JSON.stringify({gameId:s.gameId,caught:s.caught})});
    if(!r.ok){setMsg(await errorText(r,"結算失敗"));setPhase("done");return}
-   const d=await r.json();setFinalScore(d.score);setPassed(!!d.won);if(d.coupon){setWon(d.coupon);onCoupon(d.coupon)}setCouponNotice(d.couponMessage??'');setBoardRefresh(n=>n+1);setPhase("done");
+   const d=await r.json();setFinalScore(d.score);setPassed(!!d.won);setBoardRefresh(n=>n+1);setPhase("done");
   }catch{setMsg("連線中斷，這局無法結算");setPhase("done")}
  }
  useEffect(()=>{const s=st.current;return()=>{s.over=true;cancelAnimationFrame(s.raf)}},[]);
@@ -243,6 +268,7 @@ export default function ShrimpGame({origin,onClose,onCoupon}:{origin:string;onCl
   addEventListener("keydown",kd);addEventListener("keyup",ku);return()=>{removeEventListener("keydown",kd);removeEventListener("keyup",ku)}},[phase]);
  // 握把在手指、工作端（勾子/網/夾/籠）在手指上方 GRIP px，避免手指擋住；命中判定用工作端
  const at=(e:React.PointerEvent)=>{const r=pond.current!.getBoundingClientRect(),off=gripPx(r.height),q=st.current;
+  if(tool==="cage"&&q.down&&!q.carry)return;
   q.grip={x:(e.clientX-r.left)/r.width*100,y:(e.clientY-r.top)/r.height*100};
   q.ptr={x:Math.max(0,Math.min(100,q.grip.x)),y:Math.max(0,Math.min(100,(e.clientY-off-r.top)/r.height*100))}};
  const s=st.current,holdPct=s.hold?Math.min(1,(performance.now()-s.hold.since)/(K.catchMs/K.fit[target])):0;
@@ -264,7 +290,7 @@ export default function ShrimpGame({origin,onClose,onCoupon}:{origin:string;onCl
     <div className="hero-art" aria-hidden><CuteArt name="crab" className="m m-crab"/><Sprite name="bucket" kind="shrimp" className="m m-bucket"/><Sprite name="shrimp" className="m m-shrimp"/><CuteArt name="lobster" className="m m-lobster"/><i className="spark s1">✦</i><i className="spark s2">✧</i><i className="spark s3">✦</i><span className="bubble-tag">一起來玩！</span></div>
     <div className="hero-facts"><div><b>{T.seconds}<small>秒</small></b><span>限時挑戰</span></div><div><b>∞</b><span>不限捕獲數</span></div><div><b>0<small>元</small></b><span>免費遊玩</span></div></div>
    </section>
-   <GameLeaderboard origin={origin} target={target} refresh={boardRefresh}/>
+   <GameVoucherWallet origin={origin}/><GameLeaderboard origin={origin} target={target} refresh={boardRefresh}/>
    <p className="game-step"><i>1</i>選要抓什麼</p>
    <div className="pick-row" role="radiogroup" aria-label="目標">{(Object.keys(TARGETS) as TargetId[]).map(id=><button key={id} type="button" role="radio" aria-checked={target===id} className={"pick"+(target===id?" on":"")} onClick={()=>setTarget(id)}><Sprite className="pick-icon" name={id} emoji={TARGETS[id].icon}/><b>{TARGETS[id].name}</b><small>每隻 {pointsPerCatch(id,tool)} 分</small></button>)}</div>
    <p className="pick-desc">{T.desc}</p>
@@ -277,9 +303,9 @@ export default function ShrimpGame({origin,onClose,onCoupon}:{origin:string;onCl
      <li><i>2</i><span>按住水面放下{K.name}，停在{T.name}身上直到<b>圈圈填滿</b>就抓住。</span></li>
      <li><i>3</i><span>按著<b>慢慢</b>拖到池中央的{vessel}再放開，就入桶囉！</span></li>
     </ol>
-    <div className="rule-chips"><span className="chip ok">固定 30 秒・不限次數</span><span className="chip ok">有機會一次 2 隻</span><span className="chip warn">拖太快、掙扎會掉回水裡</span><span className="chip warn">蝦子會躲水草、偶爾爆衝</span><span className="chip warn">撈到破鞋不計分</span></div>
+    <div className="rule-chips"><span className="chip ok">固定 30 秒・不限次數</span><span className="chip ok">網子／蝦籠可抓 2 隻</span><span className="chip warn">拖太快、掙扎會掉回水裡</span><span className="chip warn">{target==="crab"?"螃蟹會鉗擊，夾子／蝦籠可抵擋":target==="lobster"?"龍蝦會跳走，入籠後可鎖住":"蝦子會躲水草、偶爾爆衝"}</span><span className="chip warn">撈到破鞋不計分</span></div>
    </div>
-   <p className="game-prize"><span className="ticket" aria-hidden>🎟️</span><span>抓到 6 隻以上獎勵：<b>店內商品滿 NT$1,000 折 NT$5</b> 優惠券<small><b>{COUPON_RULE}</b><br/>每筆限一張、不累加，今天有效。免費遊玩，不用先購買。</small></span></p>
+   <p className="game-prize"><span className="ticket" aria-hidden>🎟️</span><span>抓到 6 隻以上獎勵：<b>店內商品滿 NT$1,000 折 NT$5</b> 優惠券<small><b>{COUPON_RULE}</b><br/>加入 LINE 社群、填寫群組暱稱，門市核對後才發券。每天限領一次。</small></span></p><a className="voucher-join" href={LINE_GROUP_URL} target="_blank" rel="noopener noreferrer">加入安星水產 LINE 社群 ↗</a>
    <label className="game-nickname">排行榜暱稱（選填）<input value={nickname} onChange={e=>setNickname([...e.target.value].slice(0,12).join(''))} maxLength={24} placeholder="例如：小蝦高手" autoComplete="off"/><small>限 12 字；填寫後，積分與暱稱會公開上榜。留空只玩遊戲、不公開成績，請勿填姓名或電話。</small></label>
    {msg&&<p className="err">{msg}</p>}
    <button type="button" className="primary grow btn-gold" onClick={start}>開始抓{T.name} <span aria-hidden>▶</span></button>
@@ -301,7 +327,7 @@ export default function ShrimpGame({origin,onClose,onCoupon}:{origin:string;onCl
     {s.objs.map(o=>{const rot=o.boot?o.a/6:target==="crab"?((o.a+90)%180+180)%180-90:o.a-FACE[target];
      const frozen=freezeNow(s,o);
      const carrying=o===s.carry||o===s.carry2;
-     return <span key={o.id} className={"pond-obj"+(o.boot?" boot":"")+(o.hide>0?" hidden":"")+(carrying?" carried":"")+(frozen?" frozen":"")+(o.dash>0?" dashing":"")} style={{left:o.x+"%",top:o.y+"%",transform:`translate(-50%,-50%) rotate(${rot}deg)`}}>{o.boot?<Sprite name="boot" emoji="🥾"/>:<Sprite name={target} emoji={T.icon} frame={((swimFrame+o.id)%2)+1} caught={carrying}/>}</span>})}
+     return <span key={o.id} className={"pond-obj"+(o.boot?" boot":"")+(o.hide>0?" hidden":"")+(carrying?" carried":"")+(frozen?" frozen":"")+(o.dash>0?" dashing":"")+(o.attack>0?" attacking":"")+(o.jump>0?" jumping":"")} style={{left:o.x+"%",top:o.y+"%",transform:`translate(-50%,-50%) rotate(${rot}deg)`}}>{o.boot?<Sprite name="boot" emoji="🥾"/>:<Sprite name={target} emoji={T.icon} frame={((swimFrame+o.id)%2)+1} caught={carrying}/>}</span>})}
     {target==="shrimp"&&WEEDS.map((w,i)=><span key={"w"+i} className={"weed k-"+w.kind} style={{left:w.x+"%",top:w.y+"%"}}><WeedSpr kind={w.kind}/></span>)}
     {target==="lobster"&&ROCKS.map((r,i)=><span key={i} className="rock" style={{left:r.x+"%",top:r.y+"%"}}><CuteArt name="rock" className="spr cute"/></span>)}
     {tool!=="rod"&&s.grip&&s.down&&<><span className="grip-shaft" style={{left:s.grip.x+"%",top:s.grip.y+"%",height:Math.hypot((s.tx-s.grip.x)*(pond.current?.clientWidth??0)/100,(s.ty-s.grip.y)*(pond.current?.clientHeight??0)/100)+"px",transform:`rotate(${Math.atan2(-(s.tx-s.grip.x)*(pond.current?.clientWidth??0)/100,(s.ty-s.grip.y)*(pond.current?.clientHeight??0)/100)*180/Math.PI+180}deg)`}}/><span className="grip" data-x={s.grip.x.toFixed(1)} data-y={s.grip.y.toFixed(1)} style={{left:s.grip.x+"%",top:s.grip.y+"%"}}/></>}
@@ -321,11 +347,11 @@ export default function ShrimpGame({origin,onClose,onCoupon}:{origin:string;onCl
    <p className="result-kicker">30 秒挑戰完成</p>
    <h3>{(finalScore??s.caught*unitPoints).toLocaleString()} 分</h3>
    <div className="result-score"><Sprite name={target} className="result-ico" caught/><b>{s.caught}</b><small>隻{T.name} · {K.name}</small></div>
-   {won?<div className="coupon-card"><b>🎟️ 優惠券到手・今天有效</b><span>店內商品滿 NT${won.minTotal.toLocaleString()} 折 NT${won.discount}</span><small>{COUPON_RULE}<br/>已存到購物車・{new Date(Date.parse(won.expiresAt)-1).toLocaleString("zh-TW",{timeZone:"Asia/Taipei",month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"})} 前有效</small></div>:passed?<p className="game-rule">{couponNotice}</p>:!msg&&<p className="game-rule">這局抓到 {s.caught} 隻{T.name}；抓到 6 隻以上即可領券，再挑戰看看！</p>}
+   {passed?<GameVoucherWallet origin={origin} gameId={s.gameId} playerId={playerId} eligible/>:!msg&&<p className="game-rule">這局抓到 {s.caught} 隻{T.name}；抓到 6 隻以上，加入 LINE 社群並由門市核對暱稱後可領券，每天一次。</p>}
    {s.caught>0&&nickname.trim()&&!msg&&<p className="game-rule">已記錄本局積分，每個分類保留你的最高分。</p>}
    <GameLeaderboard origin={origin} target={target} refresh={boardRefresh}/>
    {msg&&<p className="err">{msg}</p>}
-   <button type="button" className="primary grow btn-teal" onClick={()=>{setPhase("intro");setWon(null);setMsg("")}}>再玩一次</button>
+   <button type="button" className="primary grow btn-teal" onClick={()=>{setPhase("intro");setMsg("")}}>再玩一次</button>
    <button type="button" className="sheet-close btn-outline" onClick={onClose}>回到商店</button>
   </div></div>}
  </div></div>;

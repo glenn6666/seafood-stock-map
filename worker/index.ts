@@ -1,4 +1,5 @@
 import {getCatalog,catalogAdmin} from './catalog';
+import {claimGameVoucher,gameVoucherStatus,gameVoucherAdmin} from './game-vouchers';
 import {isAllowedOrigin} from './allowed-origin';
 import {storagePhotos,photoSections,normalizePhotoId} from "../web/src/lib/storage-photos";
 import {catalogPrice} from "../web/src/lib/catalog";
@@ -182,7 +183,7 @@ async function bulkOnSale(env:Env,b:any){
 }
 
 // ---------- 顧客端頻率限制（固定時間窗，IP 只存雜湊） ----------
-const LIMITS={order:{max:5,windowSec:600,msg:"送出次數太頻繁，請 10 分鐘後再試。"},lookup:{max:60,windowSec:600,msg:"查詢次數太頻繁，請稍後再試。"},game:{max:20,windowSec:600,msg:"遊戲次數太頻繁，請 10 分鐘後再玩。"},coupon:{max:3,windowSec:3600,msg:"這個網路一小時內最多領 3 張優惠券，請稍後再試。"}} as const;
+const LIMITS={order:{max:5,windowSec:600,msg:"送出次數太頻繁，請 10 分鐘後再試。"},lookup:{max:60,windowSec:600,msg:"查詢次數太頻繁，請稍後再試。"},game:{max:20,windowSec:600,msg:"遊戲次數太頻繁，請 10 分鐘後再玩。"}} as const;
 async function ipHash(env:Env,request:Request){return sha256(`ip|${env.INVENTORY_TOKEN}|${request.headers.get("CF-Connecting-IP")??"unknown"}`)}
 async function rateLimit(env:Env,request:Request,bucket:keyof typeof LIMITS){
  const L=LIMITS[bucket],ip=request.headers.get("CF-Connecting-IP")??"unknown";
@@ -209,7 +210,7 @@ async function gameStart(env:Env,request:Request,b:any){
  if(nickname&&(typeof b.playerId!=='string'||!/^[A-Za-z0-9_-]{20,64}$/.test(b.playerId)))throw new HttpError(400,'玩家識別資料不正確，請重新整理');
  await rateLimit(env,request,"game");
  const id=randomToken(24),now=Math.floor(Date.now()/1000);
- await env.DB.prepare("INSERT INTO game_sessions (id_hash,ip_hash,started_at,target,tool,nickname,player_hash,difficulty,rule_version) VALUES (?,?,?,?,?,?,?,?,?)").bind(await sha256(id),await ipHash(env,request),now,target,tool,nickname,nickname?await sha256('player|'+b.playerId):'','normal',GAME_RULE_VERSION).run();
+ await env.DB.prepare("INSERT INTO game_sessions (id_hash,ip_hash,started_at,target,tool,nickname,player_hash,difficulty,rule_version) VALUES (?,?,?,?,?,?,?,?,?)").bind(await sha256(id),await ipHash(env,request),now,target,tool,nickname,typeof b.playerId==='string'&&/^[A-Za-z0-9_-]{20,64}$/.test(b.playerId)?await sha256('player|'+b.playerId):'','normal',GAME_RULE_VERSION).run();
  if(Math.random()<0.02)await env.DB.prepare("DELETE FROM game_sessions WHERE started_at<?").bind(now-86400).run();
  const t=TARGETS[target];
  return {gameId:id,seconds:t.seconds,target:t.goal,couponCatchMin:COUPON_CATCH_MIN,kind:target,tool,pointsPerCatch:pointsPerCatch(target,tool as GameTool),ruleVersion:GAME_RULE_VERSION};
@@ -227,16 +228,12 @@ async function gameFinish(env:Env,request:Request,b:any){
  const score=b.caught*pointsPerCatch(g.target as Target,g.tool as GameTool);
  if(!Number.isSafeInteger(score))throw new HttpError(400,"遊戲分數不正確");
  const passed=b.caught>=COUPON_CATCH_MIN;
- // 先把這局標記為結束（只有一個請求能成功），再檢查領券限額
- const statements=[env.DB.prepare("UPDATE game_sessions SET finished=1 WHERE id_hash=? AND finished=0").bind(idh)];
+ // 一局只記錄一次成績；達標只取得資格，發券另由門市核對。
+ const statements=[env.DB.prepare("UPDATE game_sessions SET finished=1,caught=?,finished_at=? WHERE id_hash=? AND finished=0").bind(b.caught,nowIso(),idh)];
  if(b.caught>0&&g.nickname&&g.player_hash)statements.push(env.DB.prepare('INSERT INTO game_scores (id,player_hash,nickname,target,tool,elapsed_sec,created_at,difficulty,rule_version,score,caught) SELECT ?,?,?,?,?,?,?,?,?,?,? WHERE changes()=1').bind(idh,g.player_hash,g.nickname,g.target,g.tool,GAME_SECONDS,nowIso(),g.difficulty,GAME_RULE_VERSION,score,b.caught));
  const [r]=await env.DB.batch(statements);
  if(!r.meta.changes)throw new HttpError(409,"這局已經結束了，請再玩一局");
- if(!passed)return {won:false,score,caught:b.caught};
- try{await rateLimit(env,request,"coupon")}catch(e){if(e instanceof HttpError&&e.status===429)return {won:true,score,caught:b.caught,coupon:null,couponMessage:e.message};throw e}
- const issuedAt=new Date(),code="SHRIMP-"+randomToken(18),exp=endOfTaipeiDay(issuedAt);
- await env.DB.prepare("INSERT INTO coupons (code_hash,kind,discount,min_total,ip_hash,created_at,expires_at) VALUES (?,?,?,?,?,?,?)").bind(await sha256(code),"shrimp5",COUPON.discount,COUPON.minTotal,ip,issuedAt.toISOString(),exp).run();
- return {won:true,score,caught:b.caught,coupon:{code,discount:COUPON.discount,minTotal:COUPON.minTotal,expiresAt:exp,scope:COUPON_SCOPE,restrictions:COUPON_RULE}};
+ return {won:passed,eligible:passed,score,caught:b.caught};
 }
 async function gameLeaderboard(env:Env,target:string){
  if(!Object.hasOwn(TARGETS,target))throw new HttpError(400,'排行榜分類不正確');
@@ -467,6 +464,8 @@ async function route(request:Request,env:Env,url:URL):Promise<unknown>{
  }
  if(p==="/api/public/game/start"&&m==="POST")return gameStart(env,request,await readJson(request).catch(()=>({})));
  if(p==="/api/public/game/finish"&&m==="POST")return gameFinish(env,request,await readJson(request));
+ if(p==='/api/public/game/vouchers/claim'&&m==='POST'){await rateLimit(env,request,'lookup');return claimGameVoucher(env,await readJson(request))}
+ if(p==='/api/public/game/vouchers/status'&&m==='POST'){await rateLimit(env,request,'lookup');return gameVoucherStatus(env,await readJson(request))}
  if(p==='/api/public/game/leaderboard'&&m==='GET'){await rateLimit(env,request,'lookup');return gameLeaderboard(env,url.searchParams.get('target')??'shrimp')}
  if(p==="/api/public/coupons/check"&&m==="POST"){await rateLimit(env,request,"lookup");return couponCheck(env,await readJson(request))}
  const lk=p.match(/^\/api\/public\/orders\/([A-Za-z0-9_-]{20,64})$/);
@@ -486,6 +485,7 @@ async function route(request:Request,env:Env,url:URL):Promise<unknown>{
  }
  if(p==="/api/auth/status"&&m==="GET")return {needsBootstrap:await userCount(env)===0};
  const actor=await authenticate(request,env);
+ if(p.startsWith('/api/game-vouchers'))return gameVoucherAdmin(env,requireRole(actor,"admin","staff"),url,m,m==='POST'?await readJson(request):{});
  if(p==="/api/auth/bootstrap"&&m==="POST"){
   if(actor?.kind!=="legacy")throw new HttpError(403,"只有在尚未建立帳號時，才能用原管理密碼建立第一位管理員");
   const u=await insertUser(env,await readJson(request),true);

@@ -9,9 +9,13 @@ for(const target of ['shrimp','crab','lobster']){
  }
 }
 assert.equal(rules.pointsPerCatch('shrimp','rod'),100);
-assert.equal(rules.pointsPerCatch('shrimp','tongs'),250);
-assert.equal(rules.pointsPerCatch('lobster','net'),600);
-assert.equal(rules.pointsPerCatch('lobster','cage'),190);
+assert.equal(rules.pointsPerCatch('shrimp','tongs'),130);
+assert.equal(rules.pointsPerCatch('lobster','net'),130);
+assert.equal(rules.pointsPerCatch('lobster','cage'),100);
+assert.ok(rules.TOOL_BEHAVIOR.net.r>rules.TOOL_BEHAVIOR.rod.r*2);
+assert.ok(rules.TOOL_BEHAVIOR.net.carry<rules.TOOL_BEHAVIOR.rod.carry/2);
+assert.ok(rules.TOOL_BEHAVIOR.cage.catchMs>rules.TOOL_BEHAVIOR.tongs.catchMs*10);
+assert.equal(rules.toolBlocksThreat('crab','tongs'),true);assert.equal(rules.toolBlocksThreat('crab','rod'),false);assert.equal(rules.toolBlocksThreat('lobster','cage'),true);assert.equal(rules.toolBlocksThreat('lobster','net'),false);
 for(const [now,expiry] of [
  ['2026-11-23T16:00:00.000Z','2026-11-24T16:00:00.000Z'],
  ['2026-11-24T15:59:59.999Z','2026-11-24T16:00:00.000Z'],

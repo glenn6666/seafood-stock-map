@@ -18,8 +18,8 @@ const ART:Record<string,()=>React.ReactElement>={
  crab:()=><>
   <path d="M28 58 12 66m16-2-13 12m19-8-8 13M72 58l16 8m-16-2 13 12m-19-8 8 13" fill="none" {...g}/>
   <path d="M33 44 24 34m43 10 9-10" fill="none" {...g}/>
-  <path d="M10 30c-6-10 2-22 12-20 6 1 9 6 8 11l-8-1 6 7c-4 6-13 7-18 3Z" fill="#ff7a68" {...g}/>
-  <path d="M90 30c6-10-2-22-12-20-6 1-9 6-8 11l8-1-6 7c4 6 13 7 18 3Z" fill="#ff7a68" {...g}/>
+  <path className="crab-claw left" d="M10 30c-6-10 2-22 12-20 6 1 9 6 8 11l-8-1 6 7c-4 6-13 7-18 3Z" fill="#ff7a68" {...g}/>
+  <path className="crab-claw right" d="M90 30c6-10-2-22-12-20-6 1-9 6-8 11l8-1-6 7c4 6 13 7 18 3Z" fill="#ff7a68" {...g}/>
   <ellipse cx="50" cy="58" rx="27" ry="20" fill="#ff6f5e" {...g}/>
   <path d="M33 50q17-10 34 0" fill="none" stroke="#ffb0a3" strokeWidth={3.4} strokeLinecap="round"/>
   <path d="M43 38v-8m14 8v-8" {...g}/>

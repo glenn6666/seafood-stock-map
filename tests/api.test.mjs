@@ -231,9 +231,14 @@ await t("釣蝦遊戲：目標／工具驗證、太快／未達標不發券；�
  assert.equal((await api("/api/public/game/finish",{method:"POST",ip,body:{gameId:gl.gameId,caught:5}})).data.won,false,"所有目標均需超過 5 隻");
  const rs=await Promise.all([1,2,3].map(()=>api("/api/public/game/finish",{method:"POST",ip,body:{gameId:g2.gameId,caught:6}})));
  const wins=rs.filter(r=>r.status===200&&r.data.won);assert.equal(wins.length,1,"同一局同時送出只發一張");
- coupon=wins[0].data.coupon;assert.match(coupon.code,/^SHRIMP-/);assert.equal(coupon.discount,5);assert.equal(coupon.minTotal,1000);
- assert.ok(Date.parse(coupon.expiresAt)>Date.now()&&Date.parse(coupon.expiresAt)<=Date.now()+24*3600e3);
- assert.equal(coupon.expiresAt.slice(11),"16:00:00.000Z","台灣午夜到期");
+ assert.equal(wins[0].data.eligible,true);assert.equal(wins[0].data.coupon,undefined,"遊戲結束不能自動發券");
+ // Legacy cart redemption is checked with an isolated fixture, not a game reward.
+ const {createHash}=await import("node:crypto");
+ const expDate=new Date(Date.now()+8*3600e3).toISOString().slice(0,10);
+ const exp=new Date(Date.parse(expDate+'T00:00:00+08:00')+86400e3).toISOString();
+ coupon={code:"SHRIMP-"+key(),discount:5,minTotal:1000,expiresAt:exp};
+ const couponHash=createHash("sha256").update(coupon.code).digest("base64url");
+ execFileSync(process.execPath,["node_modules/wrangler/bin/wrangler.js","d1","execute","DB","--local","--persist-to",process.env.PERSIST??".wrangler/state","--command",`INSERT INTO coupons (code_hash,kind,discount,min_total,ip_hash,created_at,expires_at) VALUES ('${couponHash}','fixture',5,1000,'test','${new Date().toISOString()}','${exp}')`],{stdio:"ignore"});
  assert.equal((await api("/api/public/game/finish",{method:"POST",ip,body:{gameId:g2.gameId,caught:4}})).status,409);
 });
 await t("優惠券：驗證、未滿 1000 拒絕（不消耗）、滿 1000 折 5、重複使用拒絕、後台看得到折抵",async()=>{

@@ -35,9 +35,9 @@ function App(){
    {visited.has('stock')&&<section hidden={active!=='stock'} className="portal-card"><p className="portal-eyebrow">READY TO TAKE HOME</p><h1>團購現貨</h1><p className="portal-desc">團購好康免等待。需要商品請先聯繫小編確認並登記，再到店取貨。<br/><strong>遊戲優惠券限店內商品使用，團購商品不可折抵，也不計入滿額門檻。</strong></p><GroupFrame mode="stock" active={active==='stock'}/></section>}
    {visited.has('frozen')&&<section hidden={active!=='frozen'} className="portal-card portal-frozen"><p className="portal-eyebrow">ANXING · FROZEN SELECTION</p><h1>冷凍現貨</h1><p className="portal-desc">店內冷藏・冷凍食材一覽。顯示目前開放訂購品項，供應情況以店家確認為準。</p>{origin?<Frozen origin={origin}/>:<p role="status">{error||'正在讀取商品…'}</p>}</section>}
    {visited.has('menu')&&<section hidden={active!=='menu'} className="portal-menu" aria-label="線上點餐與菜單"><Dine/></section>}
-   {active==='game'&&(origin?<Suspense fallback={<p role="status">正在載入樂甜釣蝦場…</p>}><ShrimpGame origin={origin} onClose={()=>{location.hash='#'+previousTab.current}} onCoupon={coupon=>{try{localStorage.setItem('shrimp-coupon',JSON.stringify(coupon))}catch{/* Game results remain visible if storage is unavailable. */}}}/></Suspense>:<p role="status">{error||'正在載入樂甜釣蝦場…'}</p>)}
+   {active==='game'&&(origin?<Suspense fallback={<p role="status">正在載入樂甜釣蝦場…</p>}><ShrimpGame origin={origin} onClose={()=>{location.hash='#'+previousTab.current}}/></Suspense>:<p role="status">{error||'正在載入樂甜釣蝦場…'}</p>)}
   </div>
-  <footer className="portal-footer">© {new Date().getFullYear()} 安星水產泰山旗艦店 · 每一份鮮，安心交給我們。<a href={base+'index.html'}>店家管理 ↗</a></footer>
+  <footer className="portal-footer">© {new Date().getFullYear()} 安星水產泰山旗艦店 · 每一份鮮，安心交給我們。<a href={base+'admin.html'}>店家管理 ↗</a></footer>
  </div>;
 }
 function GroupFrame({mode,active}:{mode:'lookup'|'stock';active:boolean}){

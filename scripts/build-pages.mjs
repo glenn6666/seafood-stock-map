@@ -12,5 +12,6 @@ mkdirSync(out,{recursive:true});
 cpSync(new URL('../dist/',import.meta.url),new URL('seafood-stock-map/',out),{recursive:true});
 for(const entry of ['index.html','order.html'])copyFileSync(new URL('../dist/order.html',import.meta.url),new URL(entry,out));
 copyFileSync(new URL('../dist/order.html',import.meta.url),new URL('seafood-stock-map/index.html',out));
+for(const entry of ['admin.html','seafood-stock-map/admin.html'])copyFileSync(new URL('../dist/index.html',import.meta.url),new URL(entry,out));
 writeFileSync(new URL('_redirects',out),'/dine.html /seafood-stock-map/dine.html 302\n');
 console.log('Cloudflare Pages output: dist-pages/');
