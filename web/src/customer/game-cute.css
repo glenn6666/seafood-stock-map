@@ -229,18 +229,17 @@
 .sheet.game.cute .pond.t-shrimp .bucket .spr{width:100%;height:100%}
 .sheet.game.cute .pond .bucket{transform:translate(-50%,-50%);position:absolute}
 .sheet.game.cute .pond .bucket-contents{position:absolute;inset:16%;border-radius:50%;overflow:hidden;pointer-events:none}
-.sheet.game.cute .bucket-shrimp{position:absolute;width:49%;height:49%;transform:translate(-50%,-50%) rotate(var(--shrimp-angle));filter:drop-shadow(0 1px 1px #164b7955)}
-.sheet.game.cute .bucket-shrimp.slot-0{left:34%;top:32%;--shrimp-angle:-24deg}
-.sheet.game.cute .bucket-shrimp.slot-1{left:66%;top:36%;--shrimp-angle:22deg}
-.sheet.game.cute .bucket-shrimp.slot-2{left:33%;top:66%;--shrimp-angle:-36deg}
-.sheet.game.cute .bucket-shrimp.slot-3{left:66%;top:68%;--shrimp-angle:32deg}
-.sheet.game.cute .bucket-shrimp-art{display:block;width:100%;height:100%;animation:bucket-arrival .3s ease-out}
+.sheet.game.cute .bucket-catch{position:absolute;width:49%;height:49%;transform:translate(-50%,-50%) rotate(var(--catch-angle));filter:drop-shadow(0 1px 1px #164b7955)}
+.sheet.game.cute .bucket-catch.slot-0{left:34%;top:32%;--catch-angle:-24deg}
+.sheet.game.cute .bucket-catch.slot-1{left:66%;top:36%;--catch-angle:22deg}
+.sheet.game.cute .bucket-catch.slot-2{left:33%;top:66%;--catch-angle:-36deg}
+.sheet.game.cute .bucket-catch.slot-3{left:66%;top:68%;--catch-angle:32deg}
+.sheet.game.cute .bucket-catch-art{display:block;width:100%;height:100%;animation:bucket-arrival .3s ease-out}
 .sheet.game.cute .bucket-count{position:absolute;bottom:0;left:50%;transform:translateX(-50%);padding:1px 5px;border-radius:8px;background:#fff9e9e8;color:#204b60;font-size:clamp(10px,2.6cqmin,15px);white-space:nowrap;z-index:1}
-.sheet.game.cute .difficulty-picks .pick{min-height:74px;padding:12px 6px}
 .sheet.game.cute .goal-bar>div:first-child{flex-wrap:wrap;gap:4px 12px}
 .sheet.game.cute .hud-cell:last-child strong{font-size:24px;line-height:1.2;font-variant-numeric:tabular-nums;color:var(--g-ink)}
 @keyframes bucket-arrival{from{opacity:0;transform:scale(.5)}to{opacity:1;transform:scale(1)}}
-@media(prefers-reduced-motion:reduce){.sheet.game.cute .bucket-shrimp-art{animation:none}}
+@media(prefers-reduced-motion:reduce){.sheet.game.cute .bucket-catch-art{animation:none}}
 
 /* 蝦約池寬 20%，最小 96、最大 140 */
 .sheet.game.cute .pond-obj .spr[data-sprite=shrimp],
@@ -293,3 +292,9 @@
 .sheet.game.cute .sea-friend.is-caught{filter:drop-shadow(0 0 4px #fff7)}
 .sheet.game.cute .pick-icon.sea-friend{width:52px;height:52px}
 .sheet.game.cute .hero-art .sea-friend{filter:drop-shadow(0 4px 0 #204b6022)}
+
+.sheet.game.cute .pond .bucket>.bucket-vessel{width:100%;height:100%}
+.sheet.game.cute .pond:not(.t-shrimp) .bucket{background:none}
+.sheet.game.cute .pond .bucket-contents:not(.contents-shrimp){inset:22%}
+.sheet.game.cute .bucket-contents[data-count="1"] .bucket-catch{left:50%;top:50%;width:78%;height:78%;margin:0!important;--catch-angle:-12deg}
+.sheet.game.cute .pick .tool-points{font-size:11px;font-weight:800;color:#204b60}
