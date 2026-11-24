@@ -235,6 +235,10 @@
 .sheet.game.cute .bucket-shrimp.slot-2{left:33%;top:66%;--shrimp-angle:-36deg}
 .sheet.game.cute .bucket-shrimp.slot-3{left:66%;top:68%;--shrimp-angle:32deg}
 .sheet.game.cute .bucket-shrimp-art{display:block;width:100%;height:100%;animation:bucket-arrival .3s ease-out}
+.sheet.game.cute .bucket-count{position:absolute;bottom:0;left:50%;transform:translateX(-50%);padding:1px 5px;border-radius:8px;background:#fff9e9e8;color:#204b60;font-size:clamp(10px,2.6cqmin,15px);white-space:nowrap;z-index:1}
+.sheet.game.cute .difficulty-picks .pick{min-height:74px;padding:12px 6px}
+.sheet.game.cute .goal-bar>div:first-child{flex-wrap:wrap;gap:4px 12px}
+.sheet.game.cute .hud-cell:last-child strong{font-size:24px;line-height:1.2;font-variant-numeric:tabular-nums;color:var(--g-ink)}
 @keyframes bucket-arrival{from{opacity:0;transform:scale(.5)}to{opacity:1;transform:scale(1)}}
 @media(prefers-reduced-motion:reduce){.sheet.game.cute .bucket-shrimp-art{animation:none}}
 

@@ -6,6 +6,7 @@ import {ledgerRoute} from "./ledger";
 import {publicDineMenu,publicDinePhoto,createDineOrder,dineAdminRoute,uploadDinePhoto} from "./dine";
 import {isValidImageUrl} from "../web/src/lib/dine-menu";
 import {COUPON_SCOPE,COUPON_RULE,storeCouponSubtotal} from '../web/src/lib/coupon-policy';
+import {GAME_SECONDS,COUPON_CATCH_MIN,GAME_RULE_VERSION,DIFFICULTIES,pointsPerCatch,endOfTaipeiDay,type Difficulty} from '../web/src/lib/game-rules';
 
 export type Env={DB:D1Database;INVENTORY_TOKEN:string;ALLOWED_ORIGIN:string};
 type Role="admin"|"staff";
@@ -193,55 +194,58 @@ async function rateLimit(env:Env,request:Request,bucket:keyof typeof LIMITS){
 }
 
 // ---------- 釣蝦遊戲與優惠券 ----------
-// 規則：35 秒內釣到 4 隻 → 滿 NT$1,000 折 NT$5；每筆訂單限用一張、不累加；券 24 小時內有效、只能用一次。
+// 固定 30 秒不限捕獲數，以難度計分；6 隻以上發店內商品券，台灣時間當日有效。
 // 遊戲在前端進行，伺服器只能做合理性檢查（開局時間、最短／最長時間、單局只能領一次、IP 限額），無法完全防止腳本作弊；折扣金額固定且小，風險有限。
-// 釣蝦場：可選目標（決定過關隻數／時間／最短合理時間）與工具（只影響前端手感，伺服器僅驗證並記錄）
-const TARGETS={shrimp:{goal:4,seconds:40,minSec:12},crab:{goal:3,seconds:40,minSec:8},lobster:{goal:2,seconds:45,minSec:10}} as const;
+// 目標決定基礎分數，難度決定倍率；工具影響手感，後端依開局資料重算分數。
+const TARGETS={shrimp:{goal:COUPON_CATCH_MIN,seconds:GAME_SECONDS},crab:{goal:COUPON_CATCH_MIN,seconds:GAME_SECONDS},lobster:{goal:COUPON_CATCH_MIN,seconds:GAME_SECONDS}} as const;
 const TOOLS=["rod","net","tongs","cage"] as const;
 type Target=keyof typeof TARGETS;
-const GAME={seconds:TARGETS.shrimp.seconds,target:TARGETS.shrimp.goal,graceSec:15},COUPON={discount:5,minTotal:1000,ttlHours:24};
+const GAME={seconds:TARGETS.shrimp.seconds,target:TARGETS.shrimp.goal,graceSec:15},COUPON={discount:5,minTotal:1000};
 async function gameStart(env:Env,request:Request,b:any){
- const target=(b?.target??"shrimp") as Target,tool=b?.tool??"rod";
+ const target=(b?.target??"shrimp") as Target,tool=b?.tool??"rod",difficulty=(b?.difficulty??"normal") as Difficulty;
+ if(!Object.hasOwn(DIFFICULTIES,difficulty))throw new HttpError(400,"遊戲難度不正確");
  if(!Object.hasOwn(TARGETS,target)||!(TOOLS as readonly string[]).includes(tool))throw new HttpError(400,"遊戲資料不正確");
  const nickname=typeof b?.nickname==='string'?b.nickname.trim().normalize('NFKC'):'';
  if([...nickname].length>12||/[<>\u0000-\u001f\u007f]/.test(nickname))throw new HttpError(400,'排行榜暱稱請填寫 12 字內，勿使用特殊控制符號');
  if(nickname&&(typeof b.playerId!=='string'||!/^[A-Za-z0-9_-]{20,64}$/.test(b.playerId)))throw new HttpError(400,'玩家識別資料不正確，請重新整理');
  await rateLimit(env,request,"game");
  const id=randomToken(24),now=Math.floor(Date.now()/1000);
- await env.DB.prepare("INSERT INTO game_sessions (id_hash,ip_hash,started_at,target,tool,nickname,player_hash) VALUES (?,?,?,?,?,?,?)").bind(await sha256(id),await ipHash(env,request),now,target,tool,nickname,nickname?await sha256('player|'+b.playerId):'').run();
+ await env.DB.prepare("INSERT INTO game_sessions (id_hash,ip_hash,started_at,target,tool,nickname,player_hash,difficulty,rule_version) VALUES (?,?,?,?,?,?,?,?,?)").bind(await sha256(id),await ipHash(env,request),now,target,tool,nickname,nickname?await sha256('player|'+b.playerId):'',difficulty,GAME_RULE_VERSION).run();
  if(Math.random()<0.02)await env.DB.prepare("DELETE FROM game_sessions WHERE started_at<?").bind(now-86400).run();
  const t=TARGETS[target];
- return {gameId:id,seconds:t.seconds,target:t.goal,kind:target,tool};
+ return {gameId:id,seconds:t.seconds,target:t.goal,couponCatchMin:COUPON_CATCH_MIN,kind:target,tool,difficulty,pointsPerCatch:pointsPerCatch(target,difficulty),ruleVersion:GAME_RULE_VERSION};
 }
 async function gameFinish(env:Env,request:Request,b:any){
- if(typeof b.gameId!=="string"||!/^[A-Za-z0-9_-]{20,64}$/.test(b.gameId)||!Number.isSafeInteger(b.caught)||b.caught<0||b.caught>50)throw new HttpError(400,"遊戲資料不正確");
+ if(typeof b.gameId!=="string"||!/^[A-Za-z0-9_-]{20,64}$/.test(b.gameId)||!Number.isSafeInteger(b.caught)||b.caught<0)throw new HttpError(400,"遊戲資料不正確");
  const idh=await sha256(b.gameId),ip=await ipHash(env,request),now=Math.floor(Date.now()/1000);
  const g=await env.DB.prepare("SELECT * FROM game_sessions WHERE id_hash=?").bind(idh).first<any>();
  if(!g||g.ip_hash!==ip)throw new HttpError(404,"找不到這局遊戲，請重新開始");
  if(g.finished)throw new HttpError(409,"這局已經結束了，請再玩一局");
+ if(g.rule_version!==GAME_RULE_VERSION)throw new HttpError(409,"玩法已更新，請重新整理後再玩一局");
  const el=now-g.started_at,T=TARGETS[(g.target in TARGETS?g.target:"shrimp") as Target];
  if(el>T.seconds+GAME.graceSec){await env.DB.prepare("UPDATE game_sessions SET finished=1 WHERE id_hash=?").bind(idh).run();throw new HttpError(409,"這局已逾時，請再玩一局")}
- if(b.caught>T.goal)throw new HttpError(400,'抓取數量不正確');
- const passed=b.caught===T.goal;
- if(passed&&el<T.minSec)throw new HttpError(400,"釣得太快了，請正常遊玩");
+ if(el<GAME_SECONDS)throw new HttpError(400,"每局固定 30 秒，請等倒數結束後結算");
+ const score=b.caught*pointsPerCatch(g.target as Target,g.difficulty as Difficulty);
+ if(!Number.isSafeInteger(score))throw new HttpError(400,"遊戲分數不正確");
+ const passed=b.caught>=COUPON_CATCH_MIN;
  // 先把這局標記為結束（只有一個請求能成功），再檢查領券限額
  const statements=[env.DB.prepare("UPDATE game_sessions SET finished=1 WHERE id_hash=? AND finished=0").bind(idh)];
- if(passed&&g.nickname&&g.player_hash)statements.push(env.DB.prepare('INSERT INTO game_scores (id,player_hash,nickname,target,tool,elapsed_sec,created_at) SELECT ?,?,?,?,?,?,? WHERE changes()=1').bind(idh,g.player_hash,g.nickname,g.target,g.tool,el,nowIso()));
+ if(b.caught>0&&g.nickname&&g.player_hash)statements.push(env.DB.prepare('INSERT INTO game_scores (id,player_hash,nickname,target,tool,elapsed_sec,created_at,difficulty,rule_version,score,caught) SELECT ?,?,?,?,?,?,?,?,?,?,? WHERE changes()=1').bind(idh,g.player_hash,g.nickname,g.target,g.tool,GAME_SECONDS,nowIso(),g.difficulty,GAME_RULE_VERSION,score,b.caught));
  const [r]=await env.DB.batch(statements);
  if(!r.meta.changes)throw new HttpError(409,"這局已經結束了，請再玩一局");
- if(!passed)return {won:false};
- try{await rateLimit(env,request,"coupon")}catch(e){if(e instanceof HttpError&&e.status===429)return {won:true,coupon:null,couponMessage:e.message};throw e}
- const code="SHRIMP-"+randomToken(18),exp=new Date(Date.now()+COUPON.ttlHours*3600e3).toISOString();
- await env.DB.prepare("INSERT INTO coupons (code_hash,kind,discount,min_total,ip_hash,created_at,expires_at) VALUES (?,?,?,?,?,?,?)").bind(await sha256(code),"shrimp5",COUPON.discount,COUPON.minTotal,ip,nowIso(),exp).run();
- return {won:true,coupon:{code,discount:COUPON.discount,minTotal:COUPON.minTotal,expiresAt:exp,scope:COUPON_SCOPE,restrictions:COUPON_RULE}};
+ if(!passed)return {won:false,score,caught:b.caught};
+ try{await rateLimit(env,request,"coupon")}catch(e){if(e instanceof HttpError&&e.status===429)return {won:true,score,caught:b.caught,coupon:null,couponMessage:e.message};throw e}
+ const issuedAt=new Date(),code="SHRIMP-"+randomToken(18),exp=endOfTaipeiDay(issuedAt);
+ await env.DB.prepare("INSERT INTO coupons (code_hash,kind,discount,min_total,ip_hash,created_at,expires_at) VALUES (?,?,?,?,?,?,?)").bind(await sha256(code),"shrimp5",COUPON.discount,COUPON.minTotal,ip,issuedAt.toISOString(),exp).run();
+ return {won:true,score,caught:b.caught,coupon:{code,discount:COUPON.discount,minTotal:COUPON.minTotal,expiresAt:exp,scope:COUPON_SCOPE,restrictions:COUPON_RULE}};
 }
 async function gameLeaderboard(env:Env,target:string){
  if(!Object.hasOwn(TARGETS,target))throw new HttpError(400,'排行榜分類不正確');
  const {results}=await env.DB.prepare(`WITH best AS (
-  SELECT *,ROW_NUMBER() OVER(PARTITION BY player_hash ORDER BY elapsed_sec,created_at,id) AS best_run FROM game_scores WHERE target=?
+  SELECT *,ROW_NUMBER() OVER(PARTITION BY player_hash ORDER BY score DESC,created_at,id) AS best_run FROM game_scores WHERE target=? AND rule_version=?
  ), ranked AS (
-  SELECT nickname,tool,elapsed_sec AS seconds,created_at AS achievedAt,RANK() OVER(ORDER BY elapsed_sec) AS rank FROM best WHERE best_run=1
- ) SELECT rank,nickname,tool,seconds,achievedAt FROM ranked ORDER BY seconds,achievedAt,nickname LIMIT 10`).bind(target).all();
+  SELECT nickname,tool,difficulty,score,caught,elapsed_sec AS seconds,created_at AS achievedAt,RANK() OVER(ORDER BY score DESC) AS rank FROM best WHERE best_run=1
+ ) SELECT rank,nickname,tool,difficulty,score,caught,seconds,achievedAt FROM ranked ORDER BY score DESC,achievedAt,nickname LIMIT 10`).bind(target,GAME_RULE_VERSION).all();
  return {target,entries:results,limit:10};
 }
 const checkCode=(c:unknown)=>{if(typeof c!=="string"||!/^SHRIMP-[A-Za-z0-9_-]{20,40}$/.test(c))throw new HttpError(400,"優惠碼格式不正確");return c};

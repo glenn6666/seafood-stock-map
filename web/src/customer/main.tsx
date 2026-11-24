@@ -52,6 +52,7 @@ function Shop({origin}:{origin:string}){
  const [mode,setMode]=useState<"3d"|"list">(()=>{const pref=localStorage.getItem("shop-view");return allow3d&&canWebGL()&&!reducedMotion()&&pref!=="list"?"3d":"list"});
  const [coupon,setCouponState]=useState<Coupon|null>(loadCoupon),[game,setGame]=useState(false);
  const setCoupon=(c:Coupon|null)=>{setCouponState(c);if(c)localStorage.setItem(COUPON_KEY,JSON.stringify(c));else localStorage.removeItem(COUPON_KEY)};
+ useEffect(()=>{if(!coupon)return;const controller=new AbortController();fetch(origin+'/api/public/coupons/check',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'omit',signal:controller.signal,body:JSON.stringify({code:coupon.code,channel:'shop'})}).then(async r=>{if([404,409].includes(r.status)){setCoupon(null);return}if(r.ok){const d=await r.json();setCoupon({...coupon,expiresAt:d.expiresAt,restrictions:d.restrictions})}}).catch(()=>{});return()=>controller.abort()},[origin,coupon?.code]);
  const [focus,setFocus]=useState(-1),[sel,setSel]=useState<M|null>(null),[pick,setPick]=useState(1),[toast,setToast]=useState("");
  const [zone,setZone]=useState<string|null>(null),listRef=useRef<HTMLDivElement>(null);
  const idem=useRef(newKey());
@@ -122,7 +123,7 @@ function Shop({origin}:{origin:string}){
    {subUnits.length>1&&<div className="unit-tabs" role="tablist" aria-label="櫃子">{subUnits.map(u=><button key={u.id} type="button" role="tab" aria-selected={zone===u.id} className={zone===u.id?"active":""} onClick={()=>pickZone(u.id)}>{u.name}</button>)}</div>}
    </div>
    <p className="results-count" role="status">{menu?`共 ${shown.length} 項商品${q?`・搜尋「${q}」`:""}`:msg?"商品暫時無法載入":"正在讀取商品…"}{(q||zone)&&<button type="button" onClick={()=>{setQuery("");setZone(null);setGroup("all")}}>清除篩選</button>}</p>
-   {coupon&&<button className="game-banner" type="button" onClick={()=>setGame(true)}><span>🦐</span><b>樂甜釣蝦場</b><small>{`已有優惠券：滿 ${coupon.minTotal} 折 ${coupon.discount}`}</small></button>}
+   {coupon&&<button className="game-banner" type="button" onClick={()=>setGame(true)}><span>🦐</span><b>樂甜釣蝦場</b><small>{`今天有效：店內商品滿 ${coupon.minTotal} 折 ${coupon.discount}`}</small></button>}
  </>;
  const itemCard=(m:M)=><div key={m.id} className={"card item"+(cart[m.id]>0?" in-cart":"")+(m.available?"":" soldout")}>
    {productImageSrc(m.imageUrl,origin)?<button type="button" className="item-thumb photo" onClick={()=>choose(m)} aria-label={m.name+" 看大圖"}><img src={productImageSrc(m.imageUrl,origin)} alt="" loading="lazy" decoding="async"/></button>
@@ -142,7 +143,7 @@ function Shop({origin}:{origin:string}){
    </div>
   </div>;
  const listBody=!menu?<p className="hint">{msg||"載入中…"}</p>
-  :!menu.length?<><p className="hint">目前沒有開放訂購的商品，仍可先玩釣蝦遊戲拿優惠券。</p><button className="game-banner" onClick={()=>setGame(true)}><span>🦐</span><b>樂甜釣蝦場</b><small>抓蝦／螃蟹／龍蝦，過關贏滿 NT$1,000 折 NT$5</small></button></>
+  :!menu.length?<><p className="hint">目前沒有開放訂購的商品，仍可先玩釣蝦遊戲拿優惠券。</p><button className="game-banner" onClick={()=>setGame(true)}><span>🦐</span><b>樂甜釣蝦場</b><small>抓蝦／螃蟹／龍蝦，30 秒抓到 6 隻以上，贏今天有效的店內商品優惠券</small></button></>
   :checkout?<form className="card form" onSubmit={submit}><div className="checkout-heading"><span>確認商品，再填寫聯絡資料</span><h2>確認您的訂單</h2></div><h3>選購商品 · {count} 件</h3>
   <ul className="lines">{lines.map(m=><li key={m.id}><span>{m.name} <small>{m.spec}</small></span><span className="cart-qty"><button type="button" aria-label={`減少${m.name}`} onClick={()=>setQty(m,cart[m.id]-1)}>－</button>{cart[m.id]}<button type="button" aria-label={`增加${m.name}`} disabled={cart[m.id]>=m.available} onClick={()=>setQty(m,cart[m.id]+1)}>＋</button></span><span>NT$ {(priceNum(m.price)*cart[m.id]).toLocaleString()}</span></li>)}</ul>
   {coupon&&<p className={"coupon-line"+(couponOk?" ok":"")}>🎟 釣蝦優惠券：{couponOk?`已套用，折 NT$${discount}`:Date.parse(coupon.expiresAt)<=Date.now()?'已過期':`店內商品再買 NT$${Math.max(0,coupon.minTotal-eligibleSubtotal)} 即可折 NT$${coupon.discount}`}<br/>{COUPON_RULE}</p>}
@@ -163,7 +164,7 @@ function Shop({origin}:{origin:string}){
     </Suspense>
     <p className="stage-hint">{focus<0?"點冰箱或魚缸靠近看看，左右滑動切換":sceneUnits[focus]?.type==="tank"?`${sceneUnits[focus]?.name}：點游動的海鮮挑選`:noDoor(sceneUnits[focus])?`${sceneUnits[focus]?.name}：點商品挑選`:`${sceneUnits[focus]?.name}：點門打開，再點商品`}</p>
     {focus>=0&&<div className="stage-nav"><button aria-label="上一個" onClick={()=>setFocus(Math.max(-1,focus-1))}>‹</button><button onClick={()=>setFocus(-1)}>總覽</button><button aria-label="下一個" disabled={focus>=sceneUnits.length-1} onClick={()=>setFocus(Math.min(sceneUnits.length-1,focus+1))}>›</button></div>}
-    {!coupon&&<button className="game-banner" onClick={()=>setGame(true)}><span>🦐</span><b>樂甜釣蝦場</b><small>抓蝦／螃蟹／龍蝦，過關贏滿 NT$1,000 折 NT$5</small></button>}
+    {!coupon&&<button className="game-banner" onClick={()=>setGame(true)}><span>🦐</span><b>樂甜釣蝦場</b><small>抓蝦／螃蟹／龍蝦，30 秒抓到 6 隻以上，贏今天有效的店內商品優惠券</small></button>}
    </section>:<>
     <div className="menu">{shown.map(itemCard)}</div>
     {!shown.length&&<p className="hint">{q?`找不到「${q}」相關的商品，換個關鍵字或分類看看。`:"這個分類目前沒有開放訂購的商品。"}</p>}
