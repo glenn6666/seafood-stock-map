@@ -1,0 +1,562 @@
+[
+  {
+    "name": "6兩烏魚子",
+    "spec": "6兩",
+    "description": "台灣烏魚子，不附禮盒，自用也能享用經典海味。",
+    "source": "stk1031-012.webp",
+    "notes": "依商品照片可辨識文字整理。"
+  },
+  {
+    "name": "6兩烏魚子質感禮盒組",
+    "spec": "6兩・附禮盒",
+    "description": "台灣烏魚子搭配質感禮盒與提袋，送禮自用兩相宜。",
+    "source": "stk1031-012-gift.webp",
+    "notes": "依商品照片可辨識文字整理。"
+  },
+  {
+    "name": "五片鯛魚",
+    "spec": "450g／5片",
+    "description": "台灣鯛魚片，採透明袋裝，需冷凍保存。",
+    "source": "stk1031-024.webp",
+    "notes": "依商品照片可辨識文字整理。"
+  },
+  {
+    "name": "午仔魚",
+    "spec": "300–400g／尾",
+    "description": "大隻午仔魚，完整魚身，適合喜愛整尾魚的您。",
+    "source": "stk1031-014.webp",
+    "notes": "依商品照片可辨識文字整理。"
+  },
+  {
+    "name": "巴沙魚",
+    "spec": "700g",
+    "description": "巴沙魚排採袋裝，透明視窗可見魚排外觀。",
+    "source": "stk1031-028.webp",
+    "notes": "依商品照片可辨識文字整理。"
+  },
+  {
+    "name": "扁鱈切片",
+    "spec": "250–300g／片",
+    "description": "格陵蘭無肚洞扁鱈厚切，香煎、清蒸、紅燒皆宜。",
+    "source": "stk1031-018.webp",
+    "notes": "依商品照片可辨識文字整理。"
+  },
+  {
+    "name": "煙燻鮭魚",
+    "spec": "100g／包",
+    "description": "煙燻鮭魚切片，適合搭配沙拉、吐司與壽司。",
+    "source": "stk1031-038.webp",
+    "notes": "依商品照片可辨識文字整理。"
+  },
+  {
+    "name": "福氣魚蛋",
+    "spec": "L規格",
+    "description": "福氣滿滿魚蛋，切片氣炸或乾煎都適合。",
+    "source": "stk1031-019.webp",
+    "notes": "依商品照片可辨識文字整理。"
+  },
+  {
+    "name": "紅條燕尾",
+    "spec": "350g±10%／尾",
+    "description": "紅條燕尾單尾真空包裝，清蒸、紅燒皆宜。",
+    "source": "stk1031-013.webp",
+    "notes": "依商品照片可辨識文字整理。"
+  },
+  {
+    "name": "虱目魚肉",
+    "spec": "300g",
+    "description": "虱目魚里肌肉，適合煎烤、煲粥，需充分加熱。",
+    "source": "stk1031-056.webp",
+    "notes": "依商品照片可辨識文字整理。"
+  },
+  {
+    "name": "虱目魚肚",
+    "spec": "170g±10%／片",
+    "description": "牛奶虱目魚肚，大片無刺，採獨立袋裝。",
+    "source": "stk1031-110.webp",
+    "notes": "依商品照片可辨識文字整理。"
+  },
+  {
+    "name": "香魚",
+    "spec": "900g／5尾裝；本品單尾販售",
+    "description": "大隻母蛋香魚，單尾選購，照片同時展示整盒包裝。",
+    "source": "stk1031-051.webp",
+    "notes": "照片標示；單尾販售依目前商品單位與價格確認。"
+  },
+  {
+    "name": "鮭魚切片",
+    "spec": "350–400g／片",
+    "description": "智利鮭魚切片，採透明真空袋包裝。",
+    "source": "stk1031-015.webp",
+    "notes": "依商品照片可辨識文字整理。"
+  },
+  {
+    "name": "鮭魚腹鰭",
+    "spec": "300g",
+    "description": "智利進口鮭魚腹鰭，油脂豐厚，適合鹽烤。",
+    "source": "stk1031-096.webp",
+    "notes": "依商品照片可辨識文字整理。"
+  },
+  {
+    "name": "鮭魚菲力",
+    "spec": "200–250g／包",
+    "description": "鮭魚菲力急速冷凍，煎、烤、煮皆可。",
+    "source": "stk1031-114.webp",
+    "notes": "依商品照片可辨識文字整理。"
+  },
+  {
+    "name": "鯖魚",
+    "spec": "含紙板170–190g；淨重約140–150g",
+    "description": "挪威薄鹽鯖魚，獨立真空包裝，需冷凍保存。",
+    "source": "stk1031-108.webp",
+    "notes": "依商品照片可辨識文字整理。"
+  },
+  {
+    "name": "鱸魚清肉",
+    "spec": "150–200g／片",
+    "description": "台灣金目鱸魚去鱗清肉片，煎、煮、蒸、烤皆宜。",
+    "source": "stk1031-102.webp",
+    "notes": "依商品照片可辨識文字整理。"
+  },
+  {
+    "name": "龍虎石斑",
+    "spec": "650g／尾",
+    "description": "台灣產冷凍三去龍虎石斑，單尾真空包裝。",
+    "source": "stk1031-031.webp",
+    "notes": "依商品照片可辨識文字整理。"
+  },
+  {
+    "name": "紅龍牛肉湯",
+    "spec": "450g±10%／包",
+    "description": "紅龍牛肉湯，袋裝湯品，需冷凍保存。",
+    "source": "stk1031-036.webp",
+    "notes": "依商品照片可辨識文字整理。"
+  },
+  {
+    "name": "一排小卷",
+    "spec": "300g以上／盒",
+    "description": "一排小卷採透明袋裝，完整保留小卷外觀。",
+    "source": "stk1031-109.webp",
+    "notes": "依商品照片可辨識文字整理。"
+  },
+  {
+    "name": "巨蟹棒",
+    "spec": "600g／10入",
+    "description": "日本巨蟹棒，每條60g，採透明袋包裝。",
+    "source": "stk1031-030.webp",
+    "notes": "依商品照片可辨識文字整理。"
+  },
+  {
+    "name": "湯包",
+    "spec": "1.5kg／包",
+    "description": "禾家香冷凍鮮肉湯包，袋裝大份量。",
+    "source": "stk1031-057.webp",
+    "notes": "依商品照片可辨識文字整理。"
+  },
+  {
+    "name": "翡翠蔥抓餅",
+    "spec": "1.4kg／10片",
+    "description": "禾家鄉翡翠蔥抓餅，十片大份量袋裝。",
+    "source": "stk1031-112.webp",
+    "notes": "依商品照片可辨識文字整理。"
+  },
+  {
+    "name": "脆皮肥腸",
+    "spec": "240g／包",
+    "description": "蔥段脆皮肥腸，採獨立真空袋包裝。",
+    "source": "stk1031-017.webp",
+    "notes": "依商品照片可辨識文字整理。"
+  },
+  {
+    "name": "花枝",
+    "spec": "160g／盒",
+    "description": "生食級花枝切片，須冷凍保存，退冰即可食用。",
+    "source": "stk1031-034.webp",
+    "notes": "依商品照片可辨識文字整理。"
+  },
+  {
+    "name": "花枝丸",
+    "spec": "600g",
+    "description": "特級花枝丸，採透明袋裝，可見丸子外觀。",
+    "source": "stk1031-103.webp",
+    "notes": "依商品照片可辨識文字整理。"
+  },
+  {
+    "name": "花枝漿",
+    "spec": "90g±10%／條",
+    "description": "滿滿花枝漿，條狀袋裝，方便取用料理。",
+    "source": "stk1031-049.webp",
+    "notes": "依商品照片可辨識文字整理。"
+  },
+  {
+    "name": "藍鑽蝦水餃",
+    "spec": "520g±10g／20粒",
+    "description": "藍鑽蝦水餃盒裝，水煮、煮湯、香煎皆宜。",
+    "source": "stk1031-022.webp",
+    "notes": "依商品照片可辨識文字整理。"
+  },
+  {
+    "name": "蝦仁漿",
+    "spec": "100g／條",
+    "description": "棒狀獨立袋裝蝦仁漿，外袋標示品名與重量。",
+    "source": "stk1031-106.webp；sheet-08.jpg",
+    "notes": "圖片大字標示蝦仁漿100g；單價標示一條。"
+  },
+  {
+    "name": "蝦餅",
+    "spec": "1片200g",
+    "description": "宏裕行花枝月亮蝦餅，以單片袋裝呈現。",
+    "source": "stk1031-076.webp；sheet-08.jpg",
+    "notes": "廣告圖明載規格：1片200g。"
+  },
+  {
+    "name": "蟹味棒",
+    "spec": "270g／30入",
+    "description": "日式蟹味棒整齊排列，採透明膜托盤包裝。",
+    "source": "stk1031-058.webp；sheet-08.jpg",
+    "notes": "圖片大字標示270g、30入；未將展示的多包數量視為販售規格。"
+  },
+  {
+    "name": "軟絲",
+    "spec": "4A／350g",
+    "description": "單凍4A大軟絲，整尾冷凍包裝。",
+    "source": "stk1031-032.webp；sheet-08.jpg",
+    "notes": "大字標示單凍4A大軟絲350g；照片展示多尾，不將尾數視為每份數量。"
+  },
+  {
+    "name": "透抽",
+    "spec": "250g",
+    "description": "單凍大透抽，整尾冷凍保存。",
+    "source": "stk1031-064.webp；sheet-09.jpg",
+    "notes": "大字標示單凍大透抽250g；未註明每包尾數。"
+  },
+  {
+    "name": "雞塊",
+    "spec": "1kg／包",
+    "description": "紅龍冷凍雞塊，袋裝大份量。",
+    "source": "stk1031-043.webp；sheet-09.jpg",
+    "notes": "圖片標示龍紅雞塊1kg與一包；包裝品牌為紅龍。"
+  },
+  {
+    "name": "雞腿捲",
+    "spec": "350g／4入",
+    "description": "爆漿雞腿卷整齊排列，以黑色托盤封裝。",
+    "source": "stk1031-111.webp；sheet-09.jpg",
+    "notes": "大字明載爆漿雞腿卷350g 4入。"
+  },
+  {
+    "name": "霸味小丸子",
+    "spec": "125g／包",
+    "description": "霸味薑母鴨丸，獨立袋裝小份量。",
+    "source": "stk1031-023.webp；sheet-09.jpg",
+    "notes": "廣告明載正宗薑母鴨丸、規格125g／包。"
+  },
+  {
+    "name": "鳳羅",
+    "spec": "600g",
+    "description": "帶殼大鳳螺，採透明盒裝呈現螺殼外觀。",
+    "source": "stk1031-042.webp；sheet-10.jpg",
+    "notes": "圖片大字為大鳳螺600g；保留目錄名稱鳳羅。"
+  },
+  {
+    "name": "切好帶骨牛",
+    "spec": "250g±10%／包",
+    "description": "切塊帶骨牛小排，以黑底透明袋分裝。",
+    "source": "stk1031-072.webp；sheet-10.jpg",
+    "notes": "大字為單眼牛小排250g+-10%；單價單位為一包。"
+  },
+  {
+    "name": "小羔羊肋條",
+    "spec": "200克／盤",
+    "description": "小羔羊肋條切成短條狀，採透明袋包裝。",
+    "source": "stk1031-020.webp；sheet-10.jpg",
+    "notes": "廣告右下明載一盤200克。"
+  },
+  {
+    "name": "帶骨牛小排",
+    "spec": "300g／包",
+    "description": "Choice帶骨牛小排，採黑底真空袋包裝。",
+    "source": "stk1031-099.webp；sheet-10.jpg",
+    "notes": "左下標示300g一包。"
+  },
+  {
+    "name": "松阪豬",
+    "spec": "200克／盒",
+    "description": "伊比利霜降松阪豬，以黑色托盤真空封裝。",
+    "source": "stk1031-079.webp；sheet-11.jpg",
+    "notes": "大字200g；包裝標籤明載產品重量200公克／盒。"
+  },
+  {
+    "name": "板建牛卷",
+    "spec": "500克／包",
+    "description": "板腱牛肉捲片，採透明袋裝呈現捲片外觀。",
+    "source": "stk1031-091.webp；sheet-11.jpg",
+    "notes": "廣告為澳洲板腱牛捲片，重量500克，單價單位包；保留目錄名稱。"
+  },
+  {
+    "name": "板建牛排",
+    "spec": "500g±10%",
+    "description": "熟成牛板腱切片，以黑底透明真空袋封裝。",
+    "source": "stk1031-083.webp；sheet-11.jpg",
+    "notes": "右下明載熟成牛板腱500g±10%；保留目錄名稱。"
+  },
+  {
+    "name": "桂花豬肋排",
+    "spec": "1000g／包",
+    "description": "桂花豬肋排帶醬色外觀，以透明真空袋封裝。",
+    "source": "stk1031-097.webp；sheet-11.jpg",
+    "notes": "廣告明載規格1000g及一包。"
+  },
+  {
+    "name": "比臉大",
+    "spec": "280g±10%",
+    "description": "安格斯Prime背肩牛排，以真空袋包裝。",
+    "source": "stk1031-073.webp；sheet-12.jpg",
+    "notes": "圖片品名背肩牛排，重量280g±10%；保留目錄名稱比臉大。"
+  },
+  {
+    "name": "無骨牛",
+    "spec": "200克±10%",
+    "description": "安格斯Choice無骨牛小排，採真空袋包裝。",
+    "source": "stk1031-071.webp；sheet-12.jpg",
+    "notes": "圖片明載無骨牛小排、重量200克±10%。"
+  },
+  {
+    "name": "燒烤豬五花",
+    "spec": "500克／盒",
+    "description": "燒烤豬五花薄片整齊排列，採白色托盤封裝。",
+    "source": "stk1031-074.webp；sheet-12.jpg",
+    "notes": "廣告標示500克及一盒。"
+  },
+  {
+    "name": "牛五花",
+    "spec": "1公斤／包",
+    "description": "牛五花捲片，透明袋中可見紅白相間肉片。",
+    "source": "stk1031-087.webp；sheet-12.jpg",
+    "notes": "廣告明載重量1公斤及單價單位包；兩袋為展示不推算每袋重量。"
+  },
+  {
+    "name": "牛五花小",
+    "spec": "500g±10%／包",
+    "description": "牛五花捲片，採透明袋裝並附白色商品標籤。",
+    "source": "stk1031-088.webp；sheet-13.jpg",
+    "notes": "大字500g；原圖白色標籤產品重量為500g±10%，單價單位包。"
+  },
+  {
+    "name": "牛肋條",
+    "spec": "400克",
+    "description": "安格斯Choice牛肋條，以真空袋裝呈現。",
+    "source": "stk1031-098.webp；sheet-13.jpg",
+    "notes": "圖片明載重量400克；未見重量容差。"
+  },
+  {
+    "name": "綿羊卷",
+    "spec": "500克／包",
+    "description": "綿羊肩捲片，以透明袋裝呈現細長肉捲。",
+    "source": "stk1031-092.webp；sheet-13.jpg",
+    "notes": "廣告明載紐西蘭綿羊肩捲片、重量500克及單價單位包。"
+  },
+  {
+    "name": "舒肥雞",
+    "spec": "100g±5%／包",
+    "description": "舒肥雞胸袋裝，提供義式香草與蒜香黑胡椒。",
+    "source": "stk1031-075.webp；sheet-13.jpg",
+    "notes": "大字100g；原圖左右產品標籤均印重量100G±5%；單價單位一包。"
+  },
+  {
+    "name": "豬五花",
+    "spec": "1公斤／包",
+    "description": "豬五花捲片，採透明袋裝呈現紅白肉捲。",
+    "source": "stk1031-089.webp；sheet-14.jpg",
+    "notes": "廣告明載重量1公斤及單價單位包；兩袋為展示不推算每袋重量。"
+  },
+  {
+    "name": "豬五花小",
+    "spec": "500g±10%／包",
+    "description": "豬五花捲片，透明袋裝並附白色商品標籤。",
+    "source": "stk1031-090.webp；sheet-14.jpg",
+    "notes": "大字500g；原圖白色標籤產品重量500g±10%，單價單位包。"
+  },
+  {
+    "name": "豬梅花",
+    "spec": "1公斤／包",
+    "description": "豬梅花捲片，透明袋裝呈現紅白相間肉片。",
+    "source": "stk1031-085.webp；sheet-14.jpg",
+    "notes": "廣告明載重量1公斤及單價單位包。"
+  },
+  {
+    "name": "雞腿肉香腸",
+    "spec": "1kg",
+    "description": "雞腿肉香腸袋裝，透明包材可見分段香腸。",
+    "source": "stk1031-081.webp；sheet-14.jpg",
+    "notes": "圖片大字明載雞腿肉香腸1kg；未依示範照片推算條數。"
+  },
+  {
+    "name": "香腸",
+    "spec": "500g／約12條",
+    "description": "二空老兵牌特製香腸，袋裝台灣傳統口味。",
+    "source": "stk1031-086.webp",
+    "notes": "照片印明500克、約12條。"
+  },
+  {
+    "name": "骰子牛",
+    "spec": "200g±10%",
+    "description": "安格斯骰子牛切成方塊，透明真空袋包裝。",
+    "source": "stk1031-080.webp",
+    "notes": "包裝標籤印明200g±10%；圖中文字200g。"
+  },
+  {
+    "name": "4P草蝦",
+    "spec": "4P；約220–250g",
+    "description": "活凍大草蝦完整帶頭帶殼，以托盤封裝。",
+    "source": "stk1031-119.webp",
+    "notes": "照片重量約220–250g；與舊目錄500g不同，以照片為準。"
+  },
+  {
+    "name": "50/60白蝦",
+    "spec": "50/60；850g；退冰700g",
+    "description": "活凍白蝦帶頭帶殼，盒內以藍色內袋包裝。",
+    "source": "stk1031-100.webp",
+    "notes": "照片未把850g稱作淨重，保留原意。"
+  },
+  {
+    "name": "8P草蝦",
+    "spec": "8P；570g；退冰實重220–250g",
+    "description": "活凍大草蝦完整帶頭帶殼，排列於盒內。",
+    "source": "stk1031-069.webp",
+    "notes": "照片印明重量570g、退冰實重220g–250g；優先於舊目錄。"
+  },
+  {
+    "name": "國王蝦",
+    "spec": "21/25；600g；退冰450–500g",
+    "description": "國王蝦活凍白蝦，帶頭帶殼並以盒裝呈現。",
+    "source": "stk1031-093.webp",
+    "notes": "照片印明600g與退冰450–500g；與目錄500g不同。"
+  },
+  {
+    "name": "小龍蝦各",
+    "spec": "",
+    "description": "盒裝小龍蝦系列，口味請向店家確認。",
+    "source": "stk1031-033.webp",
+    "notes": "共用全口味照片未印重量；名稱小龍蝦各無法唯一對應目錄品項。"
+  },
+  {
+    "name": "有氧蝦",
+    "spec": "30/40；850g；退冰600–650g",
+    "description": "活凍有氧蝦帶頭帶殼，以藍色內袋盒裝。",
+    "source": "stk1031-120.webp",
+    "notes": "照片印明規格30/40、重量850克與退冰600–650克。"
+  },
+  {
+    "name": "沙蟹身",
+    "spec": "500g",
+    "description": "石狩沙蟹身以透明袋包裝，袋內可見蟹身塊。",
+    "source": "stk1031-062.webp",
+    "notes": "照片印明規格500g。"
+  },
+  {
+    "name": "泰蝦仁",
+    "spec": "600g；50–70尾／磅",
+    "description": "去尾泰蝦仁採袋裝，透明窗可見去殼蝦仁。",
+    "source": "stk1031-050.webp",
+    "notes": "圖片印600g；包裝印50–70 Shrimp per pound。"
+  },
+  {
+    "name": "甜蝦",
+    "spec": "50尾／盤",
+    "description": "去殼帶尾甜蝦整齊分排，以托盤封膜包裝。",
+    "source": "stk1031-040.webp",
+    "notes": "照片印明50尾入；舊目錄115g未在照片確認，不混用。"
+  },
+  {
+    "name": "蒜香小龍蝦",
+    "spec": "500g",
+    "description": "蒜香小龍蝦彩盒裝，每盒附手套。",
+    "source": "stk1031-105.webp；work/seafood-stock-map/web/src/lib/catalog.ts",
+    "notes": "共用照片未印重量；500g由目錄蒜香小龍蝦同名且同價299確認。"
+  },
+  {
+    "name": "蝦球",
+    "spec": "L號；500g",
+    "description": "御炸蝦球採透明袋包裝，可見裹衣蝦球外觀。",
+    "source": "stk1031-101.webp",
+    "notes": "照片印明御炸蝦球L號500g。"
+  },
+  {
+    "name": "蟹管肉",
+    "spec": "退冰重90g",
+    "description": "蟹管肉採小袋包裝，透明視窗可見白色蟹肉。",
+    "source": "stk1031-094.webp",
+    "notes": "照片明確印退冰重90g，不能改寫為含冰重量。"
+  },
+  {
+    "name": "蟹腳",
+    "spec": "300g",
+    "description": "沙蟹腳保留蟹殼與蟹鉗，冷凍保存。",
+    "source": "stk1031-041.webp",
+    "notes": "照片印明沙蟹腳300g。"
+  },
+  {
+    "name": "赤蝦",
+    "spec": "S；120g",
+    "description": "去殼帶尾赤蝦分排擺放，以長方形托盤包裝。",
+    "source": "stk1031-021.webp",
+    "notes": "照片規格印S/120g；S為尺寸，不是數量。"
+  },
+  {
+    "name": "開背天使紅蝦20",
+    "spec": "5L",
+    "description": "開背天使紅蝦採托盤包裝，蝦肉展開分排擺放。",
+    "source": "stk1031-095.webp",
+    "notes": "照片只確認5L；品名尾碼20不可擅自解讀為20尾或重量。"
+  },
+  {
+    "name": "麻辣小龍蝦",
+    "spec": "500g",
+    "description": "麻辣小龍蝦彩盒裝，每盒附手套。",
+    "source": "stk1031-104.webp；work/seafood-stock-map/web/src/lib/catalog.ts",
+    "notes": "共用照片未印重量；500g由目錄麻辣小龍蝦同名且同價299確認。"
+  },
+  {
+    "name": "凡立貝",
+    "spec": "包冰1000g；淨重500g",
+    "description": "櫛孔帆立貝肉採藍色透明袋包裝，可見貝肉。",
+    "source": "stk1031-061.webp；work/seafood-stock-map/web/src/lib/catalog.ts",
+    "notes": "照片印一包1kg；相同產品及價格280之目錄補充包冰1000g、淨重500g。"
+  },
+  {
+    "name": "半殼",
+    "spec": "包冰550g；淨重300g",
+    "description": "冷凍半殼扇貝採袋裝，保留半面貝殼與貝肉。",
+    "source": "stk1031-060.webp；work/seafood-stock-map/web/src/lib/catalog.ts",
+    "notes": "照片印半殼扇貝550g；相同品項與價格169之目錄補充包冰及淨重。"
+  },
+  {
+    "name": "尼信",
+    "spec": "170g",
+    "description": "尼信魚卵生魚片帶皮成條，採獨立真空包裝。",
+    "source": "stk1031-115.webp",
+    "notes": "照片印尼信魚卵生魚片170g。"
+  },
+  {
+    "name": "組合貝",
+    "spec": "包冰1000g；淨重500g",
+    "description": "組合干貝柱呈圓柱形，採透明視窗袋裝。",
+    "source": "stk1031-063.webp；work/seafood-stock-map/web/src/lib/catalog.ts",
+    "notes": "照片印組合干貝柱1kg；相同品項與價格299之目錄補充包冰及淨重。"
+  },
+  {
+    "name": "鮑魚",
+    "spec": "16P；1000g",
+    "description": "石狩活凍大鮑魚採紅色袋裝，包裝標示需冷凍保存。",
+    "source": "stk1031-037.webp；work/seafood-stock-map/web/src/lib/catalog.ts",
+    "notes": "照片印16p；重量1000g由目錄石狩活凍大鮑魚同名同價429補充。"
+  },
+  {
+    "name": "鮮凍小干貝",
+    "spec": "330g",
+    "description": "鮮凍小干貝以透明袋包裝，可見白色小粒貝肉。",
+    "source": "stk1031-052.webp",
+    "notes": "照片印鮮凍小干貝330g。"
+  }
+]

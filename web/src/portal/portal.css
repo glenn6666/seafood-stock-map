@@ -20,3 +20,29 @@
 /* 冷凍現貨商品照片 */
 .portal-products article.has-photo{padding-top:0;overflow:hidden}.portal-product-photo{display:block;margin:0 -22px 14px;aspect-ratio:1/1;background:#fff;border-bottom:1px solid #e0e6df}.portal-product-photo.empty{display:grid;place-content:center;justify-items:center;gap:6px;background:linear-gradient(160deg,#eef4f1,#dfe9e4);color:#86958b}.portal-product-photo.empty span{font-size:34px;opacity:.7}.portal-product-photo.empty small{font-size:11px}.portal-product-photo img{width:100%;height:100%;object-fit:contain;display:block}
 @media(max-width:700px){.portal-product-photo{margin:0 -14px 10px}}
+
+/* 冷凍現貨：不用放大螢幕，也能讀到品名、重量與價格。 */
+.portal-frozen .portal-desc{font-size:16px;color:#48635c}
+.portal-frozen .portal-stock-tools label{font-size:16px;font-weight:700}
+.portal-frozen .portal-stock-tools input{font-size:16px;font-weight:400;min-height:48px}
+.portal-frozen .portal-stock-tools button{font-size:15px;min-height:48px}
+.portal-frozen .portal-filters button{font-size:14px;font-weight:600;min-height:44px}
+.portal-frozen .portal-count{font-size:17px;font-weight:700;margin:24px 0 16px}
+.portal-frozen .portal-count small{font-size:13px;color:#536c65;font-weight:400;line-height:1.7}
+.portal-frozen .portal-products{gap:18px;align-items:stretch}
+.portal-frozen .portal-products article{display:flex;flex-direction:column;background:#fff;padding:0 20px 22px;border-color:#cedbd5;border-radius:16px;box-shadow:0 4px 14px #173f4708}
+.portal-frozen .portal-product-photo{flex-shrink:0;margin:0 -20px 18px!important;border-color:#e0e7e2}
+.portal-frozen .portal-product-top{align-items:flex-start;font-size:14px;color:#48665e;line-height:1.6}
+.portal-frozen .portal-product-top small{flex-shrink:0;font-size:13px;font-weight:700;color:#255d42;background:#edf5ed;border-radius:6px;padding:2px 7px}
+.portal-frozen .portal-products h2{font-size:24px;font-weight:800;line-height:1.5;letter-spacing:.2px;margin:14px 0;color:#143e47;overflow-wrap:anywhere}
+.portal-frozen .portal-product-spec{padding:12px 14px;background:#f1f5ef;border:1px solid #dbe5d6;border-radius:10px}
+.portal-frozen .portal-product-spec span{display:block;font-size:13px;color:#536a5b;margin-bottom:5px}
+.portal-frozen .portal-product-spec b{display:block;font-size:18px;line-height:1.65;color:#203f34;overflow-wrap:anywhere}
+.portal-frozen .portal-products .portal-product-description{font-size:16px;line-height:1.8;color:#465f58;margin:14px 0 22px;min-height:0}
+.portal-frozen .portal-products .portal-product-price{display:block;margin-top:auto;font-size:29px;line-height:1.5;font-weight:800;color:#85531d;font-variant-numeric:tabular-nums}
+.portal-frozen .portal-product-price small{font-size:16px;font-weight:500;color:#5c6256;white-space:nowrap}
+.portal-frozen .portal-products .portal-product-inquiry{display:block;text-align:center;text-decoration:none;font-size:16px;line-height:1.5;font-weight:700;border:1px solid #173f47;border-radius:9px;margin-top:14px;padding:12px;background:#173f47;color:#fff}
+.portal-frozen .portal-product-inquiry:hover{background:#285961}
+.portal-frozen .portal-original{font-size:17px;font-weight:700;line-height:1.8}
+@media(min-width:641px) and (max-width:960px){.portal-frozen .portal-products{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:640px){.portal-frozen{padding:24px 14px}.portal-frozen .portal-products{grid-template-columns:minmax(0,1fr);gap:22px}.portal-frozen .portal-products h2{font-size:24px}.portal-frozen .portal-product-spec b{font-size:19px}.portal-frozen .portal-stock-tools{gap:8px}.portal-frozen .portal-stock-tools button{font-size:14px;padding:13px 10px}.portal-frozen .portal-filters{gap:8px}.portal-frozen .portal-filters button{padding:10px 13px}}
