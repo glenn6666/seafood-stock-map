@@ -1,4 +1,17 @@
 /* 樂甜釣蝦場・可愛版：淺天藍＋奶油色、深藍描邊＋下緣厚陰影、圓體字（參考快手捕撈王的視覺感，圖案與程式皆自製） */
+.game-leaderboard{border:2px solid #204b60;border-radius:14px;background:#fff;padding:12px 14px;margin:16px 0;color:#204b60;text-align:left}
+.game-leaderboard summary{cursor:pointer;font-weight:900;font-size:16px;line-height:1.6}
+.game-leaderboard p{font-size:13px;line-height:1.7;margin:10px 0;color:#416674}
+.game-leaderboard ol{list-style:none;margin:0;padding:0;max-height:280px;overflow:auto}
+.game-leaderboard li{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid #dfebef;font-size:15px}
+.game-leaderboard .rank-number{display:grid;place-items:center;flex:0 0 28px;height:28px;border-radius:50%;background:#fff09a}
+.game-leaderboard li>span{flex:1;min-width:0;overflow-wrap:anywhere}
+.game-leaderboard li>span strong{font-size:15px}
+.game-leaderboard li>span small{display:block;color:#547381;font-size:12px}
+.game-leaderboard li>b:last-child{white-space:nowrap;font-size:17px}
+.game-nickname{display:block;border:1px solid #b7d5df;border-radius:12px;background:#edf8ff;padding:14px;margin:16px 0;font-weight:700;color:#204b60}
+.game-nickname input{display:block;box-sizing:border-box;width:100%;min-height:44px;border:1px solid #7ba6b8;border-radius:8px;background:white;color:#204b60;font:inherit;font-size:16px;padding:10px;margin:8px 0}
+.game-nickname small{display:block;font-weight:400;font-size:13px;line-height:1.7}
 .game-backdrop{--g-ink:#204b60;--g-sky:#bdeaff;--g-cream:#fff9e9;--g-gold:#fff09a;--g-coral:#ff7859;--g-teal:#2d91a5;--g-mint:#dff4ea;--g-muted:#6c858b;
  align-items:stretch;justify-content:center;background:#eaf8ff;background-image:radial-gradient(ellipse at 15% 0%,#fff 0,transparent 50%),radial-gradient(circle at 90% 40%,#bfedfc 0,transparent 42%),radial-gradient(circle at 10% 90%,#d6f3ff 0,transparent 40%);z-index:40}
 .sheet.game.cute{position:relative;display:flex;flex-direction:column;width:100%;max-width:520px;height:100dvh;margin:0 auto;padding:0;border:0;border-radius:0;background:var(--g-cream);color:var(--g-ink);box-shadow:0 0 60px #2562711f;overflow:hidden;

@@ -6,8 +6,10 @@
 import {useEffect,useLayoutEffect,useRef,useState} from "react";
 import {errorText} from "../lib/api-config";
 import {CuteArt} from "./cute-art";
+import GameLeaderboard from './GameLeaderboard';
+import {COUPON_RULE} from '../lib/coupon-policy';
 import "./game-cute.css";
-export type Coupon={code:string;discount:number;minTotal:number;expiresAt:string};
+export type Coupon={code:string;discount:number;minTotal:number;expiresAt:string;scope?:string;restrictions?:string};
 type TargetId="shrimp"|"crab"|"lobster";type ToolId="rod"|"net"|"tongs"|"cage";
 type Obj={id:number;x:number;y:number;vx:number;vy:number;boot:boolean;hide:number;turn:number;a:number;rock:number;linger:number;dash:number;weed:number};
 export const TARGETS:Record<TargetId,{name:string;icon:string;goal:number;seconds:number;speed:number;struggle:number;desc:string}>={
@@ -86,6 +88,9 @@ const behindWeed=(o:Obj,g:ReturnType<typeof pondGeom>)=>{
 export default function ShrimpGame({origin,onClose,onCoupon}:{origin:string;onClose:()=>void;onCoupon:(c:Coupon)=>void}){
  const [phase,setPhase]=useState<"intro"|"play"|"sending"|"done">("intro"),[msg,setMsg]=useState(""),[target,setTarget]=useState<TargetId>("shrimp"),[tool,setTool]=useState<ToolId>("rod");
  const [,force]=useState(0),[won,setWon]=useState<Coupon|null>(null),[flash,setFlash]=useState("");
+ const [nickname,setNickname]=useState(()=>{try{return localStorage.getItem('shrimp-nickname')??''}catch{return ''}});
+ const [playerId]=useState(()=>{try{const saved=localStorage.getItem('shrimp-player-id');if(saved&&/^[A-Za-z0-9_-]{20,64}$/.test(saved))return saved;const id=crypto.randomUUID();localStorage.setItem('shrimp-player-id',id);return id}catch{return crypto.randomUUID()}});
+ const [passed,setPassed]=useState(false),[couponNotice,setCouponNotice]=useState(''),[boardRefresh,setBoardRefresh]=useState(0);
  const reduce=typeof matchMedia==="function"&&matchMedia("(prefers-reduced-motion: reduce)").matches;
  const pond=useRef<HTMLDivElement>(null);
  const st=useRef({gameId:"",goal:4,end:0,caught:0,objs:[] as Obj[],last:0,raf:0,over:false,
@@ -105,8 +110,9 @@ export default function ShrimpGame({origin,onClose,onCoupon}:{origin:string;onCl
   setFlash(reason+(s.lives>0?` 剩 ${s.lives} 次機會`:" 機會用完了"));
  };
  async function start(){
-  setMsg("");
-  try{const r=await fetch(origin+"/api/public/game/start",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"omit",body:JSON.stringify({target,tool})});if(!r.ok){setMsg(await errorText(r,"目前無法開始遊戲"));return}
+  setMsg("");setPassed(false);setWon(null);setCouponNotice('');
+  try{localStorage.setItem('shrimp-nickname',nickname.trim())}catch{/* Optional preference. */}
+  try{const r=await fetch(origin+"/api/public/game/start",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"omit",body:JSON.stringify({target,tool,nickname:nickname.trim(),playerId})});if(!r.ok){setMsg(await errorText(r,"目前無法開始遊戲"));return}
    const d=await r.json();const s=st.current,n=target==="shrimp"?8:target==="lobster"?4:6;
    Object.assign(s,{gameId:d.gameId,goal:d.target??T.goal,end:performance.now()+(d.seconds??T.seconds)*1000,caught:0,objs:[...Array.from({length:n},(_,i)=>spawn(i)),spawn(90,true)],last:performance.now(),over:false,down:false,hold:null,carry:null,carry2:null,risk:0,speed:0,lives:LIVES,dashIn:2+Math.random()*2,ripples:[],tx:30,ty:30,ptr:{x:30,y:30},grip:null});
    setPhase("play");s.raf=requestAnimationFrame(tick);
@@ -213,7 +219,7 @@ export default function ShrimpGame({origin,onClose,onCoupon}:{origin:string;onCl
   const s=st.current;if(s.over)return;s.over=true;cancelAnimationFrame(s.raf);setPhase("sending");
   try{const r=await fetch(origin+"/api/public/game/finish",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"omit",body:JSON.stringify({gameId:s.gameId,caught:s.caught})});
    if(!r.ok){setMsg(await errorText(r,"結算失敗"));setPhase("done");return}
-   const d=await r.json();if(d.won){setWon(d.coupon);onCoupon(d.coupon)}setPhase("done");
+   const d=await r.json();setPassed(!!d.won);if(d.coupon){setWon(d.coupon);onCoupon(d.coupon)}setCouponNotice(d.couponMessage??'');setBoardRefresh(n=>n+1);setPhase("done");
   }catch{setMsg("連線中斷，這局無法結算");setPhase("done")}
  }
  useEffect(()=>{const s=st.current;return()=>{s.over=true;cancelAnimationFrame(s.raf)}},[]);
@@ -254,6 +260,7 @@ export default function ShrimpGame({origin,onClose,onCoupon}:{origin:string;onCl
     <div className="hero-art" aria-hidden><CuteArt name="crab" className="m m-crab"/><Sprite name="bucket" kind="shrimp" className="m m-bucket"/><Sprite name="shrimp" className="m m-shrimp"/><CuteArt name="lobster" className="m m-lobster"/><i className="spark s1">✦</i><i className="spark s2">✧</i><i className="spark s3">✦</i><span className="bubble-tag">一起來玩！</span></div>
     <div className="hero-facts"><div><b>{T.seconds}<small>秒</small></b><span>限時挑戰</span></div><div><b>{LIVES}<small>次</small></b><span>失手機會</span></div><div><b>0<small>元</small></b><span>免費遊玩</span></div></div>
    </section>
+   <GameLeaderboard origin={origin} target={target} refresh={boardRefresh}/>
    <p className="game-step"><i>1</i>選要抓什麼</p>
    <div className="pick-row" role="radiogroup" aria-label="目標">{(Object.keys(TARGETS) as TargetId[]).map(id=><button key={id} type="button" role="radio" aria-checked={target===id} className={"pick"+(target===id?" on":"")} onClick={()=>setTarget(id)}><Sprite className="pick-icon" name={id} emoji={TARGETS[id].icon}/><b>{TARGETS[id].name}</b><small>{TARGETS[id].seconds} 秒抓 {TARGETS[id].goal} 隻</small></button>)}</div>
    <p className="pick-desc">{T.desc}</p>
@@ -268,7 +275,8 @@ export default function ShrimpGame({origin,onClose,onCoupon}:{origin:string;onCl
     </ol>
     <div className="rule-chips"><span className="chip ok">共 3 次機會 ❤️❤️❤️</span><span className="chip ok">有機會一次 2 隻</span><span className="chip warn">拖太快、掙扎會掉回水裡</span><span className="chip warn">蝦子會躲水草、偶爾爆衝</span><span className="chip warn">撈到破鞋扣 3 秒</span></div>
    </div>
-   <p className="game-prize"><span className="ticket" aria-hidden>🎟️</span><span>過關獎勵：<b>滿 NT$1,000 折 NT$5</b> 優惠券<small>每筆訂單限用一張、不累加、24 小時內有效。免費遊玩，不用先購買。</small></span></p>
+   <p className="game-prize"><span className="ticket" aria-hidden>🎟️</span><span>過關獎勵：<b>店內商品滿 NT$1,000 折 NT$5</b> 優惠券<small><b>{COUPON_RULE}</b><br/>每筆限一張、不累加、24 小時內有效。免費遊玩，不用先購買。</small></span></p>
+   <label className="game-nickname">排行榜暱稱（選填）<input value={nickname} onChange={e=>setNickname([...e.target.value].slice(0,12).join(''))} maxLength={24} placeholder="例如：小蝦高手" autoComplete="off"/><small>限 12 字；填寫後，過關成績與暱稱會公開上榜。留空只玩遊戲、不公開成績，請勿填姓名或電話。</small></label>
    {msg&&<p className="err">{msg}</p>}
    <button type="button" className="primary grow btn-gold" onClick={start}>開始抓{T.name} <span aria-hidden>▶</span></button>
    <button type="button" className="sheet-close text-btn" onClick={onClose}>先不要</button>
@@ -306,10 +314,12 @@ export default function ShrimpGame({origin,onClose,onCoupon}:{origin:string;onCl
   {phase==="sending"&&<div className="game-result"><div className="result-card"><span className="result-spark" aria-hidden>✦</span><p className="hint">結算中…</p></div></div>}
   {phase==="done"&&<div className="game-result"><div className="result-card" role="status">
    <span className="result-spark" aria-hidden>✦</span>
-   <p className="result-kicker">{won?"任務完成":"這局成績"}</p>
-   <h3>{won?"恭喜過關！":"再一次，會更順手！"}</h3>
+   <p className="result-kicker">{passed?"任務完成":"這局成績"}</p>
+   <h3>{passed?"恭喜過關！":"再一次，會更順手！"}</h3>
    <div className="result-score"><Sprite name={target} className="result-ico" caught/><b>{s.caught}</b><small>/ {s.goal} 隻{T.name}</small></div>
-   {won?<div className="coupon-card"><b>🎟️ 優惠券到手</b><span>滿 NT${won.minTotal.toLocaleString()} 折 NT${won.discount}</span><small>已存到購物車，結帳時自動套用・{new Date(won.expiresAt).toLocaleString("zh-TW",{timeZone:"Asia/Taipei",month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"})} 前有效</small></div>:!msg&&<p className="game-rule">{s.lives<=0?"3 次機會用完了！":""}這局抓到 {s.caught} 隻{T.name}，差一點！換個工具再挑戰吧。</p>}
+   {won?<div className="coupon-card"><b>🎟️ 優惠券到手</b><span>店內商品滿 NT${won.minTotal.toLocaleString()} 折 NT${won.discount}</span><small>{COUPON_RULE}<br/>已存到購物車・{new Date(won.expiresAt).toLocaleString("zh-TW",{timeZone:"Asia/Taipei",month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"})} 前有效</small></div>:passed?<p className="game-rule">{couponNotice}</p>:!msg&&<p className="game-rule">{s.lives<=0?"3 次機會用完了！":""}這局抓到 {s.caught} 隻{T.name}，差一點！換個工具再挑戰吧。</p>}
+   {passed&&nickname.trim()&&<p className="game-rule">已記錄過關成績，每個分類保留你的最佳紀錄。</p>}
+   <GameLeaderboard origin={origin} target={target} refresh={boardRefresh}/>
    {msg&&<p className="err">{msg}</p>}
    <button type="button" className="primary grow btn-teal" onClick={()=>{setPhase("intro");setWon(null);setMsg("")}}>再玩一次</button>
    <button type="button" className="sheet-close btn-outline" onClick={onClose}>回到商店</button>

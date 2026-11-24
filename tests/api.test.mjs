@@ -347,8 +347,8 @@ function nextDinePickup(){
   const tp=new Date(t.getTime()+8*3600e3);
   const dow=tp.getUTCDay(),h=tp.getUTCHours(),mi=tp.getUTCMinutes();
   if(dow===1)continue;
-  const open=dow===0||dow===6?12:13;
-  if(h<open||h>21||(h===21&&mi>0))continue;
+  const open=dow===0||dow===6?13:14;
+  if(h<open||h>20||(h===20&&mi>30))continue;
   const date=tp.toISOString().slice(0,10);
   const snapped=mi<15?0:mi<30?15:mi<45?30:45;
   return `${date}T${String(h).padStart(2,"0")}:${String(snapped).padStart(2,"0")}`;

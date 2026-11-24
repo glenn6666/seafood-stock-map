@@ -5,6 +5,7 @@ import {catalogPrice} from "../web/src/lib/catalog";
 import {ledgerRoute} from "./ledger";
 import {publicDineMenu,publicDinePhoto,createDineOrder,dineAdminRoute,uploadDinePhoto} from "./dine";
 import {isValidImageUrl} from "../web/src/lib/dine-menu";
+import {COUPON_SCOPE,COUPON_RULE,storeCouponSubtotal} from '../web/src/lib/coupon-policy';
 
 export type Env={DB:D1Database;INVENTORY_TOKEN:string;ALLOWED_ORIGIN:string};
 type Role="admin"|"staff";
@@ -201,10 +202,13 @@ type Target=keyof typeof TARGETS;
 const GAME={seconds:TARGETS.shrimp.seconds,target:TARGETS.shrimp.goal,graceSec:15},COUPON={discount:5,minTotal:1000,ttlHours:24};
 async function gameStart(env:Env,request:Request,b:any){
  const target=(b?.target??"shrimp") as Target,tool=b?.tool??"rod";
- if(!(target in TARGETS)||!(TOOLS as readonly string[]).includes(tool))throw new HttpError(400,"遊戲資料不正確");
+ if(!Object.hasOwn(TARGETS,target)||!(TOOLS as readonly string[]).includes(tool))throw new HttpError(400,"遊戲資料不正確");
+ const nickname=typeof b?.nickname==='string'?b.nickname.trim().normalize('NFKC'):'';
+ if([...nickname].length>12||/[<>\u0000-\u001f\u007f]/.test(nickname))throw new HttpError(400,'排行榜暱稱請填寫 12 字內，勿使用特殊控制符號');
+ if(nickname&&(typeof b.playerId!=='string'||!/^[A-Za-z0-9_-]{20,64}$/.test(b.playerId)))throw new HttpError(400,'玩家識別資料不正確，請重新整理');
  await rateLimit(env,request,"game");
  const id=randomToken(24),now=Math.floor(Date.now()/1000);
- await env.DB.prepare("INSERT INTO game_sessions (id_hash,ip_hash,started_at,target,tool) VALUES (?,?,?,?,?)").bind(await sha256(id),await ipHash(env,request),now,target,tool).run();
+ await env.DB.prepare("INSERT INTO game_sessions (id_hash,ip_hash,started_at,target,tool,nickname,player_hash) VALUES (?,?,?,?,?,?,?)").bind(await sha256(id),await ipHash(env,request),now,target,tool,nickname,nickname?await sha256('player|'+b.playerId):'').run();
  if(Math.random()<0.02)await env.DB.prepare("DELETE FROM game_sessions WHERE started_at<?").bind(now-86400).run();
  const t=TARGETS[target];
  return {gameId:id,seconds:t.seconds,target:t.goal,kind:target,tool};
@@ -217,15 +221,28 @@ async function gameFinish(env:Env,request:Request,b:any){
  if(g.finished)throw new HttpError(409,"這局已經結束了，請再玩一局");
  const el=now-g.started_at,T=TARGETS[(g.target in TARGETS?g.target:"shrimp") as Target];
  if(el>T.seconds+GAME.graceSec){await env.DB.prepare("UPDATE game_sessions SET finished=1 WHERE id_hash=?").bind(idh).run();throw new HttpError(409,"這局已逾時，請再玩一局")}
- if(b.caught<T.goal)return {won:false};
- if(el<T.minSec)throw new HttpError(400,"釣得太快了，請正常遊玩");
+ if(b.caught>T.goal)throw new HttpError(400,'抓取數量不正確');
+ const passed=b.caught===T.goal;
+ if(passed&&el<T.minSec)throw new HttpError(400,"釣得太快了，請正常遊玩");
  // 先把這局標記為結束（只有一個請求能成功），再檢查領券限額
- const r=await env.DB.prepare("UPDATE game_sessions SET finished=1 WHERE id_hash=? AND finished=0").bind(idh).run();
+ const statements=[env.DB.prepare("UPDATE game_sessions SET finished=1 WHERE id_hash=? AND finished=0").bind(idh)];
+ if(passed&&g.nickname&&g.player_hash)statements.push(env.DB.prepare('INSERT INTO game_scores (id,player_hash,nickname,target,tool,elapsed_sec,created_at) SELECT ?,?,?,?,?,?,? WHERE changes()=1').bind(idh,g.player_hash,g.nickname,g.target,g.tool,el,nowIso()));
+ const [r]=await env.DB.batch(statements);
  if(!r.meta.changes)throw new HttpError(409,"這局已經結束了，請再玩一局");
- await rateLimit(env,request,"coupon");
+ if(!passed)return {won:false};
+ try{await rateLimit(env,request,"coupon")}catch(e){if(e instanceof HttpError&&e.status===429)return {won:true,coupon:null,couponMessage:e.message};throw e}
  const code="SHRIMP-"+randomToken(18),exp=new Date(Date.now()+COUPON.ttlHours*3600e3).toISOString();
  await env.DB.prepare("INSERT INTO coupons (code_hash,kind,discount,min_total,ip_hash,created_at,expires_at) VALUES (?,?,?,?,?,?,?)").bind(await sha256(code),"shrimp5",COUPON.discount,COUPON.minTotal,ip,nowIso(),exp).run();
- return {won:true,coupon:{code,discount:COUPON.discount,minTotal:COUPON.minTotal,expiresAt:exp}};
+ return {won:true,coupon:{code,discount:COUPON.discount,minTotal:COUPON.minTotal,expiresAt:exp,scope:COUPON_SCOPE,restrictions:COUPON_RULE}};
+}
+async function gameLeaderboard(env:Env,target:string){
+ if(!Object.hasOwn(TARGETS,target))throw new HttpError(400,'排行榜分類不正確');
+ const {results}=await env.DB.prepare(`WITH best AS (
+  SELECT *,ROW_NUMBER() OVER(PARTITION BY player_hash ORDER BY elapsed_sec,created_at,id) AS best_run FROM game_scores WHERE target=?
+ ), ranked AS (
+  SELECT nickname,tool,elapsed_sec AS seconds,created_at AS achievedAt,RANK() OVER(ORDER BY elapsed_sec) AS rank FROM best WHERE best_run=1
+ ) SELECT rank,nickname,tool,seconds,achievedAt FROM ranked ORDER BY seconds,achievedAt,nickname LIMIT 10`).bind(target).all();
+ return {target,entries:results,limit:10};
 }
 const checkCode=(c:unknown)=>{if(typeof c!=="string"||!/^SHRIMP-[A-Za-z0-9_-]{20,40}$/.test(c))throw new HttpError(400,"優惠碼格式不正確");return c};
 async function loadCoupon(env:Env,code:string){
@@ -236,8 +253,9 @@ async function loadCoupon(env:Env,code:string){
  return c;
 }
 async function couponCheck(env:Env,b:any){
+ if(b.channel&&b.channel!=='shop')throw new HttpError(400,COUPON_RULE);
  const c=await loadCoupon(env,checkCode(b.code));
- return {valid:true,discount:c.discount,minTotal:c.min_total,expiresAt:c.expires_at};
+ return {valid:true,discount:c.discount,minTotal:c.min_total,expiresAt:c.expires_at,scope:COUPON_SCOPE,restrictions:COUPON_RULE};
 }
 
 // ---------- 記帳匯出（對應 Google 試算表「每日收支紀錄」欄位順序） ----------
@@ -314,7 +332,7 @@ async function createOrder(env:Env,b:any,source:"admin"|"customer",createdBy:str
  if(phone.length>20||note.length>300)throw new HttpError(400,"電話或備註過長");
  const lines=parseLines(b.items);
  const ph=lines.map(()=>"?").join(",");
- const {results:prods}=await env.DB.prepare(`SELECT id,name,spec,unit,price,cost_num,quantity,on_sale,daily_limit,per_order_max FROM inventory WHERE id IN (${ph})`).bind(...lines.map(l=>l.id)).all<any>();
+ const {results:prods}=await env.DB.prepare(`SELECT id,name,spec,unit,category,price,cost_num,quantity,on_sale,daily_limit,per_order_max FROM inventory WHERE id IN (${ph})`).bind(...lines.map(l=>l.id)).all<any>();
  const byId=new Map(prods.map(p=>[p.id,p]));
  const saleDate=taipeiDate();
  for(const l of lines){
@@ -327,12 +345,13 @@ async function createOrder(env:Env,b:any,source:"admin"|"customer",createdBy:str
  const subtotal=lines.reduce((s,l)=>s+toInt(byId.get(l.id).price)*l.qty,0);
  // 優惠券（僅顧客下單）：伺服器重新計算小計並檢查門檻；扣券與訂單在同一個交易內完成
  let coupon:any=null;
+ const eligibleSubtotal=storeCouponSubtotal(prods,p=>toInt(p.price)*(lines.find(l=>l.id===p.id)?.qty??0));
  if(b.couponCode!==undefined&&b.couponCode!==null&&b.couponCode!==""){
   if(source!=="customer")throw new HttpError(400,"後台訂單不能使用顧客優惠券");
   coupon=await loadCoupon(env,checkCode(b.couponCode));
-  if(subtotal<coupon.min_total)throw new HttpError(400,`未滿 NT$${coupon.min_total.toLocaleString("en-US")}，無法使用優惠券`);
+  if(eligibleSubtotal<coupon.min_total)throw new HttpError(400,`店內商品未滿 NT$${coupon.min_total.toLocaleString("en-US")}，無法使用優惠券。${COUPON_RULE}`);
  }
- const discount=coupon?Math.min(coupon.discount,subtotal):0,total=subtotal-discount;
+ const discount=coupon?Math.min(coupon.discount,eligibleSubtotal):0,total=subtotal-discount;
  const guard=(cond:string,...bind:unknown[])=>env.DB.prepare(`INSERT OR REPLACE INTO _guard (id,ok) VALUES (1, CASE WHEN ${cond} THEN 1 ELSE 0 END)`).bind(...bind);
  const stmts:D1PreparedStatement[]=[
   env.DB.prepare("INSERT INTO orders (id,order_no,idempotency_key,lookup_token,source,customer_name,phone,note,status,total,subtotal,discount,coupon_hash,sale_date,created_by,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,'待處理',?,?,?,?,?,?,?,?)")
@@ -438,11 +457,14 @@ async function route(request:Request,env:Env,url:URL):Promise<unknown>{
  if(p==="/api/public/orders"&&m==="POST"){
   await rateLimit(env,request,"order");
   const body=await readJson(request);
+  if(body.couponCode&&body.channel&&body.channel!=='shop')throw new HttpError(400,COUPON_RULE);
+  if(body.channel&&!['shop','dine'].includes(body.channel))throw new HttpError(400,'此處僅接受店內商品訂單，團購請使用團購服務');
   const {order}=body.channel==="dine"?await createDineOrder(env,body):await createOrder(env,body,"customer","顧客");
   return {orderNo:order.order_no,lookupToken:order.lookup_token,status:order.status,total:order.total,discount:order.discount??0,channel:order.channel??"shop",pickupAt:order.pickup_at??""};
  }
  if(p==="/api/public/game/start"&&m==="POST")return gameStart(env,request,await readJson(request).catch(()=>({})));
  if(p==="/api/public/game/finish"&&m==="POST")return gameFinish(env,request,await readJson(request));
+ if(p==='/api/public/game/leaderboard'&&m==='GET'){await rateLimit(env,request,'lookup');return gameLeaderboard(env,url.searchParams.get('target')??'shrimp')}
  if(p==="/api/public/coupons/check"&&m==="POST"){await rateLimit(env,request,"lookup");return couponCheck(env,await readJson(request))}
  const lk=p.match(/^\/api\/public\/orders\/([A-Za-z0-9_-]{20,64})$/);
  if(lk&&m==="GET"){

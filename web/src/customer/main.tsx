@@ -8,6 +8,7 @@ import "./comic.css";
 import "./catalog.css";
 import "./ordering.css";
 import type {Coupon} from "./ShrimpGame";
+import {COUPON_RULE,storeCouponSubtotal} from '../lib/coupon-policy';
 import ShopMap,{LIVE} from "./ShopMap";
 import {GROUPS,UNIT_BLURB,groupOf,inGroupUnits,type GroupId} from "./shop-groups";
 type M={id:string;name:string;spec:string;unit:string;category:string;price:string;available:number;displayUnit:U|null;imageUrl?:string};
@@ -58,7 +59,8 @@ function Shop({origin}:{origin:string}){
  useEffect(()=>{load()},[]);
  const lines=(menu??[]).filter(m=>cart[m.id]>0);
  const subtotal=lines.reduce((s,m)=>s+priceNum(m.price)*cart[m.id],0),count=lines.reduce((s,m)=>s+cart[m.id],0);
- const couponOk=!!coupon&&subtotal>=coupon.minTotal,discount=couponOk?coupon!.discount:0,total=subtotal-discount;
+ const eligibleSubtotal=storeCouponSubtotal(lines,m=>priceNum(m.price)*cart[m.id]);
+ const couponOk=!!coupon&&Date.parse(coupon.expiresAt)>Date.now()&&eligibleSubtotal>=coupon.minTotal,discount=couponOk?Math.min(coupon!.discount,eligibleSubtotal):0,total=subtotal-discount;
  const setQty=(m:M,n:number)=>setCart(c=>({...c,[m.id]:Math.max(0,Math.min(m.available,n))}));
  const sceneUnits=useMemo(()=>{const used=units.filter(u=>(menu??[]).some(m=>m.displayUnit?.id===u.id));return used.length?used:units},[units,menu]);
  const switchMode=(m:"3d"|"list")=>{setMode(m);localStorage.setItem("shop-view",m);setSel(null)};
@@ -143,7 +145,7 @@ function Shop({origin}:{origin:string}){
   :!menu.length?<><p className="hint">目前沒有開放訂購的商品，仍可先玩釣蝦遊戲拿優惠券。</p><button className="game-banner" onClick={()=>setGame(true)}><span>🦐</span><b>樂甜釣蝦場</b><small>抓蝦／螃蟹／龍蝦，過關贏滿 NT$1,000 折 NT$5</small></button></>
   :checkout?<form className="card form" onSubmit={submit}><div className="checkout-heading"><span>確認商品，再填寫聯絡資料</span><h2>確認您的訂單</h2></div><h3>選購商品 · {count} 件</h3>
   <ul className="lines">{lines.map(m=><li key={m.id}><span>{m.name} <small>{m.spec}</small></span><span className="cart-qty"><button type="button" aria-label={`減少${m.name}`} onClick={()=>setQty(m,cart[m.id]-1)}>－</button>{cart[m.id]}<button type="button" aria-label={`增加${m.name}`} disabled={cart[m.id]>=m.available} onClick={()=>setQty(m,cart[m.id]+1)}>＋</button></span><span>NT$ {(priceNum(m.price)*cart[m.id]).toLocaleString()}</span></li>)}</ul>
-  {coupon&&<p className={"coupon-line"+(couponOk?" ok":"")}>🎟 釣蝦優惠券：{couponOk?`已套用，折 NT$${coupon.discount}`:`再買 NT$${coupon.minTotal-subtotal} 即可折 NT$${coupon.discount}`}</p>}
+  {coupon&&<p className={"coupon-line"+(couponOk?" ok":"")}>🎟 釣蝦優惠券：{couponOk?`已套用，折 NT$${discount}`:Date.parse(coupon.expiresAt)<=Date.now()?'已過期':`店內商品再買 NT$${Math.max(0,coupon.minTotal-eligibleSubtotal)} 即可折 NT$${coupon.discount}`}<br/>{COUPON_RULE}</p>}
   {discount>0&&<p className="subtotal">小計 NT$ {subtotal.toLocaleString()}・折抵 −NT$ {discount.toLocaleString()}</p>}<p className="total">合計 NT$ {total.toLocaleString()}</p>
   {!lines.length&&<p className="hint">購物車是空的。</p>}
   <h3>訂購人資料</h3><p className="form-help">請留下正確的姓名與電話，方便店家聯繫您。</p>

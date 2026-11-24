@@ -518,7 +518,7 @@ html[data-mode=stock] .search-box,html[data-mode=stock] #selectionArea,html[data
                 hasReleased = true;
             }
         }
-        const warning = `<div class="released-warning">📌 商品數量隨時變動，需要請 @版面小編<br>確認後會幫您登記再來取貨，請勿棄單！</div>`;
+        const warning = `<div class="released-warning">📌 商品數量隨時變動，需要請 @版面小編<br>確認後會幫您登記再來取貨，請勿棄單！<br><strong>遊戲優惠券限店內商品使用，團購不可折抵，也不計入滿額門檻。</strong></div>`;
         releasedArea.innerHTML = hasReleased ? (releasedHtml + warning) : '<p>目前沒有團購釋出現貨，歡迎稍後再來看看。</p>';
     }
 
