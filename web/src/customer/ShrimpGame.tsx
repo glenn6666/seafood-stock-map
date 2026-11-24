@@ -292,7 +292,7 @@ export default function ShrimpGame({origin,onClose,onCoupon}:{origin:string;onCl
    <div className={"pond t-"+target} ref={pond} aria-label={`池塘：按住放下${K.name}，拖到${vessel}放開`} style={{["--pond-bg-tall" as never]:POND_BG_TALL,["--pond-bg-wide" as never]:POND_BG_WIDE} as React.CSSProperties}
     onPointerDown={e=>{if(phase!=="play")return;(e.target as HTMLElement).setPointerCapture?.(e.pointerId);at(e);const q=st.current;q.down=true;q.ripples.push({x:q.ptr.x,y:q.ptr.y,t:performance.now()})}}
     onPointerMove={e=>{if(phase==="play")at(e)}} onPointerUp={()=>{if(phase==="play"){st.current.grip=null;release()}}} onPointerCancel={()=>{if(phase==="play"){st.current.grip=null;release()}}}>
-    <span className={"bucket"+(s.carry&&gNow().d(s.tx,s.ty,BUCKET.x,BUCKET.y)<gNow().dropR?" ready":"")} style={{left:BUCKET.x+"%",top:BUCKET.y+"%"}}><Sprite name="bucket" kind={target}/></span>
+    <span className={"bucket"+(s.carry&&gNow().d(s.tx,s.ty,BUCKET.x,BUCKET.y)<gNow().dropR?" ready":"")} style={{left:BUCKET.x+"%",top:BUCKET.y+"%"}}><Sprite name="bucket" kind={target}/>{target==='shrimp'&&s.caught>0&&<span className="bucket-contents" role="img" aria-label={`桶裡有 ${s.caught} 隻蝦`}>{Array.from({length:s.caught},(_,i)=><span className={'bucket-shrimp slot-'+i} key={i}><CuteArt name="shrimp" className="bucket-shrimp-art"/></span>)}</span>}</span>
     {!reduce&&s.ripples.map(r=><span key={r.t} className="ripple" style={{left:r.x+"%",top:r.y+"%"}}/>)}
     {s.objs.map(o=>{const rot=o.boot?o.a/6:target==="crab"?((o.a+90)%180+180)%180-90:o.a-FACE[target];
      const frozen=freezeNow(s,o);

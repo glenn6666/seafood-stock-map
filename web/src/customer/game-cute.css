@@ -228,6 +228,15 @@
 .sheet.game.cute .pond.t-shrimp .bucket{width:26cqmin;height:26cqmin;background:none;filter:drop-shadow(0 4px 0 #204b6033)}
 .sheet.game.cute .pond.t-shrimp .bucket .spr{width:100%;height:100%}
 .sheet.game.cute .pond .bucket{transform:translate(-50%,-50%);position:absolute}
+.sheet.game.cute .pond .bucket-contents{position:absolute;inset:16%;border-radius:50%;overflow:hidden;pointer-events:none}
+.sheet.game.cute .bucket-shrimp{position:absolute;width:49%;height:49%;transform:translate(-50%,-50%) rotate(var(--shrimp-angle));filter:drop-shadow(0 1px 1px #164b7955)}
+.sheet.game.cute .bucket-shrimp.slot-0{left:34%;top:32%;--shrimp-angle:-24deg}
+.sheet.game.cute .bucket-shrimp.slot-1{left:66%;top:36%;--shrimp-angle:22deg}
+.sheet.game.cute .bucket-shrimp.slot-2{left:33%;top:66%;--shrimp-angle:-36deg}
+.sheet.game.cute .bucket-shrimp.slot-3{left:66%;top:68%;--shrimp-angle:32deg}
+.sheet.game.cute .bucket-shrimp-art{display:block;width:100%;height:100%;animation:bucket-arrival .3s ease-out}
+@keyframes bucket-arrival{from{opacity:0;transform:scale(.5)}to{opacity:1;transform:scale(1)}}
+@media(prefers-reduced-motion:reduce){.sheet.game.cute .bucket-shrimp-art{animation:none}}
 
 /* 蝦約池寬 20%，最小 96、最大 140 */
 .sheet.game.cute .pond-obj .spr[data-sprite=shrimp],
