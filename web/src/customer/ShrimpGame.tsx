@@ -10,12 +10,12 @@ import GameLeaderboard from './GameLeaderboard';
 import GameVoucherWallet from './GameVoucherWallet';
 import {LINE_GROUP_URL} from '../lib/game-vouchers';
 import {COUPON_RULE} from '../lib/coupon-policy';
-import {GAME_SECONDS,COUPON_CATCH_MIN,TOOL_FIT,TOOL_BEHAVIOR,pointsPerCatch,toolBlocksThreat,BOOT_PENALTY,gameScore} from '../lib/game-rules';
+import {GAME_SECONDS,COUPON_CATCH_MIN,TOOL_FIT,TOOL_BEHAVIOR,pointsPerCatch,toolBlocksThreat,BOOT_PENALTY,gameScore,toolBehavior,rodCatchProtected,CRAB_ATTACK_WINDUP_SEC} from '../lib/game-rules';
 import "./game-cute.css";
 import {useTaipeiDay} from "../lib/use-taipei-day";
 export type Coupon={code:string;discount:number;minTotal:number;expiresAt:string;scope?:string;restrictions?:string};
 type TargetId="shrimp"|"crab"|"lobster";type ToolId="rod"|"net";
-type Obj={id:number;x:number;y:number;vx:number;vy:number;boot:boolean;hide:number;turn:number;a:number;rock:number;linger:number;dash:number;weed:number;actionIn:number;attack:number;jump:number};
+type Obj={id:number;x:number;y:number;vx:number;vy:number;boot:boolean;hide:number;turn:number;a:number;rock:number;linger:number;dash:number;weed:number;actionIn:number;attack:number;jump:number;caughtAt:number};
 export const TARGETS:Record<TargetId,{name:string;icon:string;seconds:number;speed:number;struggle:number;desc:string}>={
  shrimp:{name:"蝦",icon:"🦐",seconds:GAME_SECONDS,speed:10,struggle:.05,desc:"會躲進水草、偶爾爆衝；網子能一次撈兩隻"},
  crab:{name:"螃蟹",icon:"🦀",seconds:GAME_SECONDS,speed:9,struggle:.05,desc:"會躲進礁石後，出來時才能抓；靠近時小心鉗擊"},
@@ -23,7 +23,7 @@ export const TARGETS:Record<TargetId,{name:string;icon:string;seconds:number;spe
 };
 // r=抓取半徑(%)、catchMs=停留多久抓住、carry=安全拖曳速度(%/秒)、lag=跟手延遲、fit=對各目標的適合度（越高越好抓、越不易掉）
 export const TOOLS:Record<ToolId,{name:string;icon:string;r:number;catchMs:number;carry:number;lag:number;fit:Record<TargetId,number>;desc:string}>={
- rod:{name:"釣竿",icon:"🎣",...TOOL_BEHAVIOR.rod,fit:TOOL_FIT.rod,desc:"進階挑戰：小鉤要精準對準、停久一點；一次一隻，慢慢提回桶中"},
+ rod:{name:"釣竿",icon:"🎣",...TOOL_BEHAVIOR.rod,fit:TOOL_FIT.rod,desc:"精準挑戰：一次一隻；螃蟹與龍蝦的命中範圍加大，上鉤後短暫保護，穩穩提回桶中"},
  net:{name:"網子",icon:"🥅",...TOOL_BEHAVIOR.net,fit:TOOL_FIT.net,desc:"較容易：對準後停一下，可一次撈兩隻；拖太快會掉落，龍蝦也可能跳走"},
 };
 const ART_BASE=import.meta.env.BASE_URL+"comic/game-v2/";
@@ -100,11 +100,11 @@ export default function ShrimpGame({origin,onClose}:{origin:string;onClose:()=>v
  const today=useTaipeiDay();
  const st=useRef({gameId:"",end:0,caught:0,boots:0,objs:[] as Obj[],last:0,raf:0,over:false,
   ptr:{x:50,y:50},grip:null as null|{x:number;y:number},tx:50,ty:50,down:false,hold:null as null|{id:number;since:number},carry:null as null|Obj,carry2:null as null|Obj,risk:0,speed:0,left:GAME_SECONDS,dashIn:3,ripples:[] as {x:number;y:number;t:number}[]});
- const T=TARGETS[target],K=TOOLS[tool];
+ const T=TARGETS[target],K={...TOOLS[tool],...toolBehavior(target,tool)};
  const gNow=()=>pondGeom(pond.current);
  const spawn=(id:number,boot=false):Obj=>{
   const g=gNow(),sp=(boot?4:T.speed)*(reduce?.6:1)*(.7+Math.random()*.6),a=Math.random()*Math.PI*2,rock=Math.floor(Math.random()*ROCKS.length);
-  const hiding=!boot&&(target==="lobster"||(target==="crab"&&id%3===0)),o={id,x:hiding?ROCKS[rock].x:20+Math.random()*60,y:hiding?ROCKS[rock].y:20+Math.random()*60,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,boot,hide:hiding?1+Math.random()*3:0,turn:1+Math.random()*2,a:a*180/Math.PI,rock,linger:0,dash:0,weed:0,actionIn:2+Math.random()*3,attack:0,jump:0};
+  const hiding=!boot&&(target==="lobster"||(target==="crab"&&id%3===0)),o={id,x:hiding?ROCKS[rock].x:20+Math.random()*60,y:hiding?ROCKS[rock].y:20+Math.random()*60,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,boot,hide:hiding?1+Math.random()*3:0,turn:1+Math.random()*2,a:a*180/Math.PI,rock,linger:0,dash:0,weed:0,actionIn:2+Math.random()*3,attack:0,jump:0,caughtAt:0};
   clampXY(o,g);return o;
  };
  const dropPair=(s:typeof st.current,g:ReturnType<typeof pondGeom>,now:number,reason:string)=>{
@@ -139,19 +139,20 @@ export default function ShrimpGame({origin,onClose}:{origin:string;onClose:()=>v
      if(o.attack>0){
       o.attack=Math.max(0,o.attack-dt);
       if(o.attack===0&&s.down&&g.d(o.x,o.y,s.tx,s.ty)<.14*g.m){
-       if(toolBlocksThreat(target,tool))setFlash('狗熊哆嗦毛！'+K.name+'擋住了螃蟹鉗擊！');
+       if((s.carry&&rodCatchProtected(tool,s.carry.caughtAt,now))||toolBlocksThreat(target,tool))setFlash('狗熊哆嗦毛！'+K.name+'擋住了螃蟹鉗擊！');
        else{if(o===s.carry||o===s.carry2)dropPair(s,g,now,'螃蟹鉗擊，工具鬆開了！');s.hold=null;s.down=false;setFlash('狗熊哆嗦毛！先閃開，再按住工具')}
       }
-     }else if(o.actionIn<=0&&s.down&&g.d(o.x,o.y,s.tx,s.ty)<.19*g.m){o.attack=.65;o.actionIn=3+Math.random()*2;setFlash('狗熊哆嗦毛！小心螃蟹鉗擊')}
+     }else if(o.actionIn<=0&&s.down&&g.d(o.x,o.y,s.tx,s.ty)<.19*g.m){o.attack=CRAB_ATTACK_WINDUP_SEC;o.actionIn=4+Math.random()*3;setFlash('狗熊哆嗦毛！小心螃蟹鉗擊')}
     }
     if(target==='lobster'){
      if(o.jump>0){o.jump=Math.max(0,o.jump-dt);if(o.jump===0)s.ripples.push({x:o.x,y:o.y,t:now})}
-     const protectedCatch=(o===s.carry||o===s.carry2)&&toolBlocksThreat(target,tool);
-     if(o.jump<=0&&o.actionIn<=0&&!protectedCatch&&((s.down&&g.d(o.x,o.y,s.tx,s.ty)<.22*g.m)||Math.random()<dt*.5)){
+     const rodAiming=!s.carry&&tool==='rod'&&s.down&&(s.hold?.id===o.id||g.d(o.x,o.y,s.tx,s.ty)<=hitR*2);
+     const protectedCatch=rodAiming||((o===s.carry||o===s.carry2)&&(toolBlocksThreat(target,tool)||rodCatchProtected(tool,o.caughtAt,now)));
+     if(o.jump<=0&&o.actionIn<=0&&!protectedCatch&&((s.down&&g.d(o.x,o.y,s.tx,s.ty)<(tool==='rod'?.12:.22)*g.m)||Math.random()<dt*.3)){
       if(o===s.carry||o===s.carry2)dropPair(s,g,now,'龍蝦甩尾跳走了！');
       if(s.hold?.id===o.id)s.hold=null;
       const angle=Math.atan2((o.y-s.ty)/sy,(o.x-s.tx)/sx)+(Math.random()-.5)*.6;
-      o.jump=.6;o.dash=.6;o.hide=0;o.actionIn=3+Math.random()*2;o.vx=Math.cos(angle)*T.speed*6;o.vy=Math.sin(angle)*T.speed*6;
+      o.jump=.6;o.dash=.6;o.hide=0;o.actionIn=5+Math.random()*3;o.vx=Math.cos(angle)*T.speed*6;o.vy=Math.sin(angle)*T.speed*6;
       setFlash('閃身步！龍蝦跳走了，落水後再抓')
      }
     }
@@ -207,14 +208,14 @@ export default function ShrimpGame({origin,onClose}:{origin:string;onClose:()=>v
     s.hold=null;
     if(near.boot){s.boots++;setFlash(`撈到鞋子！扣 ${BOOT_PENALTY} 分`);Object.assign(near,spawn(near.id,true))}
     else{
-     s.carry=near;s.carry2=null;s.risk=0;near.linger=0;near.dash=0;
+     s.carry=near;s.carry2=null;s.risk=0;near.linger=0;near.dash=0;near.caughtAt=now;
      // 網子可同時撈兩隻，只收附近的獵物。
      if(tool==="net"){
       const others=s.objs.filter(o=>o!==near&&!o.boot&&o.hide<=0&&o.jump<=0&&(target!=="shrimp"||!behindWeed(o,g)));
       others.sort((a,b)=>g.d(a.x,a.y,near.x,near.y)-g.d(b.x,b.y,near.x,near.y));
       const close=others.find(o=>g.d(o.x,o.y,near.x,near.y)<hitR*1.2);
       const extra=close??null;
-      if(extra){extra.linger=0;extra.dash=0;s.carry2=extra;setFlash("一次 2 隻！")}
+      if(extra){extra.linger=0;extra.dash=0;extra.caughtAt=now;s.carry2=extra;setFlash("一次 2 隻！")}
      }
      if(!s.carry2)setFlash(`抓到${T.name}了！慢慢拖到${target==="shrimp"?"碗":"水桶"}`);
     }
@@ -302,7 +303,7 @@ export default function ShrimpGame({origin,onClose}:{origin:string;onClose:()=>v
      <li><i>2</i><span>按住水面放下{K.name}，停在{T.name}身上直到<b>圈圈填滿</b>就抓住。</span></li>
      <li><i>3</i><span>按著<b>慢慢</b>拖到池中央的{vessel}再放開，就入桶囉！</span></li>
     </ol>
-    <div className="rule-chips"><span className="chip ok">固定 30 秒・不限次數</span><span className="chip ok">網子可撈 2 隻・釣竿一次 1 隻</span><span className="chip warn">拖太快、掙扎會掉回水裡</span><span className="chip warn">{target==="crab"?"螃蟹會躲礁石與鉗擊，等牠出來再抓":target==="lobster"?"龍蝦會甩尾，網子也可能被掙脫":"蝦子會躲水草、偶爾爆衝"}</span><span className="chip warn">撈到鞋子扣 50 分（最低 0 分）</span></div>
+    <div className="rule-chips"><span className="chip ok">固定 30 秒・不限次數</span><span className="chip ok">網子可撈 2 隻・釣竿一次 1 隻</span><span className="chip warn">拖太快、掙扎會掉回水裡</span><span className="chip warn">{target==="crab"?"螃蟹會躲礁石，鉗擊前有準備時間":target==="lobster"?"龍蝦會閃身步，釣竿對準時有上鉤窗口":"蝦子會躲水草、偶爾爆衝"}</span><span className="chip warn">撈到鞋子扣 50 分（最低 0 分）</span></div>
    </div>
    <p className="game-prize"><span className="ticket" aria-hidden>🎟️</span><span>抓到 6 隻以上獎勵：<b>店內商品滿 NT$1,000 折 NT$5</b> 優惠券<small><b>{COUPON_RULE}</b><br/>加入 LINE 社群、填寫群組暱稱即可領券。同一暱稱每天成功限領一次，到店出示畫面核對。</small></span></p><a className="voucher-join" href={LINE_GROUP_URL} target="_blank" rel="noopener noreferrer">加入安星水產 LINE 社群 ↗</a>
    <label className="game-nickname">排行榜暱稱（選填）<input value={nickname} onChange={e=>setNickname([...e.target.value].slice(0,12).join(''))} maxLength={24} placeholder="例如：小蝦高手" autoComplete="off"/><small>限 12 字；填寫後，積分與暱稱會公開上榜。留空只玩遊戲、不公開成績，請勿填姓名或電話。</small></label>

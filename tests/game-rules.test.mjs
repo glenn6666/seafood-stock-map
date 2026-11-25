@@ -27,6 +27,17 @@ assert.equal(rules.toolBlocksThreat('lobster','net'),false);
 assert.equal(rules.gameScore('shrimp','net',6,2),560);
 assert.equal(rules.gameScore('shrimp','rod',1,10),0);
 assert.equal(rules.taipeiDay(new Date('2026-11-24T16:00:00.000Z')),'2026-11-25');
+for(const target of ['crab','lobster']){
+ const rod=rules.toolBehavior(target,'rod'),old=rules.TOOL_BEHAVIOR.rod;
+ assert.ok(rod.r>=old.r*2,'double the precise aiming tolerance for difficult species');
+ assert.ok(rod.catchMs/rules.TOOL_FIT.rod[target]<rules.CRAB_ATTACK_WINDUP_SEC*1000,'hook before crab attack can land');
+ assert.ok(rod.carry>old.carry,'transport has room to reach the bucket');
+}
+assert.deepEqual(rules.toolBehavior('shrimp','rod'),rules.TOOL_BEHAVIOR.rod);
+assert.deepEqual(rules.toolBehavior('lobster','net'),rules.TOOL_BEHAVIOR.net);
+assert.equal(rules.rodCatchProtected('rod',1000,2000),true);
+assert.equal(rules.rodCatchProtected('rod',1000,3400),false);
+assert.equal(rules.rodCatchProtected('net',1000,2000),false);
 for(const [now,expiry] of [
  ['2026-11-23T16:00:00.000Z','2026-11-24T16:00:00.000Z'],
  ['2026-11-24T15:59:59.999Z','2026-11-24T16:00:00.000Z'],
