@@ -10,12 +10,13 @@ for(const target of ['shrimp','crab','lobster']){
 }
 assert.deepEqual(Object.keys(rules.TOOL_FIT),['rod','net']);
 for(const target of ['shrimp','crab','lobster']){
- assert.equal(rules.pointsPerCatch(target,'net'),110);
+ assert.equal(rules.pointsPerCatch(target,'net'),target==='lobster'?210:110);
  assert.ok(rules.pointsPerCatch(target,'rod')>rules.pointsPerCatch(target,'net'));
  assert.equal(rules.toolBlocksThreat(target,'rod'),false);
 }
 assert.equal(rules.pointsPerCatch('shrimp','rod'),125);
-assert.equal(rules.pointsPerCatch('lobster','rod'),135);
+for(const tool of ['rod','net'])assert.ok(rules.pointsPerCatch('lobster',tool)>rules.pointsPerCatch('crab',tool)*1.7,'harder lobster mode has a meaningful reward');
+assert.equal(rules.pointsPerCatch('lobster','rod'),235);
 assert.ok(rules.TOOL_BEHAVIOR.net.r>rules.TOOL_BEHAVIOR.rod.r*2);
 assert.ok(rules.TOOL_BEHAVIOR.net.carry>rules.TOOL_BEHAVIOR.rod.carry);
 assert.ok(rules.TOOL_BEHAVIOR.rod.catchMs>rules.TOOL_BEHAVIOR.net.catchMs);

@@ -325,3 +325,6 @@
 
 .sheet.game.cute .game-today{margin:0;padding:5px 14px;text-align:center;background:#fff4c7;color:var(--g-ink);font-size:15px;font-weight:900;border-bottom:1px solid #e9d79b}
 .game-voucher-wallet .voucher-date{display:block;font-size:21px;font-weight:900;color:#9b3b18;margin:8px 0}
+
+.sheet.game.cute .pond.t-crab .rock .spr{width:90px;height:90px}
+.sheet.game.cute .pond.t-crab .pond-obj.hidden{opacity:.12}
