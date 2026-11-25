@@ -139,10 +139,10 @@ export default function ShrimpGame({origin,onClose}:{origin:string;onClose:()=>v
      if(o.attack>0){
       o.attack=Math.max(0,o.attack-dt);
       if(o.attack===0&&s.down&&g.d(o.x,o.y,s.tx,s.ty)<.14*g.m){
-       if(toolBlocksThreat(target,tool))setFlash(K.name+'擋住了螃蟹鉗擊！');
-       else{if(o===s.carry||o===s.carry2)dropPair(s,g,now,'螃蟹鉗擊，工具鬆開了！');s.hold=null;s.down=false;setFlash('螃蟹鉗擊！先閃開，再按住工具')}
+       if(toolBlocksThreat(target,tool))setFlash('狗熊哆嗦毛！'+K.name+'擋住了螃蟹鉗擊！');
+       else{if(o===s.carry||o===s.carry2)dropPair(s,g,now,'螃蟹鉗擊，工具鬆開了！');s.hold=null;s.down=false;setFlash('狗熊哆嗦毛！先閃開，再按住工具')}
       }
-     }else if(o.actionIn<=0&&s.down&&g.d(o.x,o.y,s.tx,s.ty)<.19*g.m){o.attack=.65;o.actionIn=3+Math.random()*2;setFlash('小心！螃蟹準備鉗擊')}
+     }else if(o.actionIn<=0&&s.down&&g.d(o.x,o.y,s.tx,s.ty)<.19*g.m){o.attack=.65;o.actionIn=3+Math.random()*2;setFlash('狗熊哆嗦毛！小心螃蟹鉗擊')}
     }
     if(target==='lobster'){
      if(o.jump>0){o.jump=Math.max(0,o.jump-dt);if(o.jump===0)s.ripples.push({x:o.x,y:o.y,t:now})}
@@ -152,7 +152,7 @@ export default function ShrimpGame({origin,onClose}:{origin:string;onClose:()=>v
       if(s.hold?.id===o.id)s.hold=null;
       const angle=Math.atan2((o.y-s.ty)/sy,(o.x-s.tx)/sx)+(Math.random()-.5)*.6;
       o.jump=.6;o.dash=.6;o.hide=0;o.actionIn=3+Math.random()*2;o.vx=Math.cos(angle)*T.speed*6;o.vy=Math.sin(angle)*T.speed*6;
-      setFlash('龍蝦甩尾跳走了！落水後重新對準再抓')
+      setFlash('閃身步！龍蝦跳走了，落水後再抓')
      }
     }
    }
@@ -326,7 +326,8 @@ export default function ShrimpGame({origin,onClose}:{origin:string;onClose:()=>v
     {s.objs.map(o=>{const rot=o.boot?o.a/6:target==="crab"?((o.a+90)%180+180)%180-90:o.a-FACE[target];
      const frozen=freezeNow(s,o);
      const carrying=o===s.carry||o===s.carry2;
-     return <span key={o.id} className={"pond-obj"+(o.boot?" boot":"")+(o.hide>0?" hidden":"")+(carrying?" carried":"")+(frozen?" frozen":"")+(o.dash>0?" dashing":"")+(o.attack>0?" attacking":"")+(o.jump>0?" jumping":"")} style={{left:o.x+"%",top:o.y+"%",transform:`translate(-50%,-50%) rotate(${rot}deg)`}}>{o.boot?<Sprite name="boot" emoji="🥾"/>:<Sprite name={target} emoji={T.icon} frame={((swimFrame+o.id)%2)+1} caught={carrying}/>}</span>})}
+     return <span key={o.id} className={"pond-obj"+(o.boot?" boot":"")+(o.hide>0?" hidden":"")+(carrying?" carried":"")+(frozen?" frozen":"")+(o.dash>0?" dashing":"")+(o.attack>0?" attacking":"")+(o.jump>0?" jumping":"")} style={{left:o.x+"%",top:o.y+"%",transform:`translate(-50%,-50%) rotate(${rot}deg)`}}>{o.boot?<Sprite name="boot" emoji="🥾"/>:<Sprite name={target} emoji={T.icon} frame={((swimFrame+o.id)%2)+1} caught={carrying}/>}
+     {(o.attack>0||o.jump>0)&&<strong className={"move-name move-"+(o.attack>0?"crab":"lobster")} style={{transform:`translateX(-50%) rotate(${-rot}deg)`}}>{o.attack>0?"狗熊哆嗦毛":"閃身步"}</strong>}</span>})}
     {target==="shrimp"&&WEEDS.map((w,i)=><span key={"w"+i} className={"weed k-"+w.kind} style={{left:w.x+"%",top:w.y+"%"}}><WeedSpr kind={w.kind}/></span>)}
     {(target==="lobster"||target==="crab")&&ROCKS.map((r,i)=><span key={i} className="rock" role="img" aria-label={target==="crab"?"螃蟹躲避礁石":"龍蝦躲避礁石"} style={{left:r.x+"%",top:r.y+"%"}}><CuteArt name="rock" className="spr cute"/></span>)}
     {tool!=="rod"&&s.grip&&s.down&&<><span className="grip-shaft" style={{left:s.grip.x+"%",top:s.grip.y+"%",height:Math.hypot((s.tx-s.grip.x)*(pond.current?.clientWidth??0)/100,(s.ty-s.grip.y)*(pond.current?.clientHeight??0)/100)+"px",transform:`rotate(${Math.atan2(-(s.tx-s.grip.x)*(pond.current?.clientWidth??0)/100,(s.ty-s.grip.y)*(pond.current?.clientHeight??0)/100)*180/Math.PI+180}deg)`}}/><span className="grip" data-x={s.grip.x.toFixed(1)} data-y={s.grip.y.toFixed(1)} style={{left:s.grip.x+"%",top:s.grip.y+"%"}}/></>}
