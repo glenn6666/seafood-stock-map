@@ -9,7 +9,7 @@ export async function claimGameVoucher(env:Env,b:any){
  if(!validToken(b.gameId)||!validToken(b.playerId)||!validToken(b.claimToken))throw new HttpError(400,'領券資料不正確，請重新整理後再試');
  const nickname=typeof b.groupNickname==='string'?b.groupNickname.normalize('NFKC').replace(/\s+/gu,' ').trim():'';
  if(!nickname||[...nickname].length>40||/[<>\u0000-\u001f\u007f]/.test(nickname))throw new HttpError(400,'請填寫 LINE 群組暱稱（40 字內）');
- if(b.joined!==true)throw new HttpError(400,'請先加入 LINE 社群，門市核對成員後才會發券');
+ if(b.joined!==true)throw new HttpError(400,'請先加入 LINE 社群再領券');
  const gameHash=await sha256(b.gameId),playerHash=await sha256('player|'+b.playerId),tokenHash=await sha256(b.claimToken);
  const g=await env.DB.prepare('SELECT * FROM game_sessions WHERE id_hash=?').bind(gameHash).first<any>();
  if(!g||g.player_hash!==playerHash||!g.finished||g.caught<COUPON_CATCH_MIN||g.rule_version!==GAME_RULE_VERSION)throw new HttpError(400,'尚未取得領券資格，請先完成遊戲並抓到 6 隻以上');
@@ -18,8 +18,8 @@ export async function claimGameVoucher(env:Env,b:any){
  if(prior){if(prior.game_hash!==gameHash||prior.player_hash!==playerHash)throw new HttpError(409,'領券識別碼已使用，請重新整理');return {voucher:publicVoucher(prior)}}
  const id=crypto.randomUUID(),ts=issuedAt.toISOString(),nicknameKey=await sha256(nickname.toLocaleLowerCase('zh-TW'));
  const voucherNo='AX-'+claimDay.replaceAll('-','')+'-'+crypto.randomUUID().replaceAll('-','').slice(0,10).toUpperCase();
- const r=await env.DB.prepare("INSERT OR IGNORE INTO game_vouchers(id,token_hash,game_hash,player_hash,nickname_key,group_nickname,claim_day,voucher_no,status,created_at,expires_at) VALUES(?,?,?,?,?,?,?,?,'pending',?,?)").bind(id,tokenHash,gameHash,playerHash,nicknameKey,nickname,claimDay,voucherNo,ts,endOfTaipeiDay(issuedAt)).run();
- if(!r.meta.changes){const again=await env.DB.prepare('SELECT * FROM game_vouchers WHERE token_hash=? AND game_hash=? AND player_hash=?').bind(tokenHash,gameHash,playerHash).first<any>();if(again)return {voucher:publicVoucher(again)};throw new HttpError(409,'每天限領一次；此群組暱稱或裝置今天已有申請，請查看領券紀錄')}
+ const r=await env.DB.prepare("INSERT OR IGNORE INTO game_vouchers(id,token_hash,game_hash,player_hash,nickname_key,group_nickname,claim_day,voucher_no,status,created_at,expires_at) VALUES(?,?,?,?,?,?,?,?,'approved',?,?)").bind(id,tokenHash,gameHash,playerHash,nicknameKey,nickname,claimDay,voucherNo,ts,endOfTaipeiDay(issuedAt)).run();
+ if(!r.meta.changes){const again=await env.DB.prepare('SELECT * FROM game_vouchers WHERE token_hash=? AND game_hash=? AND player_hash=?').bind(tokenHash,gameHash,playerHash).first<any>();if(again)return {voucher:publicVoucher(again)};throw new HttpError(409,'這個群組暱稱今天已成功領券，請查看領券紀錄')}
  return {voucher:publicVoucher(await env.DB.prepare('SELECT * FROM game_vouchers WHERE id=?').bind(id).first())};
 }
 export async function gameVoucherStatus(env:Env,b:any){

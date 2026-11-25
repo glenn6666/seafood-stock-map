@@ -9,7 +9,7 @@ export default function GameVouchers(){
  async function load(){try{const r=await inventoryFetch('/api/game-vouchers?date='+date);if(!r.ok)throw Error(await errorText(r));setRows((await r.json()).vouchers)}catch(e){setMessage(e instanceof Error?e.message:'讀取失敗')}}
  useEffect(()=>{load()},[date]);
  async function act(row:Row,action:string){setBusy(row.id);setMessage('');try{const r=await inventoryFetch('/api/game-vouchers/'+row.id+'/'+action,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({groupMemberConfirmed:checks[row.id]===true,storePurchaseConfirmed:checks[row.id]===true})});if(!r.ok)throw Error(await errorText(r));setChecks(v=>({...v,[row.id]:false}));setMessage(action==='approve'?'已核對入群資格並發券':action==='redeem'?'已核銷，此券不能再使用':'已標記核對未通過');await load()}catch(e){setMessage(e instanceof Error?e.message:'操作失敗')}finally{setBusy('')}}
- return <main className="admin-page"><h1>遊戲優惠券核對</h1><p className="admin-hint">{VOUCHER_RULE} 每天同一群組暱稱及裝置限領一次。先核對 LINE 社群會員，再發券；結帳時核對店內商品金額後核銷。</p>
+ return <main className="admin-page"><h1>遊戲優惠券核對</h1><p className="admin-hint">{VOUCHER_RULE} 同一群組暱稱每天成功限領一次。員工直接查看顧客券面日期與暱稱，確認消費條件後折抵；需要留存紀錄時可在此核銷。</p>
   <div className="admin-filter"><label>日期 <input type="date" value={date} onChange={e=>setDate(e.target.value)}/></label><button onClick={load}>重新整理</button><a href={LINE_GROUP_URL} target="_blank" rel="noopener noreferrer">開啟 LINE 社群 ↗</a></div>
   {message&&<p className="admin-msg" role="status">{message}</p>}
   <div className="admin-list">{rows.map(row=><section key={row.id} className="admin-card"><div className="row"><strong>{row.groupNickname}</strong><span className="tag">{voucherStatus[row.status]}</span><code>{row.voucherNo}</code></div>

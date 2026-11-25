@@ -1,8 +1,8 @@
 // 樂甜釣蝦場（免費遊玩，俯視池塘）：先選目標（蝦／螃蟹／龍蝦）與工具（釣竿／網子），
 // 按住水面放下工具、停在獵物身上一會兒抓住，按著「慢慢」拖到碗／水桶上方放開即入桶；拖太快或獵物掙扎會掉回水裡。
-// 達標後填 LINE 社群暱稱，由門市核對發券；開局與結算都經過 Worker。
+// 達標後填 LINE 社群暱稱，成功領券後到店出示畫面核對；開局與結算都經過 Worker。
 // 三種海鮮共用 cute-art SVG：選角、主視覺、池塘與結果維持同一套插畫。
-// 網子大範圍、快速抓取，最多兩隻；釣竿小範圍、需精準停留，一次一隻。
+// 網子中等範圍、需停留抓取，最多兩隻；釣竿小範圍、需精準停留，一次一隻。
 import {useEffect,useLayoutEffect,useRef,useState} from "react";
 import {errorText} from "../lib/api-config";
 import {CuteArt} from "./cute-art";
@@ -10,8 +10,9 @@ import GameLeaderboard from './GameLeaderboard';
 import GameVoucherWallet from './GameVoucherWallet';
 import {LINE_GROUP_URL} from '../lib/game-vouchers';
 import {COUPON_RULE} from '../lib/coupon-policy';
-import {GAME_SECONDS,COUPON_CATCH_MIN,TOOL_FIT,TOOL_BEHAVIOR,pointsPerCatch,toolBlocksThreat} from '../lib/game-rules';
+import {GAME_SECONDS,COUPON_CATCH_MIN,TOOL_FIT,TOOL_BEHAVIOR,pointsPerCatch,toolBlocksThreat,BOOT_PENALTY,gameScore} from '../lib/game-rules';
 import "./game-cute.css";
+import {useTaipeiDay} from "../lib/use-taipei-day";
 export type Coupon={code:string;discount:number;minTotal:number;expiresAt:string;scope?:string;restrictions?:string};
 type TargetId="shrimp"|"crab"|"lobster";type ToolId="rod"|"net";
 type Obj={id:number;x:number;y:number;vx:number;vy:number;boot:boolean;hide:number;turn:number;a:number;rock:number;linger:number;dash:number;weed:number;actionIn:number;attack:number;jump:number};
@@ -23,7 +24,7 @@ export const TARGETS:Record<TargetId,{name:string;icon:string;seconds:number;spe
 // r=抓取半徑(%)、catchMs=停留多久抓住、carry=安全拖曳速度(%/秒)、lag=跟手延遲、fit=對各目標的適合度（越高越好抓、越不易掉）
 export const TOOLS:Record<ToolId,{name:string;icon:string;r:number;catchMs:number;carry:number;lag:number;fit:Record<TargetId,number>;desc:string}>={
  rod:{name:"釣竿",icon:"🎣",...TOOL_BEHAVIOR.rod,fit:TOOL_FIT.rod,desc:"進階挑戰：小鉤要精準對準、停久一點；一次一隻，慢慢提回桶中"},
- net:{name:"網子",icon:"🥅",...TOOL_BEHAVIOR.net,fit:TOOL_FIT.net,desc:"新手推薦：大範圍、快速抓取，可一次撈兩隻；搬運更穩，能擋鉗擊、留住龍蝦"},
+ net:{name:"網子",icon:"🥅",...TOOL_BEHAVIOR.net,fit:TOOL_FIT.net,desc:"較容易：對準後停一下，可一次撈兩隻；拖太快會掉落，龍蝦也可能跳走"},
 };
 const ART_BASE=import.meta.env.BASE_URL+"comic/game-v2/";
 const POND_BG_TALL=`url(${JSON.stringify(ART_BASE+"pond-bg-tall.webp")})`;
@@ -96,7 +97,8 @@ export default function ShrimpGame({origin,onClose}:{origin:string;onClose:()=>v
  const unitPoints=pointsPerCatch(target,tool);
  const reduce=typeof matchMedia==="function"&&matchMedia("(prefers-reduced-motion: reduce)").matches;
  const pond=useRef<HTMLDivElement>(null);
- const st=useRef({gameId:"",end:0,caught:0,objs:[] as Obj[],last:0,raf:0,over:false,
+ const today=useTaipeiDay();
+ const st=useRef({gameId:"",end:0,caught:0,boots:0,objs:[] as Obj[],last:0,raf:0,over:false,
   ptr:{x:50,y:50},grip:null as null|{x:number;y:number},tx:50,ty:50,down:false,hold:null as null|{id:number;since:number},carry:null as null|Obj,carry2:null as null|Obj,risk:0,speed:0,left:GAME_SECONDS,dashIn:3,ripples:[] as {x:number;y:number;t:number}[]});
  const T=TARGETS[target],K=TOOLS[tool];
  const gNow=()=>pondGeom(pond.current);
@@ -117,7 +119,7 @@ export default function ShrimpGame({origin,onClose}:{origin:string;onClose:()=>v
   try{localStorage.setItem('shrimp-nickname',nickname.trim())}catch{/* Optional preference. */}
   try{const r=await fetch(origin+"/api/public/game/start",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"omit",body:JSON.stringify({target,tool,nickname:nickname.trim(),playerId})});if(!r.ok){setMsg(await errorText(r,"目前無法開始遊戲"));return}
    const d=await r.json();const s=st.current,n=target==="shrimp"?8:target==="lobster"?4:6;
-   Object.assign(s,{gameId:d.gameId,end:performance.now()+(d.seconds??T.seconds)*1000,caught:0,objs:[...Array.from({length:n},(_,i)=>spawn(i)),spawn(90,true)],last:performance.now(),over:false,down:false,hold:null,carry:null,carry2:null,risk:0,speed:0,left:GAME_SECONDS,dashIn:2+Math.random()*2,ripples:[],tx:30,ty:30,ptr:{x:30,y:30},grip:null});
+   Object.assign(s,{gameId:d.gameId,end:performance.now()+(d.seconds??T.seconds)*1000,caught:0,boots:0,objs:[...Array.from({length:n},(_,i)=>spawn(i)),spawn(90,true)],last:performance.now(),over:false,down:false,hold:null,carry:null,carry2:null,risk:0,speed:0,left:GAME_SECONDS,dashIn:2+Math.random()*2,ripples:[],tx:30,ty:30,ptr:{x:30,y:30},grip:null});
    setPhase("play");s.raf=requestAnimationFrame(tick);
   }catch{setMsg("連線中斷，請再試一次")}
  }
@@ -149,7 +151,7 @@ export default function ShrimpGame({origin,onClose}:{origin:string;onClose:()=>v
       if(s.hold?.id===o.id)s.hold=null;
       const angle=Math.atan2((o.y-s.ty)/sy,(o.x-s.tx)/sx)+(Math.random()-.5)*.6;
       o.jump=.6;o.dash=.6;o.hide=0;o.actionIn=3+Math.random()*2;o.vx=Math.cos(angle)*T.speed*6;o.vy=Math.sin(angle)*T.speed*6;
-      setFlash('龍蝦跳走了！落水後再抓，網子能留住牠')
+      setFlash('龍蝦甩尾跳走了！落水後重新對準再抓')
      }
     }
    }
@@ -202,7 +204,7 @@ export default function ShrimpGame({origin,onClose}:{origin:string;onClose:()=>v
    else if(!s.hold||s.hold.id!==near.id)s.hold={id:near.id,since:now};
    else if(now-s.hold.since>=(near.boot?200:K.catchMs/K.fit[target])){
     s.hold=null;
-    if(near.boot){setFlash("撈到破鞋！不計分，再試一次");Object.assign(near,spawn(near.id,true))}
+    if(near.boot){s.boots++;setFlash(`撈到鞋子！扣 ${BOOT_PENALTY} 分`);Object.assign(near,spawn(near.id,true))}
     else{
      s.carry=near;s.carry2=null;s.risk=0;near.linger=0;near.dash=0;
      // 網子可同時撈兩隻，只收附近的獵物。
@@ -243,7 +245,7 @@ export default function ShrimpGame({origin,onClose}:{origin:string;onClose:()=>v
  }
  async function finish(){
   const s=st.current;if(s.over)return;s.over=true;cancelAnimationFrame(s.raf);setPhase("sending");
-  try{const r=await fetch(origin+"/api/public/game/finish",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"omit",body:JSON.stringify({gameId:s.gameId,caught:s.caught})});
+  try{const r=await fetch(origin+"/api/public/game/finish",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"omit",body:JSON.stringify({gameId:s.gameId,caught:s.caught,boots:s.boots})});
    if(!r.ok){setMsg(await errorText(r,"結算失敗"));setPhase("done");return}
    const d=await r.json();setFinalScore(d.score);setPassed(!!d.won);setBoardRefresh(n=>n+1);setPhase("done");
   }catch{setMsg("連線中斷，這局無法結算");setPhase("done")}
@@ -276,6 +278,7 @@ export default function ShrimpGame({origin,onClose}:{origin:string;onClose:()=>v
    {phase!=="intro"&&<h2><Sprite name="shrimp" className="title-ico"/>樂甜釣蝦場</h2>}
    <span className="mode-badge"><i/>免費玩・贏折價券</span>
   </div>
+  <p className="game-today">今天日期：<time dateTime={today}>{today.replaceAll("-","/")}</time></p>
   {phase==="intro"&&<div className="game-body">
    <section className="game-hero">
     <span className="eyebrow">ANXING · CATCH &amp; PLAY</span>
@@ -290,7 +293,7 @@ export default function ShrimpGame({origin,onClose}:{origin:string;onClose:()=>v
    <div className="pick-row" role="radiogroup" aria-label="目標">{(Object.keys(TARGETS) as TargetId[]).map(id=><button key={id} type="button" role="radio" aria-checked={target===id} className={"pick"+(target===id?" on":"")} onClick={()=>setTarget(id)}><Sprite className="pick-icon" name={id} emoji={TARGETS[id].icon}/><b>{TARGETS[id].name}</b><small>每隻 {pointsPerCatch(id,tool)} 分</small></button>)}</div>
    <p className="pick-desc">{T.desc}</p>
    <p className="game-step"><i>2</i>選工具 <small>網子簡單・釣竿進階，釣竿積分更高</small></p>
-   <div className="pick-row tools" role="radiogroup" aria-label="工具">{(Object.keys(TOOLS) as ToolId[]).map(id=><button key={id} type="button" role="radio" aria-checked={tool===id} className={"pick"+(tool===id?" on":"")} onClick={()=>setTool(id)}><Sprite className="pick-icon" name={id} emoji={TOOLS[id].icon}/><b>{TOOLS[id].name}</b><small className="tool-level">{id==="net"?"簡單・新手推薦":"較難・精準挑戰"}</small><small className="stars">{stars(TOOLS[id].fit[target])}</small><small className="tool-points">每隻 {pointsPerCatch(target,id)} 分</small></button>)}</div>
+   <div className="pick-row tools" role="radiogroup" aria-label="工具">{(Object.keys(TOOLS) as ToolId[]).map(id=><button key={id} type="button" role="radio" aria-checked={tool===id} className={"pick"+(tool===id?" on":"")} onClick={()=>setTool(id)}><Sprite className="pick-icon" name={id} emoji={TOOLS[id].icon}/><b>{TOOLS[id].name}</b><small className="tool-level">{id==="net"?"較容易・需對準":"較難・精準挑戰"}</small><small className="stars">{stars(TOOLS[id].fit[target])}</small><small className="tool-points">每隻 {pointsPerCatch(target,id)} 分</small></button>)}</div>
    <p className="pick-desc">{K.desc}</p><p className="pick-desc">每局固定 30 秒，不限捕獲數。{K.name}抓{T.name}每隻 {unitPoints} 分。</p>
    <div className="rule-card"><b className="rule-title">怎麼玩</b>
     <ol className="rule-steps">
@@ -298,9 +301,9 @@ export default function ShrimpGame({origin,onClose}:{origin:string;onClose:()=>v
      <li><i>2</i><span>按住水面放下{K.name}，停在{T.name}身上直到<b>圈圈填滿</b>就抓住。</span></li>
      <li><i>3</i><span>按著<b>慢慢</b>拖到池中央的{vessel}再放開，就入桶囉！</span></li>
     </ol>
-    <div className="rule-chips"><span className="chip ok">固定 30 秒・不限次數</span><span className="chip ok">網子可撈 2 隻・釣竿一次 1 隻</span><span className="chip warn">拖太快、掙扎會掉回水裡</span><span className="chip warn">{target==="crab"?"螃蟹會鉗擊，網子可抵擋":target==="lobster"?"龍蝦會跳走，撈進網子可留住":"蝦子會躲水草、偶爾爆衝"}</span><span className="chip warn">撈到破鞋不計分</span></div>
+    <div className="rule-chips"><span className="chip ok">固定 30 秒・不限次數</span><span className="chip ok">網子可撈 2 隻・釣竿一次 1 隻</span><span className="chip warn">拖太快、掙扎會掉回水裡</span><span className="chip warn">{target==="crab"?"螃蟹會鉗擊，網子可抵擋":target==="lobster"?"龍蝦會甩尾，網子也可能被掙脫":"蝦子會躲水草、偶爾爆衝"}</span><span className="chip warn">撈到鞋子扣 50 分（最低 0 分）</span></div>
    </div>
-   <p className="game-prize"><span className="ticket" aria-hidden>🎟️</span><span>抓到 6 隻以上獎勵：<b>店內商品滿 NT$1,000 折 NT$5</b> 優惠券<small><b>{COUPON_RULE}</b><br/>加入 LINE 社群、填寫群組暱稱，門市核對後才發券。每天限領一次。</small></span></p><a className="voucher-join" href={LINE_GROUP_URL} target="_blank" rel="noopener noreferrer">加入安星水產 LINE 社群 ↗</a>
+   <p className="game-prize"><span className="ticket" aria-hidden>🎟️</span><span>抓到 6 隻以上獎勵：<b>店內商品滿 NT$1,000 折 NT$5</b> 優惠券<small><b>{COUPON_RULE}</b><br/>加入 LINE 社群、填寫群組暱稱即可領券。同一暱稱每天成功限領一次，到店出示畫面核對。</small></span></p><a className="voucher-join" href={LINE_GROUP_URL} target="_blank" rel="noopener noreferrer">加入安星水產 LINE 社群 ↗</a>
    <label className="game-nickname">排行榜暱稱（選填）<input value={nickname} onChange={e=>setNickname([...e.target.value].slice(0,12).join(''))} maxLength={24} placeholder="例如：小蝦高手" autoComplete="off"/><small>限 12 字；填寫後，積分與暱稱會公開上榜。留空只玩遊戲、不公開成績，請勿填姓名或電話。</small></label>
    {msg&&<p className="err">{msg}</p>}
    <button type="button" className="primary grow btn-gold" onClick={start}>開始抓{T.name} <span aria-hidden>▶</span></button>
@@ -310,7 +313,7 @@ export default function ShrimpGame({origin,onClose}:{origin:string;onClose:()=>v
    <div className="game-stats">
     <div className="hud-cell"><small>抓到</small><span className="caught"><Sprite className="hud-ico" name={target} emoji={T.icon}/> {s.caught} 隻</span></div>
     <div className={"hud-cell hud-time"+(timeLow?" low":"")}><small>剩餘時間</small><strong><b>{Math.ceil(s.left)}</b><small>s</small></strong></div>
-    <div className="hud-cell"><small>積分</small><strong>{s.caught*unitPoints}</strong></div>
+    <div className="hud-cell"><small>積分</small><strong>{gameScore(target,tool,s.caught,s.boots)}</strong></div>
    </div>
    <div className="goal-bar"><div><b>{K.name} · 每隻 {unitPoints} 分</b><span>{left>0?`再抓 ${left} 隻可領券`:"已達領券門檻，繼續衝高分！"}</span></div><div className="goal-track" aria-hidden><i style={{width:Math.min(100,s.caught/COUPON_CATCH_MIN*100)+"%"}}/></div></div>
    <div className="pond-wrap">
@@ -340,9 +343,9 @@ export default function ShrimpGame({origin,onClose}:{origin:string;onClose:()=>v
   {phase==="done"&&<div className="game-result"><div className="result-card" role="status">
    <span className="result-spark" aria-hidden>✦</span>
    <p className="result-kicker">30 秒挑戰完成</p>
-   <h3>{(finalScore??s.caught*unitPoints).toLocaleString()} 分</h3>
-   <div className="result-score"><Sprite name={target} className="result-ico" caught/><b>{s.caught}</b><small>隻{T.name} · {K.name}</small></div>
-   {passed?<GameVoucherWallet origin={origin} gameId={s.gameId} playerId={playerId} eligible/>:!msg&&<p className="game-rule">這局抓到 {s.caught} 隻{T.name}；抓到 6 隻以上，加入 LINE 社群並由門市核對暱稱後可領券，每天一次。</p>}
+   <h3>{(finalScore??gameScore(target,tool,s.caught,s.boots)).toLocaleString()} 分</h3>
+   <div className="result-score"><Sprite name={target} className="result-ico" caught/><b>{s.caught}</b><small>隻{T.name} · {K.name}</small></div><p className="game-rule">撈到鞋子 {s.boots} 次，扣 {s.boots*BOOT_PENALTY} 分，積分最低 0 分。</p>
+   {passed?<GameVoucherWallet origin={origin} gameId={s.gameId} playerId={playerId} eligible/>:!msg&&<p className="game-rule">這局抓到 {s.caught} 隻{T.name}；抓到 6 隻以上，加入 LINE 社群並填暱稱即可領券，同一暱稱每天成功限領一次。</p>}
    {s.caught>0&&nickname.trim()&&!msg&&<p className="game-rule">已記錄本局積分，每個分類保留你的最高分。</p>}
    <GameLeaderboard origin={origin} target={target} refresh={boardRefresh}/>
    {msg&&<p className="err">{msg}</p>}

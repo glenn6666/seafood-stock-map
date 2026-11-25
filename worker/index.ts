@@ -7,7 +7,7 @@ import {ledgerRoute} from "./ledger";
 import {publicDineMenu,publicDinePhoto,createDineOrder,dineAdminRoute,uploadDinePhoto} from "./dine";
 import {isValidImageUrl} from "../web/src/lib/dine-menu";
 import {COUPON_SCOPE,COUPON_RULE,storeCouponSubtotal} from '../web/src/lib/coupon-policy';
-import {GAME_SECONDS,COUPON_CATCH_MIN,GAME_RULE_VERSION,pointsPerCatch,endOfTaipeiDay,type GameTool} from '../web/src/lib/game-rules';
+import {GAME_SECONDS,COUPON_CATCH_MIN,GAME_RULE_VERSION,gameScore,pointsPerCatch,endOfTaipeiDay,type GameTool} from '../web/src/lib/game-rules';
 
 export type Env={DB:D1Database;INVENTORY_TOKEN:string;ALLOWED_ORIGIN:string};
 type Role="admin"|"staff";
@@ -225,7 +225,9 @@ async function gameFinish(env:Env,request:Request,b:any){
  const el=now-g.started_at,T=TARGETS[(g.target in TARGETS?g.target:"shrimp") as Target];
  if(el>T.seconds+GAME.graceSec){await env.DB.prepare("UPDATE game_sessions SET finished=1 WHERE id_hash=?").bind(idh).run();throw new HttpError(409,"這局已逾時，請再玩一局")}
  if(el<GAME_SECONDS)throw new HttpError(400,"每局固定 30 秒，請等倒數結束後結算");
- const score=b.caught*pointsPerCatch(g.target as Target,g.tool as GameTool);
+ const boots=b.boots??0;
+ if(!Number.isSafeInteger(boots)||boots<0)throw new HttpError(400,"鞋子次數不正確");
+ const score=gameScore(g.target as Target,g.tool as GameTool,b.caught,boots);
  if(!Number.isSafeInteger(score))throw new HttpError(400,"遊戲分數不正確");
  const passed=b.caught>=COUPON_CATCH_MIN;
  // 一局只記錄一次成績；達標只取得資格，發券另由門市核對。
