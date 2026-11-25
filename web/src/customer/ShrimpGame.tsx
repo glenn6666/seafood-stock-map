@@ -9,7 +9,6 @@ import {CuteArt} from "./cute-art";
 import GameLeaderboard from './GameLeaderboard';
 import GameVoucherWallet from './GameVoucherWallet';
 import {LINE_GROUP_URL} from '../lib/game-vouchers';
-import {COUPON_RULE} from '../lib/coupon-policy';
 import {GAME_SECONDS,COUPON_CATCH_MIN,TOOL_FIT,TOOL_BEHAVIOR,pointsPerCatch,toolBlocksThreat,BOOT_PENALTY,gameScore,toolBehavior,rodCatchProtected,CRAB_ATTACK_WINDUP_SEC} from '../lib/game-rules';
 import "./game-cute.css";
 import {useTaipeiDay} from "../lib/use-taipei-day";
@@ -55,7 +54,6 @@ function WeedSpr({kind,className=""}:{kind:1|2|3;className?:string}){
 }
 
 const GAME_FONT="https://fonts.googleapis.com/css2?family=Chiron+GoRound+TC:wght@500;700;900&family=Fredoka:wght@600;700&display=swap";
-const stars=(f:number)=>f>=1.2?"★★★":f>=1?"★★☆":f>=.7?"★☆☆":"☆☆☆";
 // 俯視：碗在池中央。座標仍是 0–100%，但距離／速度／命中改依實際像素計算，避免長方形池塘把圓變成橢圓。
 const BUCKET={x:50,y:50};
 const ROCKS=[{x:20,y:18},{x:80,y:20},{x:22,y:82},{x:78,y:80}];
@@ -286,29 +284,22 @@ export default function ShrimpGame({origin,onClose}:{origin:string;onClose:()=>v
     <span className="eyebrow">ANXING · CATCH &amp; PLAY</span>
     <small className="hero-brand">安星水產</small>
     <h2 className="wordmark" aria-label="樂甜釣蝦場">{"樂甜釣蝦場".split("").map((c,i)=><b key={i} aria-hidden>{c}</b>)}</h2>
-    <p className="hero-sub">選好工具，把海鮮好朋友撈進水桶！</p>
+    <p className="hero-sub">30 秒，把海鮮抓進桶！</p>
     <div className="hero-art" aria-hidden><CuteArt name="crab" className="m m-crab"/><Sprite name="bucket" kind="shrimp" className="m m-bucket"/><Sprite name="shrimp" className="m m-shrimp"/><CuteArt name="lobster" className="m m-lobster"/><i className="spark s1">✦</i><i className="spark s2">✧</i><i className="spark s3">✦</i><span className="bubble-tag">一起來玩！</span></div>
     <div className="hero-facts"><div><b>{T.seconds}<small>秒</small></b><span>限時挑戰</span></div><div><b>∞</b><span>不限捕獲數</span></div><div><b>0<small>元</small></b><span>免費遊玩</span></div></div>
    </section>
    <GameVoucherWallet origin={origin}/><GameLeaderboard origin={origin} target={target} refresh={boardRefresh}/>
    <p className="game-step"><i>1</i>選要抓什麼</p>
    <div className="pick-row" role="radiogroup" aria-label="目標">{(Object.keys(TARGETS) as TargetId[]).map(id=><button key={id} type="button" role="radio" aria-checked={target===id} className={"pick"+(target===id?" on":"")} onClick={()=>setTarget(id)}><Sprite className="pick-icon" name={id} emoji={TARGETS[id].icon}/><b>{TARGETS[id].name}</b><small>每隻 {pointsPerCatch(id,tool)} 分</small></button>)}</div>
-   <p className="pick-desc">{T.desc}</p>
-   <p className="game-step"><i>2</i>選工具 <small>網子簡單・釣竿進階，釣竿積分更高</small></p>
-   <div className="pick-row tools" role="radiogroup" aria-label="工具">{(Object.keys(TOOLS) as ToolId[]).map(id=><button key={id} type="button" role="radio" aria-checked={tool===id} className={"pick"+(tool===id?" on":"")} onClick={()=>setTool(id)}><Sprite className="pick-icon" name={id} emoji={TOOLS[id].icon}/><b>{TOOLS[id].name}</b><small className="tool-level">{id==="net"?"較容易・需對準":"較難・精準挑戰"}</small><small className="stars">{stars(TOOLS[id].fit[target])}</small><small className="tool-points">每隻 {pointsPerCatch(target,id)} 分</small></button>)}</div>
-   <p className="pick-desc">{K.desc}</p><p className="pick-desc">每局固定 30 秒，不限捕獲數。{K.name}抓{T.name}每隻 {unitPoints} 分。</p>
-   <div className="rule-card"><b className="rule-title">怎麼玩</b>
-    <ol className="rule-steps">
-     <li><i>1</i><span>手指按住的是{K.name}<b>握把（尾端）</b>，{K.name}前端在手指上方，不會被手指擋住。</span></li>
-     <li><i>2</i><span>按住水面放下{K.name}，停在{T.name}身上直到<b>圈圈填滿</b>就抓住。</span></li>
-     <li><i>3</i><span>按著<b>慢慢</b>拖到池中央的{vessel}再放開，就入桶囉！</span></li>
-    </ol>
-    <div className="rule-chips"><span className="chip ok">固定 30 秒・不限次數</span><span className="chip ok">網子可撈 2 隻・釣竿一次 1 隻</span><span className="chip warn">拖太快、掙扎會掉回水裡</span><span className="chip warn">{target==="crab"?"螃蟹會躲礁石，鉗擊前有準備時間":target==="lobster"?"龍蝦會閃身步，釣竿對準時有上鉤窗口":"蝦子會躲水草、偶爾爆衝"}</span><span className="chip warn">撈到鞋子扣 50 分（最低 0 分）</span></div>
-   </div>
-   <p className="game-prize"><span className="ticket" aria-hidden>🎟️</span><span>抓到 6 隻以上獎勵：<b>店內商品滿 NT$1,000 折 NT$5</b> 優惠券<small><b>{COUPON_RULE}</b><br/>加入 LINE 社群、填寫群組暱稱即可領券。同一暱稱每天成功限領一次，到店出示畫面核對。</small></span></p><a className="voucher-join" href={LINE_GROUP_URL} target="_blank" rel="noopener noreferrer">加入安星水產 LINE 社群 ↗</a>
-   <label className="game-nickname">排行榜暱稱（選填）<input value={nickname} onChange={e=>setNickname([...e.target.value].slice(0,12).join(''))} maxLength={24} placeholder="例如：小蝦高手" autoComplete="off"/><small>限 12 字；填寫後，積分與暱稱會公開上榜。留空只玩遊戲、不公開成績，請勿填姓名或電話。</small></label>
+   <p className="game-step"><i>2</i>選工具</p>
+   <div className="pick-row tools" role="radiogroup" aria-label="工具">{(Object.keys(TOOLS) as ToolId[]).map(id=><button key={id} type="button" role="radio" aria-checked={tool===id} className={"pick"+(tool===id?" on":"")} onClick={()=>setTool(id)}><Sprite className="pick-icon" name={id} emoji={TOOLS[id].icon}/><b>{TOOLS[id].name}</b><small className="tool-level">{id==="net"?"好上手・最多 2 隻":"高積分・一次 1 隻"}</small><small className="tool-points">每隻 {pointsPerCatch(target,id)} 分</small></button>)}</div>
+   <p className="quick-play">按住對準 → 慢慢拖回{vessel} → 放開<small>撈到鞋子扣 50 分</small></p>
    {msg&&<p className="err">{msg}</p>}
    <button type="button" className="primary grow btn-gold" onClick={start}>開始抓{T.name} <span aria-hidden>▶</span></button>
+   <p className="game-prize"><span className="ticket" aria-hidden>🎟️</span><span><b>抓滿 6 隻可領券</b><br/>店內滿 NT$1,000 折 NT$5<small>今天有效，團購不適用且不計入滿額。<br/>加入 LINE、填群組暱稱，每天成功限領一次。</small></span></p>
+   <a className="voucher-join" href={LINE_GROUP_URL} target="_blank" rel="noopener noreferrer">加入 LINE 社群 ↗</a>
+   <details className="game-extra"><summary>玩法提示</summary><p>按住後等圈圈填滿，再拖回{vessel}放開。工具前端在手指上方，請對準前端。</p><p>{T.desc} 拖太快會掉落。</p></details>
+   <details className="game-extra"><summary>{nickname.trim()?`排行榜暱稱：${nickname.trim()}（公開上榜）`:"排行榜暱稱（選填）"}</summary><label className="game-nickname">你的暱稱<input aria-label="排行榜暱稱（選填）" value={nickname} onChange={e=>setNickname([...e.target.value].slice(0,12).join(""))} maxLength={24} placeholder="例如：小蝦高手" autoComplete="off"/><small>限 12 字，暱稱與分數會公開。留空不上榜，請勿填姓名或電話。</small></label></details>
    <button type="button" className="sheet-close text-btn" onClick={onClose}>先不要</button>
   </div>}
   {phase!=="intro"&&<div className="game-body play">

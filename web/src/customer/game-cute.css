@@ -330,3 +330,10 @@
 
 .sheet.game.cute .move-name{position:absolute;left:50%;top:-24px;z-index:20;padding:5px 10px;border-radius:12px;border:2px solid #a33f32;background:#fff1b8;color:#992d24;font-size:18px;line-height:1.3;font-weight:900;white-space:nowrap;box-shadow:0 3px 0 #204b6040;pointer-events:none}
 .sheet.game.cute .move-name.move-lobster{border-color:#285d9b;background:#e2f6ff;color:#174777}
+
+.sheet.game.cute .quick-play{text-align:center;color:var(--g-ink);font-size:15px;font-weight:900;margin:16px 0 12px;line-height:1.8}
+.sheet.game.cute .quick-play small{display:block;color:#a34532;font-size:12px;font-weight:700}
+.sheet.game.cute .game-extra{margin:12px 0;border:1px solid #b7d5df;border-radius:12px;background:#fff;padding:10px 12px;font-size:13px;line-height:1.7}
+.sheet.game.cute .game-extra summary{cursor:pointer;font-size:14px;font-weight:900}
+.sheet.game.cute .game-extra p{margin:8px 0 0}
+.sheet.game.cute .game-extra .game-nickname{margin:8px 0 0;border:0;padding:0;background:transparent}
