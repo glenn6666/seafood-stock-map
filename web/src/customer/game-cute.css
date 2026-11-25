@@ -319,3 +319,6 @@
 @keyframes crab-right-snap{to{transform:rotate(-32deg)}}
 @keyframes lobster-hop{0%,100%{transform:translateY(0) scale(1)}45%{transform:translateY(-38px) scale(1.22) rotate(-12deg)}70%{transform:translateY(-20px) scale(1.1) rotate(8deg)}}
 @media(prefers-reduced-motion:reduce){.sheet.game.cute .attacking .crab-claw,.sheet.game.cute .pond-obj.jumping>.spr{animation:none}.sheet.game.cute .pond-obj.jumping>.spr{outline:3px dashed #ffb44a;border-radius:50%}}
+
+.sheet.game.cute .pick-row.tools{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+.sheet.game.cute .pick .tool-level{font-size:12px;font-weight:900;color:var(--g-ink)}

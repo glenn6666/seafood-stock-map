@@ -220,10 +220,10 @@ await t("釣蝦遊戲：目標／工具驗證、太快／未達標不發券；�
  let g=(await api("/api/public/game/start",{method:"POST",ip})).data;assert.ok(g.gameId&&g.seconds===30&&g.target===6&&g.kind==="shrimp"&&g.tool==="rod","預設：蝦＋釣竿");
  assert.equal((await api("/api/public/game/start",{method:"POST",ip,body:{target:"whale",tool:"rod"}})).status,400,"未知目標");
  assert.equal((await api("/api/public/game/start",{method:"POST",ip,body:{target:"crab",tool:"bomb"}})).status,400,"未知工具");
- const gl=(await api("/api/public/game/start",{method:"POST",ip,body:{target:"lobster",tool:"cage"}})).data;assert.ok(gl.seconds===30&&gl.target===6,"龍蝦固定 30 秒，6 隻領券");
+ const gl=(await api("/api/public/game/start",{method:"POST",ip,body:{target:"lobster",tool:"net"}})).data;assert.ok(gl.seconds===30&&gl.target===6,"龍蝦固定 30 秒，6 隻領券");
  assert.equal((await api("/api/public/game/finish",{method:"POST",ip,body:{gameId:g.gameId,caught:4}})).status,400,"12 秒內完成視為作弊");
  assert.equal((await api("/api/public/game/finish",{method:"POST",ip:freshIp(),body:{gameId:g.gameId,caught:4}})).status,404,"其他 IP 不能代領");
- const g2=(await api("/api/public/game/start",{method:"POST",ip,body:{target:"crab",tool:"tongs"}})).data;assert.ok(g2.seconds===30&&g2.target===6,"螃蟹固定 30 秒，6 隻領券");
+ const g2=(await api("/api/public/game/start",{method:"POST",ip,body:{target:"crab",tool:"rod"}})).data;assert.ok(g2.seconds===30&&g2.target===6,"螃蟹固定 30 秒，6 隻領券");
  assert.equal(new URL(BASE).hostname,"127.0.0.1","Time fixtures are local only");
  const {execFileSync}=await import("node:child_process");
  execFileSync(process.execPath,["node_modules/wrangler/bin/wrangler.js","d1","execute","DB","--local","--persist-to",process.env.PERSIST??".wrangler/state","--command","UPDATE game_sessions SET started_at=CAST(strftime('%s','now') AS INTEGER)-30 WHERE finished=0"],{stdio:"ignore"});

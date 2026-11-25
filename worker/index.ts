@@ -199,7 +199,7 @@ async function rateLimit(env:Env,request:Request,bucket:keyof typeof LIMITS){
 // 遊戲在前端進行，伺服器只能做合理性檢查（開局時間、最短／最長時間、單局只能領一次、IP 限額），無法完全防止腳本作弊；折扣金額固定且小，風險有限。
 // 海鮮與工具的適合度決定每隻積分；後端依開局工具重算，不接受客戶端自訂倍率。
 const TARGETS={shrimp:{goal:COUPON_CATCH_MIN,seconds:GAME_SECONDS},crab:{goal:COUPON_CATCH_MIN,seconds:GAME_SECONDS},lobster:{goal:COUPON_CATCH_MIN,seconds:GAME_SECONDS}} as const;
-const TOOLS=["rod","net","tongs","cage"] as const;
+const TOOLS=["rod","net"] as const;
 type Target=keyof typeof TARGETS;
 const GAME={seconds:TARGETS.shrimp.seconds,target:TARGETS.shrimp.goal,graceSec:15},COUPON={discount:5,minTotal:1000};
 async function gameStart(env:Env,request:Request,b:any){

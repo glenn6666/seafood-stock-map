@@ -8,14 +8,19 @@ for(const target of ['shrimp','crab','lobster']){
   if(rules.TOOL_FIT[a][target]<rules.TOOL_FIT[b][target])assert.ok(rules.pointsPerCatch(target,a)>rules.pointsPerCatch(target,b),'harder tool must score higher');
  }
 }
-assert.equal(rules.pointsPerCatch('shrimp','rod'),100);
-assert.equal(rules.pointsPerCatch('shrimp','tongs'),130);
-assert.equal(rules.pointsPerCatch('lobster','net'),130);
-assert.equal(rules.pointsPerCatch('lobster','cage'),100);
-assert.ok(rules.TOOL_BEHAVIOR.net.r>rules.TOOL_BEHAVIOR.rod.r*2);
-assert.ok(rules.TOOL_BEHAVIOR.net.carry<rules.TOOL_BEHAVIOR.rod.carry/2);
-assert.ok(rules.TOOL_BEHAVIOR.cage.catchMs>rules.TOOL_BEHAVIOR.tongs.catchMs*10);
-assert.equal(rules.toolBlocksThreat('crab','tongs'),true);assert.equal(rules.toolBlocksThreat('crab','rod'),false);assert.equal(rules.toolBlocksThreat('lobster','cage'),true);assert.equal(rules.toolBlocksThreat('lobster','net'),false);
+assert.deepEqual(Object.keys(rules.TOOL_FIT),['rod','net']);
+for(const target of ['shrimp','crab','lobster']){
+ assert.equal(rules.pointsPerCatch(target,'net'),100);
+ assert.ok(rules.pointsPerCatch(target,'rod')>rules.pointsPerCatch(target,'net'));
+ assert.equal(rules.toolBlocksThreat(target,'rod'),false);
+}
+assert.equal(rules.pointsPerCatch('shrimp','rod'),125);
+assert.equal(rules.pointsPerCatch('lobster','rod'),135);
+assert.ok(rules.TOOL_BEHAVIOR.net.r>rules.TOOL_BEHAVIOR.rod.r*4);
+assert.ok(rules.TOOL_BEHAVIOR.net.carry>rules.TOOL_BEHAVIOR.rod.carry*2);
+assert.ok(rules.TOOL_BEHAVIOR.rod.catchMs>rules.TOOL_BEHAVIOR.net.catchMs*3);
+assert.equal(rules.toolBlocksThreat('crab','net'),true);
+assert.equal(rules.toolBlocksThreat('lobster','net'),true);
 for(const [now,expiry] of [
  ['2026-11-23T16:00:00.000Z','2026-11-24T16:00:00.000Z'],
  ['2026-11-24T15:59:59.999Z','2026-11-24T16:00:00.000Z'],

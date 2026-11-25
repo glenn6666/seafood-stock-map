@@ -1,6 +1,6 @@
 import {useEffect,useState} from 'react';
 type Entry={rank:number;nickname:string;tool:string;seconds:number;achievedAt:string;score:number;caught:number};
-const toolNames:Record<string,string>={rod:'釣竿',net:'網子',tongs:'夾子',cage:'蝦籠'};
+const toolNames:Record<string,string>={rod:'釣竿',net:'網子'};
 export default function GameLeaderboard({origin,target,refresh=0}:{origin:string;target:string;refresh?:number}){
  const [entries,setEntries]=useState<Entry[]>([]),[status,setStatus]=useState('loading'),[retry,setRetry]=useState(0);
  useEffect(()=>{
