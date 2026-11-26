@@ -3,11 +3,11 @@ import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
 const base=process.env.API??'http://127.0.0.1:8791';
 assert.equal(new URL(base).hostname,'127.0.0.1');
-const key=()=>crypto.randomUUID(),ip='198.51.100.171';
+const key=()=>crypto.randomUUID(),ip='198.51.100.'+(10+Math.floor(Math.random()*80));
 const hash=async s=>Buffer.from(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s))).toString('base64url');
 const sql=command=>execFileSync(process.execPath,['node_modules/wrangler/bin/wrangler.js','d1','execute','DB','--local','--persist-to',process.env.PERSIST??'.wrangler/verified-vouchers-tests','--command',command],{stdio:'ignore'});
 async function api(path,body,token){const r=await fetch(base+path,{method:body?'POST':'GET',headers:{'Content-Type':'application/json','CF-Connecting-IP':ip,...(token?{Authorization:'Bearer '+token}:{})},body:body?JSON.stringify(body):undefined});return {status:r.status,data:await r.json()}}
-async function play(playerId=key(),caught=6){const r=await api('/api/public/game/start',{playerId,target:'crab',tool:'net'});assert.equal(r.status,200,JSON.stringify(r.data));const gameId=r.data.gameId;sql(`UPDATE game_sessions SET started_at=CAST(strftime('%s','now') AS INTEGER)-30 WHERE id_hash='${await hash(gameId)}'`);const f=await api('/api/public/game/finish',{gameId,caught});assert.equal(f.status,200);assert.equal(f.data.coupon,undefined,'winning does not mint a cart coupon');return {gameId,playerId}}
+async function play(playerId=key(),caught=14,tool='net',target='crab',boots=0){const r=await api('/api/public/game/start',{playerId,target,tool});assert.equal(r.status,200,JSON.stringify(r.data));const gameId=r.data.gameId;sql(`UPDATE game_sessions SET started_at=CAST(strftime('%s','now') AS INTEGER)-30 WHERE id_hash='${await hash(gameId)}'`);const f=await api('/api/public/game/finish',{gameId,caught,boots});assert.equal(f.status,200);assert.equal(f.data.coupon,undefined,'winning does not mint a cart coupon');return {gameId,playerId}}
 const game=await play(),claimToken=key(),body={...game,claimToken,groupNickname:'  群友小蝦  ',joined:true};
 assert.equal((await api('/api/public/game/vouchers/claim',{...body,joined:false})).status,400);
 assert.equal((await api('/api/public/game/vouchers/claim',{...body,groupNickname:''})).status,400);
@@ -24,8 +24,9 @@ const tooFew=await play(key(),5);assert.equal((await api('/api/public/game/vouch
 assert.equal((await api('/api/game-vouchers')).status,401);
 assert.equal((await api('/api/game-vouchers/'+voucher.id+'/approve',{groupMemberConfirmed:true})).status,401);
 const login=await api('/api/auth/login',{username:'boss',password:'boss-pass-123'});assert.equal(login.status,200);const admin=login.data.token;
-assert.equal((await api('/api/users',{username:'voucherstaff',password:'voucher-staff-123',role:'staff'},admin)).status,200);
-const staff=(await api('/api/auth/login',{username:'voucherstaff',password:'voucher-staff-123'})).data.token;assert.ok(staff);
+const staffSuffix=key().slice(0,8);
+assert.equal((await api('/api/users',{username:'voucherstaff-'+staffSuffix,password:'voucher-staff-123',role:'staff'},admin)).status,200);
+const staff=(await api('/api/auth/login',{username:'voucherstaff-'+staffSuffix,password:'voucher-staff-123'})).data.token;assert.ok(staff);
 const action=(id,name,b={})=>api('/api/game-vouchers/'+id+'/'+name,b,staff);
 assert.equal((await status()).data.voucher.status,'approved');
 const list=(await api('/api/game-vouchers',undefined,staff)).data.vouchers;const row=list.find(r=>r.id===voucher.id);assert.ok(!JSON.stringify(row).includes('token_hash'));assert.ok(!JSON.stringify(row).includes('player_hash'));
@@ -44,4 +45,8 @@ assert.equal(raceReplies.filter(r=>r.status===200).length,1,'concurrent claims o
 assert.equal(raceReplies.filter(r=>r.status===409).length,1);
 const yesterday=new Date(Date.now()+8*3600e3-86400e3).toISOString().slice(0,10);sql(`UPDATE game_vouchers SET claim_day='${yesterday}' WHERE id='${voucher.id}'`);
 const nextDay=await play(game.playerId);assert.equal((await api('/api/public/game/vouchers/claim',{...nextDay,claimToken:key(),groupNickname:'群友小蝦',joined:true})).status,200,'daily allowance resets on next Taiwan date');
+const exactGame=await play(key(),6,'rod','shrimp');assert.equal((await api('/api/public/game/vouchers/claim',{...exactGame,claimToken:key(),groupNickname:'剛好1500分',joined:true})).status,200);
+const belowGame=await play(key(),6,'rod','shrimp',1);assert.equal((await api('/api/public/game/vouchers/claim',{...belowGame,claimToken:key(),groupNickname:'扣分未達標',joined:true,score:1500})).status,400,'claim checks persisted server score including shoe penalties');
+const fewerGame=await play(key(),3,'rod','lobster');assert.equal((await api('/api/public/game/vouchers/claim',{...fewerGame,claimToken:key(),groupNickname:'三隻龍蝦',joined:true})).status,200);
+const search=(await api('/api/game-vouchers?date='+yesterday+'&q='+encodeURIComponent(voucher.voucherNo),undefined,staff)).data.vouchers;assert.equal(search.length,1);assert.equal(search[0].id,voucher.id);
 console.log('PASS: no automatic coupons, LINE nickname direct claim, daily successful nickname limit, private receipt, no staff approval, single-use redemption and same-day expiry.');

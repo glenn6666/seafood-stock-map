@@ -1,5 +1,5 @@
 import {HttpError,sha256,nowIso,type Env,type Actor} from './index';
-import {COUPON_CATCH_MIN,GAME_RULE_VERSION,endOfTaipeiDay} from '../web/src/lib/game-rules';
+import {COUPON_SCORE_MIN,GAME_RULE_VERSION,endOfTaipeiDay} from '../web/src/lib/game-rules';
 const day=(date=new Date())=>new Date(date.getTime()+8*3600e3).toISOString().slice(0,10);
 const validToken=(value:unknown):value is string=>typeof value==='string'&&/^[A-Za-z0-9_-]{20,64}$/.test(value);
 function publicVoucher(row:any){return {id:row.id,voucherNo:row.voucher_no,groupNickname:row.group_nickname,status:row.expires_at<=nowIso()&&row.status!=='redeemed'?'expired':row.status,claimDay:row.claim_day,expiresAt:row.expires_at}}
@@ -12,7 +12,7 @@ export async function claimGameVoucher(env:Env,b:any){
  if(b.joined!==true)throw new HttpError(400,'請先加入 LINE 社群再領券');
  const gameHash=await sha256(b.gameId),playerHash=await sha256('player|'+b.playerId),tokenHash=await sha256(b.claimToken);
  const g=await env.DB.prepare('SELECT * FROM game_sessions WHERE id_hash=?').bind(gameHash).first<any>();
- if(!g||g.player_hash!==playerHash||!g.finished||g.caught<COUPON_CATCH_MIN||g.rule_version!==GAME_RULE_VERSION)throw new HttpError(400,'尚未取得領券資格，請先完成遊戲並抓到 6 隻以上');
+ if(!g||g.player_hash!==playerHash||!g.finished||g.final_score<COUPON_SCORE_MIN||g.rule_version!==GAME_RULE_VERSION)throw new HttpError(400,'尚未取得領券資格，請先完成遊戲並達到 1500 分（含）');
  if(!g.finished_at||day(new Date(g.finished_at))!==claimDay)throw new HttpError(409,'這局領券資格已過期，請今天再挑戰');
  const prior=await env.DB.prepare('SELECT * FROM game_vouchers WHERE token_hash=?').bind(tokenHash).first<any>();
  if(prior){if(prior.game_hash!==gameHash||prior.player_hash!==playerHash)throw new HttpError(409,'領券識別碼已使用，請重新整理');return {voucher:publicVoucher(prior)}}
@@ -31,7 +31,8 @@ export async function gameVoucherStatus(env:Env,b:any){
 export async function gameVoucherAdmin(env:Env,actor:Actor,url:URL,method:string,b:any={}){
  if(url.pathname==='/api/game-vouchers'&&method==='GET'){
   const date=url.searchParams.get('date')??day();if(!/^\d{4}-\d{2}-\d{2}$/.test(date))throw new HttpError(400,'日期格式不正確');
-  const {results}=await env.DB.prepare('SELECT * FROM game_vouchers WHERE claim_day=? ORDER BY created_at DESC LIMIT 200').bind(date).all<any>();
+  const q=(url.searchParams.get('q')??'').trim().slice(0,80);
+  const {results}=await env.DB.prepare("SELECT * FROM game_vouchers WHERE claim_day=? AND (?='' OR instr(lower(group_nickname),lower(?))>0 OR instr(lower(voucher_no),lower(?))>0) ORDER BY created_at DESC LIMIT 200").bind(date,q,q,q).all<any>();
   return {date,vouchers:results.map(r=>({...publicVoucher(r),approvedBy:r.approved_by,approvedAt:r.approved_at,redeemedBy:r.redeemed_by,redeemedAt:r.redeemed_at}))};
  }
  const match=url.pathname.match(/^\/api\/game-vouchers\/([0-9a-f-]{36})\/(approve|reject|redeem)$/);

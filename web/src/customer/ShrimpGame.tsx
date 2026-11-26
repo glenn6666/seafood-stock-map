@@ -9,8 +9,9 @@ import {CuteArt} from "./cute-art";
 import GameLeaderboard from './GameLeaderboard';
 import GameVoucherWallet from './GameVoucherWallet';
 import {LINE_GROUP_URL} from '../lib/game-vouchers';
-import {GAME_SECONDS,COUPON_CATCH_MIN,TOOL_FIT,TOOL_BEHAVIOR,pointsPerCatch,toolBlocksThreat,BOOT_PENALTY,gameScore,toolBehavior,rodCatchProtected,CRAB_ATTACK_WINDUP_SEC} from '../lib/game-rules';
+import {GAME_SECONDS,COUPON_SCORE_MIN,TOOL_FIT,TOOL_BEHAVIOR,pointsPerCatch,toolBlocksThreat,BOOT_PENALTY,gameScore,toolBehavior,rodCatchProtected,CRAB_ATTACK_WINDUP_SEC,CRAB_ATTACK_RANGE,CRAB_ALERT_RANGE} from '../lib/game-rules';
 import "./game-cute.css";
+import {GameAudio} from "./game-audio";
 import {useTaipeiDay} from "../lib/use-taipei-day";
 export type Coupon={code:string;discount:number;minTotal:number;expiresAt:string;scope?:string;restrictions?:string};
 type TargetId="shrimp"|"crab"|"lobster";type ToolId="rod"|"net";
@@ -87,6 +88,10 @@ const behindWeed=(o:Obj,g:ReturnType<typeof pondGeom>)=>{
 };
 export default function ShrimpGame({origin,onClose}:{origin:string;onClose:()=>void}){
  const [phase,setPhase]=useState<"intro"|"play"|"sending"|"done">("intro"),[msg,setMsg]=useState(""),[target,setTarget]=useState<TargetId>("shrimp"),[tool,setTool]=useState<ToolId>("net");
+ const audio=useRef<GameAudio|null>(null);
+ const [sound,setSound]=useState(()=>{try{return localStorage.getItem("game-sound")!=="off"}catch{return true}});
+ const playSound=(effect:Parameters<GameAudio["effect"]>[0])=>audio.current?.effect(effect);
+ async function toggleSound(){const next=!sound;setSound(next);try{localStorage.setItem("game-sound",next?"on":"off")}catch{}audio.current??=new GameAudio();audio.current.setEnabled(next);if(next)await audio.current.unlock()}
  const [,force]=useState(0),[flash,setFlash]=useState("");
  const [nickname,setNickname]=useState(()=>{try{return localStorage.getItem('shrimp-nickname')??''}catch{return ''}});
  const [playerId]=useState(()=>{try{const saved=localStorage.getItem('shrimp-player-id');if(saved&&/^[A-Za-z0-9_-]{20,64}$/.test(saved))return saved;const id=crypto.randomUUID();localStorage.setItem('shrimp-player-id',id);return id}catch{return crypto.randomUUID()}});
@@ -110,16 +115,17 @@ export default function ShrimpGame({origin,onClose}:{origin:string;onClose:()=>v
   for(const c of items){clampXY(c,g);c.turn=0;c.dash=0;c.linger=0}
   if(items[0])s.ripples.push({x:items[0].x,y:items[0].y,t:now});
   s.carry=null;s.carry2=null;s.risk=0;
-  setFlash(reason+" 再試一次！");
+  playSound("drop");setFlash(reason+" 再試一次！");
  };
- function returnHome(){const s=st.current;cancelAnimationFrame(s.raf);s.over=true;s.down=false;s.hold=null;s.carry=null;s.carry2=null;setPhase("intro");setMsg("");setFlash("");setPassed(false);setFinalScore(null)}
+ function returnHome(){audio.current?.stopMusic();const s=st.current;cancelAnimationFrame(s.raf);s.over=true;s.down=false;s.hold=null;s.carry=null;s.carry2=null;setPhase("intro");setMsg("");setFlash("");setPassed(false);setFinalScore(null)}
  async function start(){
+  audio.current??=new GameAudio();audio.current.setEnabled(sound);await audio.current.unlock();
   setMsg("");setPassed(false);setFinalScore(null);
   try{localStorage.setItem('shrimp-nickname',nickname.trim())}catch{/* Optional preference. */}
   try{const r=await fetch(origin+"/api/public/game/start",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"omit",body:JSON.stringify({target,tool,nickname:nickname.trim(),playerId})});if(!r.ok){setMsg(await errorText(r,"目前無法開始遊戲"));return}
    const d=await r.json();const s=st.current,n=target==="shrimp"?8:target==="lobster"?4:6;
    Object.assign(s,{gameId:d.gameId,end:performance.now()+(d.seconds??T.seconds)*1000,caught:0,boots:0,objs:[...Array.from({length:n},(_,i)=>spawn(i)),spawn(90,true)],last:performance.now(),over:false,down:false,hold:null,carry:null,carry2:null,risk:0,speed:0,left:GAME_SECONDS,dashIn:2+Math.random()*2,ripples:[],tx:30,ty:30,ptr:{x:30,y:30},grip:null});
-   setPhase("play");s.raf=requestAnimationFrame(tick);
+   audio.current.startMusic();setPhase("play");s.raf=requestAnimationFrame(tick);
   }catch{setMsg("連線中斷，請再試一次")}
  }
  function tick(now:number){
@@ -136,11 +142,11 @@ export default function ShrimpGame({origin,onClose}:{origin:string;onClose:()=>v
     if(target==='crab'&&o.hide<=0){
      if(o.attack>0){
       o.attack=Math.max(0,o.attack-dt);
-      if(o.attack===0&&s.down&&g.d(o.x,o.y,s.tx,s.ty)<.14*g.m){
+      if(o.attack===0&&s.down&&g.d(o.x,o.y,s.tx,s.ty)<CRAB_ATTACK_RANGE*g.m){
        if((s.carry&&rodCatchProtected(tool,s.carry.caughtAt,now))||toolBlocksThreat(target,tool))setFlash('狗熊哆嗦毛！'+K.name+'擋住了螃蟹鉗擊！');
        else{if(o===s.carry||o===s.carry2)dropPair(s,g,now,'螃蟹鉗擊，工具鬆開了！');s.hold=null;s.down=false;setFlash('狗熊哆嗦毛！先閃開，再按住工具')}
       }
-     }else if(o.actionIn<=0&&s.down&&g.d(o.x,o.y,s.tx,s.ty)<.19*g.m){o.attack=CRAB_ATTACK_WINDUP_SEC;o.actionIn=4+Math.random()*3;setFlash('狗熊哆嗦毛！小心螃蟹鉗擊')}
+     }else if(o.actionIn<=0&&s.down&&g.d(o.x,o.y,s.tx,s.ty)<CRAB_ALERT_RANGE*g.m){playSound("attack");o.attack=CRAB_ATTACK_WINDUP_SEC;o.actionIn=4+Math.random()*3;setFlash('狗熊哆嗦毛！小心螃蟹鉗擊')}
     }
     if(target==='lobster'){
      if(o.jump>0){o.jump=Math.max(0,o.jump-dt);if(o.jump===0)s.ripples.push({x:o.x,y:o.y,t:now})}
@@ -151,7 +157,7 @@ export default function ShrimpGame({origin,onClose}:{origin:string;onClose:()=>v
       if(s.hold?.id===o.id)s.hold=null;
       const angle=Math.atan2((o.y-s.ty)/sy,(o.x-s.tx)/sx)+(Math.random()-.5)*.6;
       o.jump=.6;o.dash=.6;o.hide=0;o.actionIn=5+Math.random()*3;o.vx=Math.cos(angle)*T.speed*6;o.vy=Math.sin(angle)*T.speed*6;
-      setFlash('閃身步！龍蝦跳走了，落水後再抓')
+      playSound('jump');setFlash('閃身步！龍蝦跳走了，落水後再抓')
      }
     }
    }
@@ -204,9 +210,9 @@ export default function ShrimpGame({origin,onClose}:{origin:string;onClose:()=>v
    else if(!s.hold||s.hold.id!==near.id)s.hold={id:near.id,since:now};
    else if(now-s.hold.since>=(near.boot?200:K.catchMs/K.fit[target])){
     s.hold=null;
-    if(near.boot){s.boots++;setFlash(`撈到鞋子！扣 ${BOOT_PENALTY} 分`);Object.assign(near,spawn(near.id,true))}
+    if(near.boot){playSound("shoe");s.boots++;setFlash(`撈到鞋子！扣 ${BOOT_PENALTY} 分`);Object.assign(near,spawn(near.id,true))}
     else{
-     s.carry=near;s.carry2=null;s.risk=0;near.linger=0;near.dash=0;near.caughtAt=now;
+     playSound("hook");s.carry=near;s.carry2=null;s.risk=0;near.linger=0;near.dash=0;near.caughtAt=now;
      // 網子可同時撈兩隻，只收附近的獵物。
      if(tool==="net"){
       const others=s.objs.filter(o=>o!==near&&!o.boot&&o.hide<=0&&o.jump<=0&&(target!=="shrimp"||!behindWeed(o,g)));
@@ -237,20 +243,21 @@ export default function ShrimpGame({origin,onClose}:{origin:string;onClose:()=>v
   if(!s.carry)return;
   const c=s.carry,c2=s.carry2;s.carry=null;s.carry2=null;const g=gNow();
   if(g.d(s.tx,s.ty,BUCKET.x,BUCKET.y)<g.dropR){
-   const n=c2?2:1;s.caught+=n;
+   const n=c2?2:1;s.caught+=n;playSound("bucket");
    setFlash(c2?`一次 2 隻！共 ${s.caught} 隻`:`入桶！共 ${s.caught} 隻`);
    const i=s.objs.indexOf(c);if(i>=0)s.objs[i]=spawn(c.id+100);
    if(c2){const j=s.objs.indexOf(c2);if(j>=0)s.objs[j]=spawn(c2.id+100)}
   }else{clampXY(c,g);if(c2)clampXY(c2,g);setFlash("還沒到"+(target==="shrimp"?"碗":"水桶")+"就放開了")}
  }
  async function finish(){
-  const s=st.current;if(s.over)return;s.over=true;cancelAnimationFrame(s.raf);setPhase("sending");
+  const s=st.current;if(s.over)return;s.over=true;audio.current?.stopMusic();cancelAnimationFrame(s.raf);setPhase("sending");
   try{const r=await fetch(origin+"/api/public/game/finish",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"omit",body:JSON.stringify({gameId:s.gameId,caught:s.caught,boots:s.boots})});
    if(!r.ok){setMsg(await errorText(r,"結算失敗"));setPhase("done");return}
-   const d=await r.json();setFinalScore(d.score);setPassed(!!d.won);setBoardRefresh(n=>n+1);setPhase("done");
+   const d=await r.json();playSound(d.eligible?"win":"end");setFinalScore(d.score);setPassed(!!d.won);setBoardRefresh(n=>n+1);setPhase("done");
   }catch{setMsg("連線中斷，這局無法結算");setPhase("done")}
  }
- useEffect(()=>{const s=st.current;return()=>{s.over=true;cancelAnimationFrame(s.raf)}},[]);
+ useEffect(()=>{const s=st.current;return()=>{s.over=true;cancelAnimationFrame(s.raf);audio.current?.close()}},[]);
+ useEffect(()=>{const change=()=>{if(document.hidden)audio.current?.pause();else audio.current?.resume()};document.addEventListener("visibilitychange",change);return()=>document.removeEventListener("visibilitychange",change)},[]);
  // 圓體字型只在打開遊戲時載入，不影響其他頁面
  useEffect(()=>{if(document.getElementById("game-cute-font"))return;const l=document.createElement("link");l.id="game-cute-font";l.rel="stylesheet";l.href=GAME_FONT;document.head.appendChild(l)},[]);
  // 開局時池塘才掛上 DOM，依實際長寬再夾一次，避免全部擠在角落
@@ -269,13 +276,15 @@ export default function ShrimpGame({origin,onClose}:{origin:string;onClose:()=>v
   q.grip={x:(e.clientX-r.left)/r.width*100,y:(e.clientY-r.top)/r.height*100};
   q.ptr={x:Math.max(0,Math.min(100,q.grip.x)),y:Math.max(0,Math.min(100,(e.clientY-off-r.top)/r.height*100))}};
  const s=st.current,holdPct=s.hold?Math.min(1,(performance.now()-s.hold.since)/(K.catchMs/K.fit[target])):0;
- const left=Math.max(0,COUPON_CATCH_MIN-s.caught),timeLow=phase==="play"&&s.left<=10;
+ const liveScore=gameScore(target,tool,s.caught,s.boots);
+ const left=Math.max(0,COUPON_SCORE_MIN-liveScore),timeLow=phase==="play"&&s.left<=10;
  const swimFrame=reduce?1:(Math.floor(performance.now()/220)%2)+1;
  const vessel=target==="shrimp"?"碗":"水桶";
  return <div className="sheet-backdrop game-backdrop" onClick={phase==="play"?undefined:phase==="done"?returnHome:onClose}><div className={"sheet game cute"+(reduce?" reduce":"")+" ph-"+phase} role="dialog" aria-label="樂甜釣蝦場" onClick={e=>e.stopPropagation()}>
   <div className="game-top">
    {phase==="play"||phase==="sending"?<span className="icon-btn ghost" aria-hidden/>:<button type="button" className="icon-btn" aria-label={phase==="done"?"返回遊戲首頁":"關閉遊戲"} onClick={phase==="done"?returnHome:onClose}>×</button>}
    {phase!=="intro"&&<h2><Sprite name="shrimp" className="title-ico"/>樂甜釣蝦場</h2>}
+   <button type="button" className="game-sound" onClick={toggleSound} aria-pressed={sound} aria-label={sound?"關閉音樂與音效":"開啟音樂與音效"}>{sound?"🔊":"🔇"}</button>
    <span className="mode-badge"><i/>免費玩・贏折價券</span>
   </div>
   <p className="game-today">今天日期：<time dateTime={today}>{today.replaceAll("-","/")}</time></p>
@@ -296,7 +305,7 @@ export default function ShrimpGame({origin,onClose}:{origin:string;onClose:()=>v
    <p className="quick-play">按住對準 → 慢慢拖回{vessel} → 放開<small>撈到鞋子扣 50 分</small></p>
    {msg&&<p className="err">{msg}</p>}
    <button type="button" className="primary grow btn-gold" onClick={start}>開始抓{T.name} <span aria-hidden>▶</span></button>
-   <p className="game-prize"><span className="ticket" aria-hidden>🎟️</span><span><b>抓滿 6 隻可領券</b><br/>店內滿 NT$1,000 折 NT$5<small>今天有效，團購不適用且不計入滿額。<br/>加入 LINE、填群組暱稱，每天成功限領一次。</small></span></p>
+   <p className="game-prize"><span className="ticket" aria-hidden>🎟️</span><span><b>1500 分以上可領券</b><br/>店內滿 NT$1,000 折 NT$5<small>今天有效，團購不適用且不計入滿額。<br/>加入 LINE、填群組暱稱，每天成功限領一次。</small></span></p>
    <a className="voucher-join" href={LINE_GROUP_URL} target="_blank" rel="noopener noreferrer">加入 LINE 社群 ↗</a>
    <details className="game-extra"><summary>玩法提示</summary><p>按住後等圈圈填滿，再拖回{vessel}放開。工具前端在手指上方，請對準前端。</p><p>{T.desc} 拖太快會掉落。</p></details>
    <details className="game-extra"><summary>{nickname.trim()?`排行榜暱稱：${nickname.trim()}（公開上榜）`:"排行榜暱稱（選填）"}</summary><label className="game-nickname">你的暱稱<input aria-label="排行榜暱稱（選填）" value={nickname} onChange={e=>setNickname([...e.target.value].slice(0,12).join(""))} maxLength={24} placeholder="例如：小蝦高手" autoComplete="off"/><small>限 12 字，暱稱與分數會公開。留空不上榜，請勿填姓名或電話。</small></label></details>
@@ -308,7 +317,7 @@ export default function ShrimpGame({origin,onClose}:{origin:string;onClose:()=>v
     <div className={"hud-cell hud-time"+(timeLow?" low":"")}><small>剩餘時間</small><strong><b>{Math.ceil(s.left)}</b><small>s</small></strong></div>
     <div className="hud-cell"><small>積分</small><strong>{gameScore(target,tool,s.caught,s.boots)}</strong></div>
    </div>
-   <div className="goal-bar"><div><b>{K.name} · 每隻 {unitPoints} 分</b><span>{left>0?`再抓 ${left} 隻可領券`:"已達領券門檻，繼續衝高分！"}</span></div><div className="goal-track" aria-hidden><i style={{width:Math.min(100,s.caught/COUPON_CATCH_MIN*100)+"%"}}/></div></div>
+   <div className="goal-bar"><div><b>{K.name} · 每隻 {unitPoints} 分</b><span>{left>0?`再 ${left} 分可領券`:"已達領券門檻，繼續衝高分！"}</span></div><div className="goal-track" aria-hidden><i style={{width:Math.min(100,liveScore/COUPON_SCORE_MIN*100)+"%"}}/></div></div>
    <div className="pond-wrap">
    <div className={"pond t-"+target} ref={pond} aria-label={`池塘：按住放下${K.name}，拖到${vessel}放開`} style={{["--pond-bg-tall" as never]:POND_BG_TALL,["--pond-bg-wide" as never]:POND_BG_WIDE} as React.CSSProperties}
     onPointerDown={e=>{if(phase!=="play")return;(e.target as HTMLElement).setPointerCapture?.(e.pointerId);at(e);const q=st.current;q.down=true;q.ripples.push({x:q.ptr.x,y:q.ptr.y,t:performance.now()})}}
@@ -339,7 +348,7 @@ export default function ShrimpGame({origin,onClose}:{origin:string;onClose:()=>v
    <p className="result-kicker">30 秒挑戰完成</p>
    <h3>{(finalScore??gameScore(target,tool,s.caught,s.boots)).toLocaleString()} 分</h3>
    <div className="result-score"><Sprite name={target} className="result-ico" caught/><b>{s.caught}</b><small>隻{T.name} · {K.name}</small></div><p className="game-rule">撈到鞋子 {s.boots} 次，扣 {s.boots*BOOT_PENALTY} 分，積分最低 0 分。</p>
-   {passed?<GameVoucherWallet origin={origin} gameId={s.gameId} playerId={playerId} eligible/>:!msg&&<p className="game-rule">這局抓到 {s.caught} 隻{T.name}；抓到 6 隻以上，加入 LINE 社群並填暱稱即可領券，同一暱稱每天成功限領一次。</p>}
+   {passed?<GameVoucherWallet origin={origin} gameId={s.gameId} playerId={playerId} eligible/>:!msg&&<p className="game-rule">這局抓到 {s.caught} 隻{T.name}；達到 1500 分（含），加入 LINE 社群並填暱稱即可領券，同一暱稱每天成功限領一次。</p>}
    {s.caught>0&&nickname.trim()&&!msg&&<p className="game-rule">已記錄本局積分，每個分類保留你的最高分。</p>}
    <GameLeaderboard origin={origin} target={target} refresh={boardRefresh}/>
    {msg&&<p className="err">{msg}</p>}

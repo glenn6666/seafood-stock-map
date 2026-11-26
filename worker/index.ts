@@ -7,7 +7,7 @@ import {ledgerRoute} from "./ledger";
 import {publicDineMenu,publicDinePhoto,createDineOrder,dineAdminRoute,uploadDinePhoto} from "./dine";
 import {isValidImageUrl} from "../web/src/lib/dine-menu";
 import {COUPON_SCOPE,COUPON_RULE,storeCouponSubtotal} from '../web/src/lib/coupon-policy';
-import {GAME_SECONDS,COUPON_CATCH_MIN,GAME_RULE_VERSION,gameScore,pointsPerCatch,endOfTaipeiDay,type GameTool} from '../web/src/lib/game-rules';
+import {GAME_SECONDS,COUPON_SCORE_MIN,GAME_RULE_VERSION,gameScore,pointsPerCatch,endOfTaipeiDay,type GameTool} from '../web/src/lib/game-rules';
 
 export type Env={DB:D1Database;INVENTORY_TOKEN:string;ALLOWED_ORIGIN:string};
 type Role="admin"|"staff";
@@ -195,10 +195,10 @@ async function rateLimit(env:Env,request:Request,bucket:keyof typeof LIMITS){
 }
 
 // ---------- 釣蝦遊戲與優惠券 ----------
-// 固定 30 秒不限捕獲數，以難度計分；6 隻以上發店內商品券，台灣時間當日有效。
+// 固定 30 秒不限捕獲數，以難度計分；1500 分以上可領店內商品券，台灣時間當日有效。
 // 遊戲在前端進行，伺服器只能做合理性檢查（開局時間、最短／最長時間、單局只能領一次、IP 限額），無法完全防止腳本作弊；折扣金額固定且小，風險有限。
 // 海鮮與工具的適合度決定每隻積分；後端依開局工具重算，不接受客戶端自訂倍率。
-const TARGETS={shrimp:{goal:COUPON_CATCH_MIN,seconds:GAME_SECONDS},crab:{goal:COUPON_CATCH_MIN,seconds:GAME_SECONDS},lobster:{goal:COUPON_CATCH_MIN,seconds:GAME_SECONDS}} as const;
+const TARGETS={shrimp:{goal:COUPON_SCORE_MIN,seconds:GAME_SECONDS},crab:{goal:COUPON_SCORE_MIN,seconds:GAME_SECONDS},lobster:{goal:COUPON_SCORE_MIN,seconds:GAME_SECONDS}} as const;
 const TOOLS=["rod","net"] as const;
 type Target=keyof typeof TARGETS;
 const GAME={seconds:TARGETS.shrimp.seconds,target:TARGETS.shrimp.goal,graceSec:15},COUPON={discount:5,minTotal:1000};
@@ -213,7 +213,7 @@ async function gameStart(env:Env,request:Request,b:any){
  await env.DB.prepare("INSERT INTO game_sessions (id_hash,ip_hash,started_at,target,tool,nickname,player_hash,difficulty,rule_version) VALUES (?,?,?,?,?,?,?,?,?)").bind(await sha256(id),await ipHash(env,request),now,target,tool,nickname,typeof b.playerId==='string'&&/^[A-Za-z0-9_-]{20,64}$/.test(b.playerId)?await sha256('player|'+b.playerId):'','normal',GAME_RULE_VERSION).run();
  if(Math.random()<0.02)await env.DB.prepare("DELETE FROM game_sessions WHERE started_at<?").bind(now-86400).run();
  const t=TARGETS[target];
- return {gameId:id,seconds:t.seconds,target:t.goal,couponCatchMin:COUPON_CATCH_MIN,kind:target,tool,pointsPerCatch:pointsPerCatch(target,tool as GameTool),ruleVersion:GAME_RULE_VERSION};
+ return {gameId:id,seconds:t.seconds,target:t.goal,couponScoreMin:COUPON_SCORE_MIN,kind:target,tool,pointsPerCatch:pointsPerCatch(target,tool as GameTool),ruleVersion:GAME_RULE_VERSION};
 }
 async function gameFinish(env:Env,request:Request,b:any){
  if(typeof b.gameId!=="string"||!/^[A-Za-z0-9_-]{20,64}$/.test(b.gameId)||!Number.isSafeInteger(b.caught)||b.caught<0)throw new HttpError(400,"遊戲資料不正確");
@@ -229,9 +229,9 @@ async function gameFinish(env:Env,request:Request,b:any){
  if(!Number.isSafeInteger(boots)||boots<0)throw new HttpError(400,"鞋子次數不正確");
  const score=gameScore(g.target as Target,g.tool as GameTool,b.caught,boots);
  if(!Number.isSafeInteger(score))throw new HttpError(400,"遊戲分數不正確");
- const passed=b.caught>=COUPON_CATCH_MIN;
+ const passed=score>=COUPON_SCORE_MIN;
  // 一局只記錄一次成績；達標只取得資格，發券另由門市核對。
- const statements=[env.DB.prepare("UPDATE game_sessions SET finished=1,caught=?,finished_at=? WHERE id_hash=? AND finished=0").bind(b.caught,nowIso(),idh)];
+ const statements=[env.DB.prepare("UPDATE game_sessions SET finished=1,caught=?,final_score=?,finished_at=? WHERE id_hash=? AND finished=0").bind(b.caught,score,nowIso(),idh)];
  if(b.caught>0&&g.nickname&&g.player_hash)statements.push(env.DB.prepare('INSERT INTO game_scores (id,player_hash,nickname,target,tool,elapsed_sec,created_at,difficulty,rule_version,score,caught) SELECT ?,?,?,?,?,?,?,?,?,?,? WHERE changes()=1').bind(idh,g.player_hash,g.nickname,g.target,g.tool,GAME_SECONDS,nowIso(),g.difficulty,GAME_RULE_VERSION,score,b.caught));
  const [r]=await env.DB.batch(statements);
  if(!r.meta.changes)throw new HttpError(409,"這局已經結束了，請再玩一局");

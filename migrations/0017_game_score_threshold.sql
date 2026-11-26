@@ -1,0 +1,1 @@
+ALTER TABLE game_sessions ADD COLUMN final_score INTEGER NOT NULL DEFAULT 0;

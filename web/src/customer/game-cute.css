@@ -337,3 +337,8 @@
 .sheet.game.cute .game-extra summary{cursor:pointer;font-size:14px;font-weight:900}
 .sheet.game.cute .game-extra p{margin:8px 0 0}
 .sheet.game.cute .game-extra .game-nickname{margin:8px 0 0;border:0;padding:0;background:transparent}
+
+.sheet.game.cute .game-sound{flex-shrink:0;width:34px;height:34px;padding:0;border:1px solid #b7d5df;border-radius:50%;background:#fff;font-size:18px;cursor:pointer}
+.sheet.game.cute .voucher-redeemed{background:#ececec;border-color:#777;color:#555}
+
+@media(max-width:520px){.sheet.game.cute:not(.ph-intro) .mode-badge{display:none}.sheet.game.cute .game-top h2{font-size:18px}}

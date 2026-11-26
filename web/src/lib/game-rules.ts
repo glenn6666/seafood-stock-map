@@ -1,6 +1,6 @@
 export const GAME_SECONDS=30;
-export const COUPON_CATCH_MIN=6;
-export const GAME_RULE_VERSION=10;
+export const COUPON_SCORE_MIN=1500;
+export const GAME_RULE_VERSION=11;
 export const BOOT_PENALTY=50;
 /** Higher suitability is easier to catch and carry, and awards fewer points. */
 export const TOOL_FIT={
@@ -14,6 +14,8 @@ export const TOOL_BEHAVIOR={
 } as const;
 export const CATCH_POINTS={shrimp:100,crab:150,lobster:200} as const;
 export const CRAB_ATTACK_WINDUP_SEC=1.2;
+export const CRAB_ATTACK_RANGE=.17;
+export const CRAB_ALERT_RANGE=.22;
 export const ROD_CATCH_GRACE_MS=2400;
 export function toolBehavior(target:keyof typeof CATCH_POINTS,tool:GameTool){
  return tool==='rod'&&target!=='shrimp'?{r:6,catchMs:400,carry:75,lag:.035}:TOOL_BEHAVIOR[tool];
