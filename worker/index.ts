@@ -201,7 +201,7 @@ async function rateLimit(env:Env,request:Request,bucket:keyof typeof LIMITS){
 const TARGETS={shrimp:{goal:COUPON_SCORE_MIN,seconds:GAME_SECONDS},crab:{goal:COUPON_SCORE_MIN,seconds:GAME_SECONDS},lobster:{goal:COUPON_SCORE_MIN,seconds:GAME_SECONDS}} as const;
 const TOOLS=["rod","net"] as const;
 type Target=keyof typeof TARGETS;
-const GAME={seconds:TARGETS.shrimp.seconds,target:TARGETS.shrimp.goal,graceSec:15},COUPON={discount:5,minTotal:1000};
+const GAME={seconds:TARGETS.shrimp.seconds,target:TARGETS.shrimp.goal,graceSec:15},COUPON={discount:10,minTotal:1000};
 async function gameStart(env:Env,request:Request,b:any){
  const target=(b?.target??"shrimp") as Target,tool=b?.tool??"rod";
  if(!Object.hasOwn(TARGETS,target)||!(TOOLS as readonly string[]).includes(tool))throw new HttpError(400,"遊戲資料不正確");

@@ -26,7 +26,7 @@ export default function GameVoucherWallet({origin,gameId,playerId,eligible=false
  if(!receipt&&!canClaim&&!eligible)return null;
  return <details className="game-voucher-wallet" open={eligible||undefined}><summary>🎟 我的遊戲優惠券{current?' · '+voucherStatus[receipt!.voucher.status]:''}</summary><div>
   {current?<section className={'coupon-card voucher-'+receipt!.voucher.status}>
-   <b>{voucherStatus[receipt!.voucher.status]}</b><strong className="voucher-date">有效日期：{receipt!.voucher.claimDay.replaceAll("-","/")}（今天有效）</strong><span>店內商品滿 NT$1,000 折 NT$5</span>
+   <b>{voucherStatus[receipt!.voucher.status]}</b><strong className="voucher-date">有效日期：{receipt!.voucher.claimDay.replaceAll("-","/")}（今天有效）</strong><span>店內商品滿 NT$1,000 折 NT$10</span>
    <strong className="voucher-nickname">群組暱稱：{receipt!.voucher.groupNickname}</strong><code>{receipt!.voucher.voucherNo}</code>
    <small>{VOUCHER_RULE}</small>
    {receipt!.voucher.status==='pending'?<p>尚不能使用。請向門市出示 LINE 社群會員畫面；店員核對暱稱後才會發券。</p>:receipt!.voucher.status==='approved'?<p>到店出示此畫面，請店員核對日期、暱稱與消費條件後在後台核銷。每天限領一次，每券限用一次。</p>:<p>這張券已使用。</p>}

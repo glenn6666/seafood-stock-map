@@ -305,7 +305,7 @@ export default function ShrimpGame({origin,onClose}:{origin:string;onClose:()=>v
    <p className="quick-play">按住對準 → 慢慢拖回{vessel} → 放開<small>撈到鞋子扣 50 分</small></p>
    {msg&&<p className="err">{msg}</p>}
    <button type="button" className="primary grow btn-gold" onClick={start}>開始抓{T.name} <span aria-hidden>▶</span></button>
-   <p className="game-prize"><span className="ticket" aria-hidden>🎟️</span><span><b>1500 分以上可領券</b><br/>店內滿 NT$1,000 折 NT$5<small>今天有效，團購不適用且不計入滿額。<br/>加入 LINE、填群組暱稱，每天成功限領一次。</small></span></p>
+   <p className="game-prize"><span className="ticket" aria-hidden>🎟️</span><span><b>1500 分以上可領券</b><br/>店內滿 NT$1,000 折 NT$10<small>今天有效，團購不適用且不計入滿額。<br/>加入 LINE、填群組暱稱，每天成功限領一次。</small></span></p>
    <a className="voucher-join" href={LINE_GROUP_URL} target="_blank" rel="noopener noreferrer">加入 LINE 社群 ↗</a>
    <details className="game-extra"><summary>玩法提示</summary><p>按住後等圈圈填滿，再拖回{vessel}放開。工具前端在手指上方，請對準前端。</p><p>{T.desc} 拖太快會掉落。</p></details>
    <details className="game-extra"><summary>{nickname.trim()?`排行榜暱稱：${nickname.trim()}（公開上榜）`:"排行榜暱稱（選填）"}</summary><label className="game-nickname">你的暱稱<input aria-label="排行榜暱稱（選填）" value={nickname} onChange={e=>setNickname([...e.target.value].slice(0,12).join(""))} maxLength={24} placeholder="例如：小蝦高手" autoComplete="off"/><small>限 12 字，暱稱與分數會公開。留空不上榜，請勿填姓名或電話。</small></label></details>

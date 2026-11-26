@@ -21,7 +21,7 @@ await p.click(".unit-chips button:has-text('冰鮮魚展示櫃')");await p.waitF
 let pos=await p.evaluate(()=>window.__shop.projectItem("demo-ice-1"));await p.mouse.click(pos.x,pos.y);
 await p.waitForSelector(".sheet",{timeout:5000});ok((await p.textContent(".sheet")).includes("冰鮮白鯧"),"無門展示櫃可直接點商品");await p.click(".sheet-close");
 // 遊戲
-await p.click(".game-banner");await p.waitForSelector(".sheet.game");ok((await p.textContent(".sheet.game")).includes("滿 NT$1,000 折 NT$5"),"遊戲規則顯示獎勵");
+await p.click(".game-banner");await p.waitForSelector(".sheet.game");ok((await p.textContent(".sheet.game")).includes("滿 NT$1,000 折 NT$10"),"遊戲規則顯示獎勵");
 const G=process.env.GSHOTS||"/workspace/screens-game3/";(await import("node:fs")).mkdirSync(G,{recursive:true});
 await p.screenshot({path:S+"5-game-intro.png"});await p.screenshot({path:G+"1-intro-shrimp-rod.png"});
 ok((await p.locator(".pick-row").first().locator(".pick").allTextContents()).join("|").match(/蝦.*螃蟹.*龍蝦/),"三種目標可選");
