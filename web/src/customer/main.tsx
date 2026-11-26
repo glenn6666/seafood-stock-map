@@ -135,7 +135,7 @@ function Shop({origin}:{origin:string}){
    </div>
   </div>;
  const listBody=!menu?<p className="hint">{msg||"載入中…"}</p>
-  :!menu.length?<><p className="hint">目前沒有開放訂購的商品，仍可先玩釣蝦遊戲拿優惠券。</p><button className="game-banner" onClick={()=>setGame(true)}><span>🦐</span><b>樂甜釣蝦場</b><small>抓蝦／螃蟹／龍蝦，30 秒達到 1500 分以上，贏今天有效的店內商品優惠券</small></button></>
+  :!menu.length?<><p className="hint">目前沒有開放訂購的商品，仍可先玩釣蝦遊戲拿優惠券。</p><button className="game-banner" onClick={()=>setGame(true)}><span>🦐</span><b>樂甜釣蝦場</b><small>抓蝦／螃蟹／龍蝦，30 秒達到 1500 分以上，每天扭蛋一次：90% 折價券、10% 神秘小禮</small></button></>
   :checkout?<form className="card form" onSubmit={submit}><div className="checkout-heading"><span>確認商品，再填寫聯絡資料</span><h2>確認您的訂單</h2></div><h3>選購商品 · {count} 件</h3>
   <ul className="lines">{lines.map(m=><li key={m.id}><span>{m.name} <small>{m.spec}</small></span><span className="cart-qty"><button type="button" aria-label={`減少${m.name}`} onClick={()=>setQty(m,cart[m.id]-1)}>－</button>{cart[m.id]}<button type="button" aria-label={`增加${m.name}`} disabled={cart[m.id]>=m.available} onClick={()=>setQty(m,cart[m.id]+1)}>＋</button></span><span>NT$ {(priceNum(m.price)*cart[m.id]).toLocaleString()}</span></li>)}</ul>
   {discount>0&&<p className="subtotal">小計 NT$ {subtotal.toLocaleString()}・折抵 −NT$ {discount.toLocaleString()}</p>}<p className="total">合計 NT$ {total.toLocaleString()}</p>
@@ -155,7 +155,7 @@ function Shop({origin}:{origin:string}){
     </Suspense>
     <p className="stage-hint">{focus<0?"點冰箱或魚缸靠近看看，左右滑動切換":sceneUnits[focus]?.type==="tank"?`${sceneUnits[focus]?.name}：點游動的海鮮挑選`:noDoor(sceneUnits[focus])?`${sceneUnits[focus]?.name}：點商品挑選`:`${sceneUnits[focus]?.name}：點門打開，再點商品`}</p>
     {focus>=0&&<div className="stage-nav"><button aria-label="上一個" onClick={()=>setFocus(Math.max(-1,focus-1))}>‹</button><button onClick={()=>setFocus(-1)}>總覽</button><button aria-label="下一個" disabled={focus>=sceneUnits.length-1} onClick={()=>setFocus(Math.min(sceneUnits.length-1,focus+1))}>›</button></div>}
-    {<button className="game-banner" onClick={()=>setGame(true)}><span>🦐</span><b>樂甜釣蝦場</b><small>抓蝦／螃蟹／龍蝦，30 秒達到 1500 分以上，贏今天有效的店內商品優惠券</small></button>}
+    {<button className="game-banner" onClick={()=>setGame(true)}><span>🦐</span><b>樂甜釣蝦場</b><small>抓蝦／螃蟹／龍蝦，30 秒達到 1500 分以上，每天扭蛋一次：90% 折價券、10% 神秘小禮</small></button>}
    </section>:<>
     <div className="menu">{shown.map(itemCard)}</div>
     {!shown.length&&<p className="hint">{q?`找不到「${q}」相關的商品，換個關鍵字或分類看看。`:"這個分類目前沒有開放訂購的商品。"}</p>}

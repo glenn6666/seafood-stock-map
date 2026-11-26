@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import {build} from 'esbuild';
+const bundle=await build({entryPoints:['worker/game-prizes.ts'],bundle:true,write:false,format:'esm',platform:'node'});
+const {drawGamePrize}=await import('data:text/javascript;base64,'+Buffer.from(bundle.outputFiles[0].text).toString('base64'));
+const prizes=Array.from({length:100},(_,i)=>drawGamePrize(a=>{a[0]=i;return a}));
+assert.equal(prizes.filter(p=>p==='coupon').length,90);
+assert.equal(prizes.filter(p=>p==='gift').length,10);
+let calls=0;
+assert.equal(drawGamePrize(a=>{a[0]=calls++===0?4294967295:99;return a}),'gift');
+assert.equal(calls,2,'out-of-range samples are rejected instead of biased');
+console.log('Exact 90/10 prize boundary and unbiased sampling passed.');

@@ -342,3 +342,21 @@
 .sheet.game.cute .voucher-redeemed{background:#ececec;border-color:#777;color:#555}
 
 @media(max-width:520px){.sheet.game.cute:not(.ph-intro) .mode-badge{display:none}.sheet.game.cute .game-top h2{font-size:18px}}
+
+.gacha-prize-title{display:block;font-size:22px;font-weight:900;margin:10px 0}
+.gacha-drawing{display:flex;align-items:center;justify-content:center;gap:12px;padding:20px;background:#fff5dc;border-radius:16px;margin:12px 0}
+.gacha-drawing span{font-size:48px;animation:gacha-wiggle .3s ease-in-out infinite alternate}
+@keyframes gacha-wiggle{from{transform:rotate(-12deg)}to{transform:rotate(12deg)}}
+@media(prefers-reduced-motion:reduce){.gacha-drawing span{animation:none}}
+
+.gacha-machine{width:130px;margin:20px auto 12px;filter:drop-shadow(0 5px 0 #204b6020)}
+.gacha-globe{height:100px;border:4px solid #204b60;border-radius:55% 55% 25% 25%;background:#e8faff;position:relative;overflow:hidden}
+.gacha-globe i{position:absolute;width:30px;height:30px;border-radius:50%;border:2px solid #204b60;background:linear-gradient(#ffbf73 50%,#fff 50%);bottom:7px;left:12px;transform:rotate(-20deg)}
+.gacha-globe i:nth-child(2){left:45px;bottom:4px;background:linear-gradient(#80d6c6 50%,#fff 50%);transform:rotate(18deg)}
+.gacha-globe i:nth-child(3){left:78px;bottom:10px;background:linear-gradient(#ff8b9e 50%,#fff 50%)}
+.gacha-globe i:nth-child(4){left:29px;bottom:38px;background:linear-gradient(#ffd667 50%,#fff 50%);transform:rotate(35deg)}
+.gacha-globe i:nth-child(5){left:64px;bottom:40px;background:linear-gradient(#baa0ec 50%,#fff 50%);transform:rotate(-35deg)}
+.gacha-base{height:65px;border:4px solid #204b60;border-top:0;border-radius:0 0 14px 14px;background:#ffb3a3;text-align:center}
+.gacha-base span{display:block;font-size:24px;color:#204b60;line-height:34px}.gacha-base b{display:block;width:42px;height:15px;border-radius:12px 12px 2px 2px;background:#204b60;margin:auto}
+.gacha-machine.is-drawing .gacha-globe i{animation:gacha-wiggle .2s ease-in-out infinite alternate}
+@media(prefers-reduced-motion:reduce){.gacha-machine.is-drawing .gacha-globe i{animation:none}}
