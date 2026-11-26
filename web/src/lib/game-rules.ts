@@ -1,5 +1,5 @@
 export const GAME_SECONDS=30;
-export const COUPON_SCORE_MIN=1500;
+export const COUPON_SCORE_MIN=2000;
 export const GAME_RULE_VERSION=11;
 export const BOOT_PENALTY=50;
 /** Higher suitability is easier to catch and carry, and awards fewer points. */

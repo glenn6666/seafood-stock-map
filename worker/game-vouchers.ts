@@ -13,11 +13,11 @@ export async function claimGameVoucher(env:Env,b:any){
  if(b.joined!==true)throw new HttpError(400,'請先加入 LINE 社群再領券');
  const gameHash=await sha256(b.gameId),playerHash=await sha256('player|'+b.playerId),tokenHash=await sha256(b.claimToken);
  const g=await env.DB.prepare('SELECT * FROM game_sessions WHERE id_hash=?').bind(gameHash).first<any>();
- if(!g||g.player_hash!==playerHash||!g.finished||g.final_score<COUPON_SCORE_MIN||g.rule_version!==GAME_RULE_VERSION)throw new HttpError(400,'尚未取得領券資格，請先完成遊戲並達到 1500 分（含）');
+ if(!g||g.player_hash!==playerHash||!g.finished||g.final_score<COUPON_SCORE_MIN||g.rule_version!==GAME_RULE_VERSION)throw new HttpError(400,'尚未取得領券資格，請先完成遊戲並達到 2000 分（含）');
  if(!g.finished_at||day(new Date(g.finished_at))!==claimDay)throw new HttpError(409,'這局領券資格已過期，請今天再挑戰');
  const prior=await env.DB.prepare('SELECT * FROM game_vouchers WHERE token_hash=?').bind(tokenHash).first<any>();
  if(prior){if(prior.game_hash!==gameHash||prior.player_hash!==playerHash)throw new HttpError(409,'領券識別碼已使用，請重新整理');return {voucher:publicVoucher(prior)}}
- if(b.drawVersion!==1)throw new HttpError(409,'扭蛋玩法已更新，請重新整理頁面後再試');
+ if(b.drawVersion!==2)throw new HttpError(409,'扭蛋玩法已更新，請重新整理頁面後再試');
  const id=crypto.randomUUID(),ts=issuedAt.toISOString(),nicknameKey=await sha256(nickname.toLocaleLowerCase('zh-TW'));
  const voucherNo='AX-'+claimDay.replaceAll('-','')+'-'+crypto.randomUUID().replaceAll('-','').slice(0,10).toUpperCase();
  const r=await env.DB.prepare("INSERT OR IGNORE INTO game_vouchers(id,token_hash,game_hash,player_hash,nickname_key,group_nickname,claim_day,voucher_no,status,created_at,expires_at,prize_type) VALUES(?,?,?,?,?,?,?,?,'approved',?,?,?)").bind(id,tokenHash,gameHash,playerHash,nicknameKey,nickname,claimDay,voucherNo,ts,endOfTaipeiDay(issuedAt),drawGamePrize()).run();

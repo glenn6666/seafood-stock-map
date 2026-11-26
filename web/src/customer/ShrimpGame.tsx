@@ -305,7 +305,7 @@ export default function ShrimpGame({origin,onClose}:{origin:string;onClose:()=>v
    <p className="quick-play">按住對準 → 慢慢拖回{vessel} → 放開<small>撈到鞋子扣 50 分</small></p>
    {msg&&<p className="err">{msg}</p>}
    <button type="button" className="primary grow btn-gold" onClick={start}>開始抓{T.name} <span aria-hidden>▶</span></button>
-   <p className="game-prize"><span className="ticket" aria-hidden>🎟️</span><span><b>1500 分以上，每天扭蛋一次</b><br/>90% 折價券・10% 神秘小禮<small>折價券：店內滿 NT$1,000 折 NT$10，團購不適用。<br/>神秘小禮免消費，需入群；填群組暱稱，每天限扭一次，獎項今天有效。</small></span></p>
+   <p className="game-prize"><span className="ticket" aria-hidden>🎟️</span><span><b>2000 分以上，每天扭蛋一次</b><br/>95% 折價券・5% 神秘小禮<small>折價券：店內滿 NT$1,000 折 NT$10，團購不適用。<br/>神秘小禮免消費，需入群；填群組暱稱，每天限扭一次，獎項今天有效。</small></span></p>
    <a className="voucher-join" href={LINE_GROUP_URL} target="_blank" rel="noopener noreferrer">加入 LINE 社群 ↗</a>
    <details className="game-extra"><summary>玩法提示</summary><p>按住後等圈圈填滿，再拖回{vessel}放開。工具前端在手指上方，請對準前端。</p><p>{T.desc} 拖太快會掉落。</p></details>
    <details className="game-extra"><summary>{nickname.trim()?`排行榜暱稱：${nickname.trim()}（公開上榜）`:"排行榜暱稱（選填）"}</summary><label className="game-nickname">你的暱稱<input aria-label="排行榜暱稱（選填）" value={nickname} onChange={e=>setNickname([...e.target.value].slice(0,12).join(""))} maxLength={24} placeholder="例如：小蝦高手" autoComplete="off"/><small>限 12 字，暱稱與分數會公開。留空不上榜，請勿填姓名或電話。</small></label></details>
@@ -348,7 +348,7 @@ export default function ShrimpGame({origin,onClose}:{origin:string;onClose:()=>v
    <p className="result-kicker">30 秒挑戰完成</p>
    <h3>{(finalScore??gameScore(target,tool,s.caught,s.boots)).toLocaleString()} 分</h3>
    <div className="result-score"><Sprite name={target} className="result-ico" caught/><b>{s.caught}</b><small>隻{T.name} · {K.name}</small></div><p className="game-rule">撈到鞋子 {s.boots} 次，扣 {s.boots*BOOT_PENALTY} 分，積分最低 0 分。</p>
-   {passed?<GameVoucherWallet origin={origin} gameId={s.gameId} playerId={playerId} eligible/>:!msg&&<p className="game-rule">這局抓到 {s.caught} 隻{T.name}；達到 1500 分（含），加入 LINE 社群並填暱稱即可扭蛋，同一暱稱每天限一次；90% 折價券、10% 神秘小禮。</p>}
+   {passed?<GameVoucherWallet origin={origin} gameId={s.gameId} playerId={playerId} eligible/>:!msg&&<p className="game-rule">這局抓到 {s.caught} 隻{T.name}；達到 2000 分（含），加入 LINE 社群並填暱稱即可扭蛋，同一暱稱每天限一次；95% 折價券、5% 神秘小禮。</p>}
    {s.caught>0&&nickname.trim()&&!msg&&<p className="game-rule">已記錄本局積分，每個分類保留你的最高分。</p>}
    <GameLeaderboard origin={origin} target={target} refresh={boardRefresh}/>
    {msg&&<p className="err">{msg}</p>}
